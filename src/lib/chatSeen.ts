@@ -167,19 +167,38 @@ export function openedBy(thread: ChatThread, messages: ChatMessage[], rows: Seen
 export const AGENCY_LABEL_MAX = 6;
 
 /**
- * The short label on an agency's avatar, read from its code in the agencies
- * table, at most six letters so it fits the small avatar:
+ * The avatar label of each agency the city has, keyed by its code in the
+ * agencies table. One table, the same on every surface (this console, the
+ * agency console, the app): city_health is CHO, the City Health Office's
+ * own short name, not HEALTH.
+ */
+export const AGENCY_AVATAR_LABELS: ReadonlyMap<string, string> = new Map([
+  ["pnp", "PNP"],
+  ["bfp", "BFP"],
+  ["cdrrmo", "CDRRMO"],
+  ["cswdo", "CSWDO"],
+  ["ceo", "CEO"],
+  ["city_health", "CHO"],
+]);
+
+/**
+ * The short label on an agency's avatar, at most six letters so it fits the
+ * small avatar. A code in AGENCY_AVATAR_LABELS (matched ignoring case and
+ * surrounding spaces) gets its label from there: pnp PNP, bfp BFP,
+ * cdrrmo CDRRMO, cswdo CSWDO, ceo CEO, city_health CHO.
  *
- * - a one-word code is the agency's acronym, whole: pnp PNP, bfp BFP,
- *   cdrrmo CDRRMO, cswdo CSWDO, ceo CEO;
- * - a compound code names the office's work in its last word: city_health
- *   HEALTH (cutting the code to four letters printed CDRR and CITY);
- *   if that word is longer than six letters, the parts' first letters.
+ * Any other code falls back to a rule:
+ * - a one-word code is the agency's acronym, whole;
+ * - a compound code names the office's work in its last word (cutting the
+ *   code to four letters would print CDRR and CITY); if that word is longer
+ *   than six letters, the parts' first letters.
  *
  * With no code, the first letters of the name. Agencies, not people: a
  * resident's avatar is an icon, never initials.
  */
 export function agencyInitials(code: string | null | undefined, name: string | null | undefined): string {
+  const known = AGENCY_AVATAR_LABELS.get((code ?? "").trim().toLowerCase());
+  if (known) return known;
   const parts = (code ?? "").trim().split(/[\s_-]+/).filter(Boolean);
   if (parts.length === 1) return parts[0].slice(0, AGENCY_LABEL_MAX).toUpperCase();
   if (parts.length > 1) {
