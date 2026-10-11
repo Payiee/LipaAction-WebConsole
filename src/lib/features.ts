@@ -80,8 +80,11 @@ export const REPORT_CHAT_LIVE: boolean = true;
  *
  * Never set it to true before the backend owner confirms the migration is
  * on prod.
+ *
+ * Switched on 2026-10-08: both migrations were pushed to prod that day at
+ * 11:37 UTC (the backend owner's go, plan v8 P4).
  */
-export const REPORT_CHAT_V2: boolean = false;
+export const REPORT_CHAT_V2: boolean = true;
 
 /**
  * Whether the backend has chat media: photos and short videos in both
