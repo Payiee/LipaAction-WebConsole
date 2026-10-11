@@ -46,6 +46,11 @@ const ACTION_LABELS: Record<string, MessageKey> = {
   resident_sanction_lifted: "audit.action.resident_sanction_lifted",
   profile_scope_changed: "audit.action.profile_scope_changed",
   report_message_sent: "audit.action.report_message_sent",
+  // Seen raw on the live trail (2026-10-11).
+  consent_granted: "audit.action.consent_granted",
+  media_phashes_purged: "audit.action.media_phashes_purged",
+  resident_attested_tier1: "audit.action.resident_attested_tier1",
+  trust_score_changed: "audit.action.trust_score_changed",
   [ACCESS_LOG_OPENED]: "city.access.action.opened",
   [DATA_EXPORTED]: "city.access.action.exported",
 };
@@ -60,6 +65,7 @@ const ACTION_TONES: Record<string, "neutral" | "brand" | "warning"> = {
   report_returned_to_barangay: "warning",
   identity_reveal: "warning",
   resident_sanction_lifted: "brand",
+  resident_attested_tier1: "brand",
   profile_scope_changed: "warning",
 };
 

@@ -930,6 +930,13 @@ export const MESSAGES = {
   // Written by the report chat for a message in either direction; the role
   // column says whether a resident or an official sent it.
   "audit.action.report_message_sent": { en: "Message sent on the report", tl: "Nagpadala ng mensahe sa ulat" },
+  // Backend events seen on the city access log (2026-10-11). A resident's
+  // consent, the clean-up job's removal of media fingerprints, an in-person
+  // verification, and a trust score update.
+  "audit.action.consent_granted": { en: "Consent given", tl: "Nagbigay ng pahintulot" },
+  "audit.action.media_phashes_purged": { en: "Media fingerprints cleared", tl: "Binura ang mga fingerprint ng media" },
+  "audit.action.resident_attested_tier1": { en: "Resident verified (Tier 1)", tl: "Na-verify ang residente (Tier 1)" },
+  "audit.action.trust_score_changed": { en: "Trust score changed", tl: "Nabago ang trust score" },
   "audit.reportGone": { en: "Report no longer in the database", tl: "Wala na sa database ang ulat" },
   "role.municipal_admin": { en: "Municipal Admin", tl: "Municipal Admin" },
   "role.agency_user": { en: "Agency staff", tl: "Kawani ng ahensya" },
