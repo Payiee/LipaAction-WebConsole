@@ -173,14 +173,48 @@ async function alreadyDecidedMessage(
   reportId: string,
   error: { code?: string }
 ): Promise<string | null> {
-  if (error.code !== "42501") return null;
+  // 55000 (someone decided it first) gets the same read: the Critical
+  // escalation timer can be that someone.
+  if (error.code !== "42501" && error.code !== "55000") return null;
   const { data, error: readError } = await supabase
     .from("incident_reports")
     .select("status")
     .eq("id", reportId)
     .maybeSingle();
   if (readError || !data) return null;
-  return REVIEWABLE.has(data.status as string) ? null : "Someone else already reviewed this report.";
+  if (REVIEWABLE.has(data.status as string)) return null;
+  if ((data.status === "routed" || data.status === "resolved") && (await routedAutomatically(supabase, reportId))) {
+    return ROUTED_BY_TIMER;
+  }
+  return "Someone else already reviewed this report.";
+}
+
+/**
+ * The backend's Critical escalation timer (on since 2026-10-13) routes an
+ * untouched Critical emergency to its mapped agencies 2 to 10 minutes after
+ * scoring. An official deciding it as the timer fires loses the race to no
+ * one: [Someone else already reviewed this report] would send them looking
+ * for a colleague. A report the desk never routed carries auto_routed rows.
+ */
+const ROUTED_BY_TIMER =
+  "This report was routed to its agencies automatically while you were deciding, because its review time ran out. The agencies already have it.";
+
+/**
+ * Whether any agency row on the report was written by automatic routing.
+ * A failed read answers false, keeping the message that was shown before.
+ */
+async function routedAutomatically(supabase: ReturnType<typeof createClient>, reportId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("agency_routing")
+    .select("agency_id")
+    .eq("incident_report_id", reportId)
+    .eq("auto_routed", true)
+    .limit(1);
+  if (error) {
+    console.error("[reports] auto-routed read failed", error.code, error.message);
+    return false;
+  }
+  return (data ?? []).length > 0;
 }
 
 /**
@@ -267,9 +301,12 @@ async function alreadyClosedMessage(
   reportId: string,
   status: string
 ): Promise<string> {
-  if (status !== "resolved") return ALREADY_ROUTED;
+  if (status !== "resolved") {
+    return (await routedAutomatically(supabase, reportId)) ? ROUTED_BY_TIMER : ALREADY_ROUTED;
+  }
   const rows = await routingRows(supabase, reportId);
-  return rows !== null && rows.length === 0 ? RESOLVED_AT_BARANGAY : ALREADY_ROUTED;
+  if (rows !== null && rows.length === 0) return RESOLVED_AT_BARANGAY;
+  return (await routedAutomatically(supabase, reportId)) ? ROUTED_BY_TIMER : ALREADY_ROUTED;
 }
 
 /**

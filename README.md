@@ -310,12 +310,14 @@ In each case the console shows nothing rather than an approximation.
   the model rates nearly every emergency Critical, each row shows its score beside the
   tier; the ranking is carried by the score, not by the colour.
 - **Routing from the console is manual and one-way.** An official routes a validated
-  report, and the agencies are chosen by the category-to-agency mapping,
-  not by the official. A category with no mapping is reported as needing barangay
-  review rather than sent anywhere. Routing cannot be undone from the console. The one
-  place an official chooses the agencies is a report that every agency closed as out of
-  scope: the database returns it to the barangay as validated, and the official picks
-  other agencies for it from a list that leaves out the ones that sent it back. The
+  report. For an emergency the agencies are chosen by the category-to-agency mapping,
+  not by the official, and an emergency category with no mapping is reported as needing
+  barangay review rather than sent anywhere. For a Standard intake report the official
+  chooses the agencies, with the mapped ones ticked in advance. Routing cannot be undone
+  from the console. An official also chooses the agencies for a report that every agency
+  closed as out of scope: the database returns it to the barangay as validated, and the
+  official picks other agencies for it from a list that leaves out the ones that sent it
+  back. The
   backend's Critical escalation timer is switched on: a Critical emergency the desk
   leaves untouched is routed to its mapped agencies when its timer (2 to 10 minutes,
   shorter for a higher score) ends. A report it routes appears under Routed to agencies
