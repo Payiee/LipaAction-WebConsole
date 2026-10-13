@@ -320,6 +320,7 @@ export const MESSAGES = {
   "routing.outcome.confirmed-false": { en: "confirmed false", tl: "kumpirmadong hindi totoo" },
   "routing.outcome.duplicate": { en: "duplicate", tl: "doble" },
   "routing.outcome.out-of-scope": { en: "out of scope", tl: "labas sa saklaw" },
+  "routing.outcome.recalled": { en: "recalled", tl: "binawi" },
   "routing.progress.closed": { en: "Closed — {outcome}", tl: "Isinara — {outcome}" },
   "routing.progress.acknowledged": { en: "Acknowledged", tl: "Kinilala na" },
   "routing.progress.inProgress": { en: "In progress", tl: "Inaasikaso na" },

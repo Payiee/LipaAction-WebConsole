@@ -96,12 +96,19 @@ function suggestedAgencies(plan: RoutingPlanEntry[] | null): string[] {
 }
 
 /**
- * True when every agency the report went to closed it as out of scope. The
- * same rule decides the [returned] state here and is checked again by
- * routeReport and rerouteReport on the server, which must agree with it.
+ * True when every agency the report went to closed it as out of scope, or
+ * had it recalled from them (treated alike, as the backend's recall
+ * migration asks). The same rule decides the [returned] state here and is
+ * checked again by routeReport and rerouteReport on the server, which must
+ * agree with it.
  */
 export function everyAgencyReturned(rows: AgencyRouting[]): boolean {
-  return rows.length > 0 && rows.every((r) => Boolean(r.resolvedAt) && r.resolutionOutcome === "out-of-scope");
+  return (
+    rows.length > 0 &&
+    rows.every(
+      (r) => Boolean(r.resolvedAt) && (r.resolutionOutcome === "out-of-scope" || r.resolutionOutcome === "recalled")
+    )
+  );
 }
 
 /**
@@ -132,8 +139,8 @@ function time(iso: string | null): number {
 }
 
 // resolution_outcome is a closed list on the backend, one message key per
-// value (routing.outcome.*). [resolved] needs no qualifier; the other three
-// are closures without a fix, and say so.
+// value (routing.outcome.*). [resolved] needs no qualifier; the others are
+// closures without a fix, and say so.
 function outcomeLabel(outcome: NonNullable<AgencyRouting["resolutionOutcome"]>, t: Translate): string {
   return t(`routing.outcome.${outcome}`);
 }

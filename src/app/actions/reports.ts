@@ -229,12 +229,19 @@ interface HeldRow {
 
 /**
  * Whether every agency the report went to closed it as out of scope — the
- * report the backend's handback returns to the barangay. The same rule as
- * everyAgencyReturned in src/components/queue/routing.ts, which decides the
- * [returned] state on screen; the two must agree.
+ * report the backend's handback returns to the barangay — or had it recalled
+ * from them (the backend's recall window, which the recall migration asks
+ * consoles to treat like out-of-scope). The same rule as everyAgencyReturned
+ * in src/components/queue/routing.ts, which decides the [returned] state on
+ * screen; the two must agree.
  */
 function everyAgencyReturned(rows: HeldRow[]): boolean {
-  return rows.length > 0 && rows.every((r) => r.resolved_at !== null && r.resolution_outcome === "out-of-scope");
+  return (
+    rows.length > 0 &&
+    rows.every(
+      (r) => r.resolved_at !== null && (r.resolution_outcome === "out-of-scope" || r.resolution_outcome === "recalled")
+    )
+  );
 }
 
 /**
