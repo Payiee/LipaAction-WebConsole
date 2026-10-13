@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useToast } from "@/components/ui/Toast";
-import { rerouteReport, routeReport, type RouteResult } from "@/app/actions/reports";
+import { rerouteReport, routeReport, routeReportToAgencies, type RouteResult } from "@/app/actions/reports";
 import { callAction } from "@/lib/callAction";
 import { useT } from "@/lib/i18n";
 import { agencyCount } from "./routing";
@@ -17,8 +17,9 @@ import { agencyCount } from "./routing";
  * response — the server's answer is the only one shown.
  *
  * isConfirming opens whichever step the report's routing state calls for:
- * the plain confirmation for a first or unfinished routing, the agency
- * picker for a report every agency sent back.
+ * the plain confirmation for an emergency's first or unfinished routing, the
+ * agency picker for an Other-report (routeTo) and for a report every agency
+ * sent back (reroute).
  */
 export function useReportRouting(reportId: string) {
   const { showToast } = useToast();
@@ -52,5 +53,6 @@ export function useReportRouting(reportId: string) {
     cancelConfirm: () => setIsConfirming(false),
     route: () => run(() => routeReport(reportId)),
     reroute: (agencyIds: string[]) => run(() => rerouteReport(reportId, agencyIds)),
+    routeTo: (agencyIds: string[]) => run(() => routeReportToAgencies(reportId, agencyIds)),
   };
 }

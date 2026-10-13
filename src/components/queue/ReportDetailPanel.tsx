@@ -31,6 +31,7 @@ import {
   isAutoRouted,
   isReturnedToBarangay,
   rerouteCopy,
+  chooseCopy,
   routeConfirmCopy,
   routingState,
   splitRouting,
@@ -185,6 +186,18 @@ export function ReportDetailPanel({
         {t("review.reject")}
       </Button>
     </>
+  ) : routeState.kind === "choose" && routeState.options && routeState.options.length > 0 ? (
+    // An Other-report: the official picks its agencies.
+    <>
+      <Button variant="primary" size="sm" disabled={writing} onClick={routing.openConfirm}>
+        {t("routing.routeToAgency")}
+      </Button>
+      {mayResolve && (
+        <Button variant="secondary" size="sm" disabled={writing} onClick={barangayResolve.openPrompt}>
+          {t("resolve.button")}
+        </Button>
+      )}
+    </>
   ) : routeState.kind === "ready" || routeState.kind === "incomplete" ? (
     <>
       <Button variant="primary" size="sm" disabled={writing} onClick={routing.openConfirm}>
@@ -299,7 +312,7 @@ export function ReportDetailPanel({
           <p className="mb-1.5 mt-5 text-[11px] font-semibold uppercase tracking-wide text-ink-500">
             {t("drawer.section.routing")}
           </p>
-          <RoutingPreview plan={d.routingPlan} routing={d.routing} />
+          <RoutingPreview plan={d.routingPlan} routing={d.routing} chooses={d.entryTier === "other_reports"} />
         </>
       )}
 
@@ -427,6 +440,20 @@ export function ReportDetailPanel({
       )}
 
       {routing.isConfirming &&
+        routeState.kind === "choose" &&
+        routeState.options &&
+        routeState.options.length > 0 && (
+          <AgencyPickerModal
+            {...chooseCopy(report, routeState, t)}
+            options={routeState.options}
+            initial={routeState.suggested}
+            busy={routing.isPending}
+            onCancel={routing.cancelConfirm}
+            onConfirm={routing.routeTo}
+          />
+        )}
+
+      {routing.isConfirming &&
         routeState.kind === "returned" &&
         routeState.options &&
         routeState.options.length > 0 && (
@@ -448,6 +475,10 @@ function footerNote(state: RoutingState, t: Translate): string {
       return t("drawer.footer.noMapping");
     case "unavailable":
       return t("drawer.footer.unavailable");
+    case "choose":
+      // Shown only when there is no button and no resolve: the agency list
+      // didn't load, or names no agency at all.
+      return t(state.options === null ? "drawer.footer.optionsUnavailable" : "drawer.footer.noMapping");
     case "returned":
       // Shown only when there is no button: the agency list didn't load, or
       // every agency has already had the report.
@@ -476,6 +507,17 @@ function RoutingSection({ state }: { state: ReturnType<typeof routingState> }) {
   switch (state.kind) {
     case "ready":
       return <PlanList plan={state.plan} lead={t("drawer.plan.willRoute")} />;
+    case "choose":
+      // Nothing is decided yet: the mapping is a suggestion the picker ticks
+      // in advance, not where the report will go.
+      return (
+        <div>
+          <p className="mb-2 text-xs text-ink-700">{t("drawer.choose.body")}</p>
+          {state.plan && state.plan.length > 0 && (
+            <PlanList plan={state.plan} lead={t("drawer.choose.suggested")} />
+          )}
+        </div>
+      );
     case "incomplete": {
       const { current, earlier } = splitRouting(state.routing);
       return (
@@ -540,7 +582,17 @@ function RoutingSection({ state }: { state: ReturnType<typeof routingState> }) {
  * returned it, so there is nothing to preview: the drawer lists them, and
  * says the next agency is chosen after validation.
  */
-function RoutingPreview({ plan, routing }: { plan: RoutingPlanEntry[] | null; routing: AgencyRouting[] }) {
+function RoutingPreview({
+  plan,
+  routing,
+  chooses,
+}: {
+  plan: RoutingPlanEntry[] | null;
+  routing: AgencyRouting[];
+  // An Other-report: after validation the official chooses its agencies, so
+  // the mapping is only a suggestion.
+  chooses: boolean;
+}) {
   const t = useT();
   if (everyAgencyReturned(routing)) {
     const { current, earlier } = splitRouting(routing);
@@ -549,6 +601,14 @@ function RoutingPreview({ plan, routing }: { plan: RoutingPlanEntry[] | null; ro
         <p className="mb-2 text-xs text-priority-medium">{t("drawer.returnedPending")}</p>
         <AgencyList rows={current} />
         <EarlierList rows={earlier} />
+      </div>
+    );
+  }
+  if (chooses) {
+    return (
+      <div>
+        <p className="mb-2 text-xs text-ink-700">{t("drawer.preview.choose")}</p>
+        {plan && plan.length > 0 && <PlanList plan={plan} lead={t("drawer.choose.suggested")} />}
       </div>
     );
   }

@@ -23,6 +23,15 @@ export type RoutingState =
   // person's choice: options lists the agencies that don't hold it yet, and
   // is null when the agency list couldn't be loaded.
   | { kind: "returned"; routing: AgencyRouting[]; options: RoutingOption[] | null }
+  // A validated Other-report no agency holds yet. The desk chooses which
+  // agencies it belongs to, like tagging it, rather than confirming the
+  // category mapping: an Other-report's category is broad (public order,
+  // welfare…) and the right office depends on what was reported. suggested
+  // holds the mapped agencies' ids, lead first, ticked in advance; it is []
+  // when the category maps to none or the mapping couldn't be loaded.
+  // options lists every named agency, and is null when that list couldn't
+  // be loaded.
+  | { kind: "choose"; options: RoutingOption[] | null; suggested: string[]; plan: RoutingPlanEntry[] | null }
   // Validated, and the category maps to no agency (e.g. other_emergency).
   | { kind: "no-mapping" }
   // Validated, but the mapping couldn't be loaded. Not the same claim as
@@ -43,6 +52,14 @@ export function routingState(report: QueueReport): RoutingState {
         return { kind: "returned", routing, options: routingOptions ?? null };
       }
       return { kind: "incomplete", routing, plan: routingPlan };
+    }
+    if (report.details.entryTier === "other_reports") {
+      return {
+        kind: "choose",
+        options: routingOptions ?? null,
+        suggested: suggestedAgencies(routingPlan),
+        plan: routingPlan,
+      };
     }
     if (routingPlan === null) return { kind: "unavailable" };
     if (routingPlan.length === 0) return { kind: "no-mapping" };
@@ -66,8 +83,16 @@ export function canResolveAtBarangay(report: QueueReport, state: RoutingState): 
   return (
     BARANGAY_RESOLVE_LIVE &&
     report.details.entryTier === "other_reports" &&
-    (state.kind === "ready" || state.kind === "no-mapping")
+    (state.kind === "ready" || state.kind === "no-mapping" || state.kind === "choose")
   );
+}
+
+// The mapped agencies, lead first, then in mapping order: the order the
+// picker ticks them, and so the order that decides which one leads.
+function suggestedAgencies(plan: RoutingPlanEntry[] | null): string[] {
+  if (!plan) return [];
+  const ids = [...plan.filter((p) => p.isPrimary), ...plan.filter((p) => !p.isPrimary)].map((p) => p.agencyId);
+  return [...new Set(ids)];
 }
 
 /**
@@ -292,6 +317,24 @@ export function rerouteCopy(
   return {
     title: t("reroute.title", { id: report.id }),
     description: t("reroute.description", { names }) + discreetNote(report, t),
+  };
+}
+
+/**
+ * Copy for the agency picker a validated Other-report opens. The mapped
+ * agencies are already ticked when there are any, and the description says
+ * so, so an official who agrees with them only has to confirm.
+ */
+export function chooseCopy(
+  report: QueueReport,
+  state: Extract<RoutingState, { kind: "choose" }>,
+  t: Translate
+): { title: string; description: string; hint: string } {
+  return {
+    title: t("choose.title", { id: report.id }),
+    description:
+      t(state.suggested.length > 0 ? "choose.descriptionSuggested" : "choose.description") + discreetNote(report, t),
+    hint: t("choose.leadHint"),
   };
 }
 

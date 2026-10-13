@@ -49,14 +49,19 @@ export interface AgencyRouting {
 
 /** An agency that routing this report would send it to (category_agency_routing). */
 export interface RoutingPlanEntry {
+  // The agency's id, so the picker an Other-report opens can tick the mapped
+  // agencies in advance.
+  agencyId: string;
   agencyName: string;
   isPrimary: boolean;
 }
 
 /**
- * An agency an official may choose when every agency the report went to sent
- * it back as out of scope. The id is what rerouteReport receives; the server
- * checks it again, since the choice arrives from the browser.
+ * An agency an official may choose: for a validated Other-report, which is
+ * routed to the agencies the desk picks, and for a report every agency it
+ * went to sent back as out of scope. The id is what routeReportToAgencies or
+ * rerouteReport receives; the server checks it again, since the choice
+ * arrives from the browser.
  */
 export interface RoutingOption {
   agencyId: string;
@@ -103,10 +108,11 @@ export interface ReportDetails {
   // filled with a guess; null when the mapping couldn't be loaded, and on
   // routed or resolved reports, where it no longer applies.
   routingPlan: RoutingPlanEntry[] | null;
-  // The agencies that don't hold the report yet, sorted by name. Only set on
-  // a validated report that already has agency rows, the one place the picker
-  // can open; null there when the agency list couldn't be loaded, and null on
-  // every other report.
+  // The agencies that don't hold the report yet, sorted by name, for the
+  // agency picker. Set on a validated report that already has agency rows
+  // (the returned case) and on a validated Other-report no agency holds yet
+  // (the desk chooses where it goes); null there when the agency list
+  // couldn't be loaded, and null on every other report.
   routingOptions: RoutingOption[] | null;
   // Where the reporter's phone was when they filed, for the drawer's map.
   position: ReportPosition;

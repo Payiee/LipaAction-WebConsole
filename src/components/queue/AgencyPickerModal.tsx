@@ -10,10 +10,11 @@ import { agencyCount } from "./routing";
 import type { RoutingOption } from "@/types";
 
 /**
- * Chooses the agencies a returned report goes to next — the one place in the
- * console where an official, not the category mapping, decides who receives
- * a report. Opened only when every agency it went to sent it back as out of
- * scope, and the list already leaves those agencies out.
+ * Chooses the agencies a report goes to — where an official, not the category
+ * mapping, decides who receives it. Opened in two cases: a validated
+ * Other-report, routed to the agencies the desk picks (the mapped ones ticked
+ * in advance through initial), and a report every agency it went to sent back
+ * as out of scope, whose list already leaves those agencies out.
  *
  * The commit button is the confirmation, as in ConfirmModal: it stays
  * disabled until something is chosen, and it counts what will be sent. The
@@ -24,6 +25,8 @@ export function AgencyPickerModal({
   title,
   description,
   options,
+  initial = [],
+  hint,
   busy = false,
   onCancel,
   onConfirm,
@@ -31,13 +34,20 @@ export function AgencyPickerModal({
   title: string;
   description: string;
   options: RoutingOption[];
+  // Agencies ticked when the picker opens, in order (the first leads). An id
+  // that isn't among the options is dropped.
+  initial?: string[];
+  // The line under the list; the returned case's wording by default.
+  hint?: string;
   busy?: boolean;
   onCancel: () => void;
   onConfirm: (agencyIds: string[]) => void;
 }) {
   const t = useT();
   // In the order ticked: the first is the lead.
-  const [chosen, setChosen] = useState<string[]>([]);
+  const [chosen, setChosen] = useState<string[]>(() =>
+    initial.filter((id) => options.some((option) => option.agencyId === id))
+  );
   useDismissOnEscape(onCancel, !busy);
   // No autoFocus: focus lands on the dialog, so its title and the names of
   // the agencies that returned the report are announced before any choice.
@@ -100,7 +110,7 @@ export function AgencyPickerModal({
             })}
           </div>
         </fieldset>
-        <p className="mb-4 text-[11px] text-ink-500">{t("reroute.leadHint")}</p>
+        <p className="mb-4 text-[11px] text-ink-500">{hint ?? t("reroute.leadHint")}</p>
 
         <div className="flex justify-end gap-2">
           <Button variant="secondary" size="sm" disabled={busy} onClick={onCancel}>

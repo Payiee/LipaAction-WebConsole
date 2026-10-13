@@ -20,6 +20,7 @@ import {
   everyAgencyReturned,
   isAutoRouted,
   rerouteCopy,
+  chooseCopy,
   returnedSummary,
   routeConfirmCopy,
   routingState,
@@ -133,6 +134,24 @@ export function ReportRow({
                   {t("routing.routeElsewhere")}
                 </Button>
               )
+            )}
+          </>
+        );
+      case "choose":
+        // An Other-report goes where the official says: the button opens the
+        // agency picker, with the mapped agencies ticked in advance.
+        return state.options === null ? (
+          <>
+            <span className="max-w-[10rem] text-right text-xs text-ink-500">{t("row.returnedUnavailable")}</span>
+            {resolveButton("primary")}
+          </>
+        ) : (
+          <>
+            {resolveButton("secondary")}
+            {state.options.length > 0 && (
+              <Button variant="primary" size="sm" disabled={busy} onClick={routing.openConfirm}>
+                {t("routing.routeToAgency")}
+              </Button>
             )}
           </>
         );
@@ -320,6 +339,17 @@ export function ReportRow({
           busy={barangayResolve.isPending}
           onCancel={barangayResolve.cancelPrompt}
           onConfirm={barangayResolve.resolve}
+        />
+      )}
+
+      {routing.isConfirming && state.kind === "choose" && state.options && state.options.length > 0 && (
+        <AgencyPickerModal
+          {...chooseCopy(report, state, t)}
+          options={state.options}
+          initial={state.suggested}
+          busy={routing.isPending}
+          onCancel={routing.cancelConfirm}
+          onConfirm={routing.routeTo}
         />
       )}
 

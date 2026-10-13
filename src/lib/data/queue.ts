@@ -460,7 +460,7 @@ async function loadRouting(
   if (!mappingRes.error) {
     for (const row of (mappingRes.data ?? []) as RawMapping[]) {
       const plan = planByCategory.get(row.category_key) ?? [];
-      plan.push({ agencyName: nameOf(row.agency_id), isPrimary: row.is_primary });
+      plan.push({ agencyId: row.agency_id, agencyName: nameOf(row.agency_id), isPrimary: row.is_primary });
       planByCategory.set(row.category_key, plan);
     }
   }
@@ -490,15 +490,21 @@ async function loadRouting(
       // A category absent from a successful lookup has no mapping: []. A
       // failed lookup proves nothing either way: null.
       routingPlan: mappingRes.error ? null : planByCategory.get(r.category) ?? [],
-      // Only a validated report that agencies already hold can need another
-      // agency: routingState decides whether it does (every agency sent it
-      // back). A failed agency list is null, never [], which would claim that
-      // no other agency exists.
+      // The picker's list, in two cases. A validated report that agencies
+      // already hold can need another agency: routingState decides whether it
+      // does (every agency sent it back). A validated Other-report no agency
+      // holds yet goes to the agencies the desk picks, from every named
+      // agency. A failed agency list is null, never [], which would claim
+      // that no agency exists.
       routingOptions: held
         ? agenciesRes.error
           ? null
           : namedAgencies.filter((a) => !held.has(a.agencyId))
-        : null,
+        : r.entry_tier === "other_reports"
+          ? agenciesRes.error
+            ? null
+            : namedAgencies
+          : null,
     });
   }
   for (const r of routed) {

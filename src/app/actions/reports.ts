@@ -278,7 +278,7 @@ export async function routeReport(reportId: string): Promise<RouteResult> {
   // an error.
   const [session, reportRes] = await Promise.all([
     sessionState(supabase),
-    supabase.from("incident_reports").select("id, category, status").eq("id", reportId).maybeSingle(),
+    supabase.from("incident_reports").select("id, category, status, entry_tier").eq("id", reportId).maybeSingle(),
   ]);
 
   if (session !== "active") {
@@ -300,6 +300,28 @@ export async function routeReport(reportId: string): Promise<RouteResult> {
   if (report.status !== "validated") {
     // rejected is terminal; pending hasn't been reviewed. Neither routes.
     return { success: false, message: ONLY_VALIDATED };
+  }
+
+  // An Other-report goes to the agencies the desk chose
+  // (routeReportToAgencies), not to its mapping. Here it can only be
+  // finished: a run that stopped after its insert left the chosen agencies
+  // holding it, and finishing records the routing and sets the status
+  // without adding a mapped agency nobody chose.
+  if (report.entry_tier === "other_reports") {
+    const held = await routingRows(supabase, reportId);
+    if (held === null) return { success: false, message: ROUTE_FAILED };
+    if (held.length === 0) {
+      return { success: false, message: "Choose the agencies this report belongs to, then route it." };
+    }
+    if (everyAgencyReturned(held)) {
+      revalidatePath("/queue");
+      return {
+        success: false,
+        message: "Every agency sent this report back as out of scope. Choose another agency for it instead.",
+      };
+    }
+    const ids = new Set(held.map((row) => row.agency_id));
+    return sendAndRecord(supabase, reportId, new Map([...ids].map((id): [string, boolean] => [id, false])), ids);
   }
 
   // b.
@@ -374,17 +396,10 @@ export async function routeReport(reportId: string): Promise<RouteResult> {
  * [Routing incomplete]; routeReport finishes it from there.
  */
 export async function rerouteReport(reportId: string, agencyIds: string[]): Promise<RouteResult> {
-  if (
-    !isUuid(reportId) ||
-    !Array.isArray(agencyIds) ||
-    agencyIds.length === 0 ||
-    agencyIds.length > MAX_BULK ||
-    !agencyIds.every(isUuid)
-  ) {
+  const chosen = isUuid(reportId) ? chosenAgencies(agencyIds) : null;
+  if (!chosen) {
     return { success: false, message: INVALID_REQUEST };
   }
-  // De-duplicated in the order chosen, so the first stays the lead.
-  const chosen = [...new Set(agencyIds.map((id) => id.toLowerCase()))];
 
   const supabase = createClient();
 
@@ -450,6 +465,108 @@ export async function rerouteReport(reportId: string, agencyIds: string[]): Prom
 
   const plan = new Map(chosen.map((agencyId, index): [string, boolean] => [agencyId, index === 0]));
   return sendAndRecord(supabase, reportId, plan, held);
+}
+
+/**
+ * Sends a validated Other-report to the agencies an official chose for it,
+ * like tagging it with the offices it belongs to. An Other-report's category
+ * is broad (public order, welfare and the like), so the right office depends
+ * on what was reported; the picker ticks the mapped agencies in advance, and
+ * the official keeps, changes or adds to them. Emergencies keep routeReport:
+ * their category decides the responders, and the desk confirms rather than
+ * chooses.
+ *
+ * ar_insert_barangay doesn't limit which agency a barangay may route to, so
+ * the choice is proven here, as in rerouteReport: the report is validated,
+ * an Other-report, and held by no agency yet (a held one is either
+ * half-routed, which routeReport finishes, or returned, which rerouteReport
+ * handles); every id names an agency that exists. The first one chosen leads
+ * (is_primary). From the insert on it is routeReport's contract, through
+ * sendAndRecord.
+ */
+export async function routeReportToAgencies(reportId: string, agencyIds: string[]): Promise<RouteResult> {
+  const chosen = isUuid(reportId) ? chosenAgencies(agencyIds) : null;
+  if (!chosen) {
+    return { success: false, message: INVALID_REQUEST };
+  }
+
+  const supabase = createClient();
+
+  const [session, reportRes] = await Promise.all([
+    sessionState(supabase),
+    supabase.from("incident_reports").select("id, status, entry_tier").eq("id", reportId).maybeSingle(),
+  ]);
+
+  if (session !== "active") {
+    return { success: false, message: SESSION_MESSAGE[session] };
+  }
+
+  const { data: report, error: reportError } = reportRes;
+  if (reportError) {
+    console.error("[routeReportToAgencies] read failed", reportError.code, reportError.message);
+    return { success: false, message: ROUTE_FAILED };
+  }
+  if (!report) {
+    return { success: false, message: NOT_IN_BARANGAY };
+  }
+  if (report.status === "routed" || report.status === "resolved") {
+    revalidatePath("/queue");
+    return { success: false, message: ALREADY_ROUTED };
+  }
+  if (report.status !== "validated") {
+    return { success: false, message: ONLY_VALIDATED };
+  }
+  if (report.entry_tier !== "other_reports") {
+    return { success: false, message: "Emergencies go to the agencies their category maps to. Use Route to agency." };
+  }
+
+  const [rows, agenciesRes] = await Promise.all([
+    routingRows(supabase, reportId),
+    supabase.from("agencies").select("id").in("id", chosen),
+  ]);
+  if (rows === null) return { success: false, message: ROUTE_FAILED };
+  if (agenciesRes.error) {
+    console.error(
+      "[routeReportToAgencies] agencies read failed",
+      agenciesRes.error.code,
+      agenciesRes.error.message
+    );
+    return { success: false, message: ROUTE_FAILED };
+  }
+  if (rows.length > 0) {
+    // The report changed after the picker opened: another official routed
+    // it, or a run stopped part-way. The queue shows which.
+    revalidatePath("/queue");
+    return {
+      success: false,
+      message:
+        "An agency already holds this report — another official may have routed it. Refresh to see where it stands.",
+    };
+  }
+
+  const known = new Set(((agenciesRes.data ?? []) as { id: string }[]).map((a) => a.id.toLowerCase()));
+  if (!chosen.every((agencyId) => known.has(agencyId))) {
+    return { success: false, message: "One of the chosen agencies wasn't found. Refresh, then choose again." };
+  }
+
+  const plan = new Map(chosen.map((agencyId, index): [string, boolean] => [agencyId, index === 0]));
+  return sendAndRecord(supabase, reportId, plan, new Set());
+}
+
+/**
+ * The agency ids a picker sent, proven: 1 to MAX_BULK uuids, de-duplicated
+ * in the order chosen so the first stays the lead. null for anything else.
+ */
+function chosenAgencies(agencyIds: unknown): string[] | null {
+  if (
+    !Array.isArray(agencyIds) ||
+    agencyIds.length === 0 ||
+    agencyIds.length > MAX_BULK ||
+    !agencyIds.every((id) => typeof id === "string" && isUuid(id))
+  ) {
+    return null;
+  }
+  return [...new Set((agencyIds as string[]).map((id) => id.toLowerCase()))];
 }
 
 /**

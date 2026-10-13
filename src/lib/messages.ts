@@ -392,6 +392,24 @@ export const MESSAGES = {
     tl: "Ang unang ahensyang pipiliin mo ang mangunguna. Hindi nakalista ang mga ahensyang nagkaroon na ng ulat na ito.",
   },
   "reroute.chooseFirst": { en: "Choose an agency", tl: "Pumili ng ahensya" },
+  // The agency picker a validated Other-report opens.
+  "choose.title": { en: "Route {id} to agencies", tl: "Ipasa ang {id} sa mga ahensya" },
+  "choose.description": {
+    en: "Choose the agencies this report belongs to. Routing can't be undone from this console.",
+    tl: "Piliin ang mga ahensyang may kinalaman sa ulat na ito. Hindi na mababawi ang pagpasa mula sa console na ito.",
+  },
+  "choose.descriptionSuggested": {
+    en:
+      "Choose the agencies this report belongs to. The ones its category maps to are ticked already; " +
+      "change them if it belongs elsewhere. Routing can't be undone from this console.",
+    tl:
+      "Piliin ang mga ahensyang may kinalaman sa ulat na ito. Naka-tsek na ang mga nakatalaga sa kategorya nito; " +
+      "palitan kung sa iba ito nababagay. Hindi na mababawi ang pagpasa mula sa console na ito.",
+  },
+  "choose.leadHint": {
+    en: "The first agency ticked leads. You can choose more than one.",
+    tl: "Ang unang ahensyang na-tsek ang mangunguna. Maaaring pumili ng higit sa isa.",
+  },
 
   // --- Report detail drawer -------------------------------------------------
   "drawer.close": { en: "Close report details", tl: "Isara ang detalye ng ulat" },
@@ -449,6 +467,15 @@ export const MESSAGES = {
   "drawer.submitted": { en: "Submitted", tl: "Isinumite" },
   "drawer.section.routing": { en: "Agency routing", tl: "Pagpasa sa ahensya" },
   "drawer.plan.willRoute": { en: "Will route to", tl: "Ipapasa sa" },
+  "drawer.choose.body": {
+    en: "Choose which agencies this report belongs to when you route it.",
+    tl: "Piliin kung aling mga ahensya ang may kinalaman sa ulat na ito kapag ipapasa mo ito.",
+  },
+  "drawer.choose.suggested": { en: "Suggested from its category", tl: "Mungkahi batay sa kategorya nito" },
+  "drawer.preview.choose": {
+    en: "After validation, you choose which agencies it goes to.",
+    tl: "Pagkatapos ma-validate, ikaw ang pipili kung saang mga ahensya ito ipapasa.",
+  },
   "drawer.preview.willRoute": {
     en: "After validation, routing sends it to",
     tl: "Pagkatapos ma-validate, ipapasa ito sa",
