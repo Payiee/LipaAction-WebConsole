@@ -284,21 +284,30 @@ export const MESSAGES = {
   // only for Emergency reports. The Tagalog column is a draft, not yet
   // reviewed like the rest of this file.
   "cdrrmo.useValidate": {
-    en: "Emergency reports are now validated through CDRRMO dispatch; use Validate.",
-    tl: "Sa CDRRMO dispatch na vina-validate ang mga Emergency na ulat; gamitin ang I-validate.",
+    en: "Emergency reports now go to agencies through the city's CDRRMO. Use Validate; it sends the report on.",
+    tl: "Sa CDRRMO ng lungsod na ipinapasa sa mga ahensya ang mga Emergency na ulat. Gamitin ang I-validate; ito ang magpapasa ng ulat.",
   },
   "cdrrmo.validateTitle": { en: "Validate {id}?", tl: "I-validate ang {id}?" },
   "cdrrmo.validateDescription": {
     en:
-      "Validating sends it straight to its agencies through CDRRMO dispatch: {names}. " +
-      "The barangay can't choose or remove agencies for an Emergency report; CDRRMO can add more. " +
+      "Validating sends it straight to its agencies through the city's CDRRMO: {names}. " +
+      "The final list may include more agencies; only CDRRMO can add them. " +
       "This can't be undone from this console.",
     tl:
-      "Kapag na-validate, ipapasa ito agad sa mga ahensya nito sa pamamagitan ng CDRRMO dispatch: {names}. " +
-      "Hindi makakapili o makakapag-alis ng ahensya ang barangay para sa Emergency na ulat; ang CDRRMO lang ang makakapagdagdag. " +
+      "Kapag na-validate, ipapasa ito agad sa mga ahensya nito sa pamamagitan ng CDRRMO ng lungsod: {names}. " +
+      "Maaaring may madagdag pang ahensya sa huling listahan; ang CDRRMO lang ang makakapagdagdag. " +
       "Hindi na ito mababawi mula sa console na ito.",
   },
   "cdrrmo.validateConfirm": { en: "Validate and send", tl: "I-validate at ipasa" },
+  "cdrrmo.recordDescription": {
+    en: "It is already with its agencies. Validating records your barangay's validation; where it went doesn't change.",
+    tl: "Nasa mga ahensya na ito. Itatala ng pag-validate ang validation ng inyong barangay; hindi magbabago kung saan ito napunta.",
+  },
+  "cdrrmo.recordConfirm": { en: "Record validation", tl: "Itala ang validation" },
+  "cdrrmo.notValidatedHere": {
+    en: "Not yet validated by your barangay",
+    tl: "Hindi pa na-validate ng inyong barangay",
+  },
   "cdrrmo.cdrrmoAlways": { en: "CDRRMO (always)", tl: "CDRRMO (palagi)" },
   "cdrrmo.alwaysSuffix": { en: "(always)", tl: "(palagi)" },
   "cdrrmo.mappedAndCdrrmo": {
@@ -306,81 +315,113 @@ export const MESSAGES = {
     tl: "ang mga ahensyang nakatalaga sa kategorya nito, at ang CDRRMO",
   },
   "cdrrmo.preview": {
-    en: "After validation, CDRRMO dispatch sends it to",
-    tl: "Pagkatapos ma-validate, ipapasa ito ng CDRRMO dispatch sa",
+    en: "After validation, it goes straight to",
+    tl: "Pagkatapos ma-validate, ipapasa ito agad sa",
   },
   "cdrrmo.previewNote": {
-    en: "The database decides the final list. CDRRMO can add agencies; the barangay can't change them.",
-    tl: "Ang database ang magpapasya ng huling listahan. Makakapagdagdag ang CDRRMO; hindi ito mababago ng barangay.",
+    en: "The final list may include more agencies; only CDRRMO can add them.",
+    tl: "Maaaring may madagdag pang ahensya sa huling listahan; ang CDRRMO lang ang makakapagdagdag.",
   },
   "cdrrmo.pastReview": {
-    en: "Emergency reports are routed through CDRRMO dispatch.",
-    tl: "Sa CDRRMO dispatch ipinapasa ang mga Emergency na ulat.",
+    en: "Emergency reports now go to agencies through the city's CDRRMO.",
+    tl: "Sa CDRRMO ng lungsod na ipinapasa sa mga ahensya ang mga Emergency na ulat.",
+  },
+  "cdrrmo.legacyPartial": {
+    en:
+      "This report was partly sent before the city's CDRRMO took over Emergency routing. " +
+      "Only CDRRMO can add agencies now; contact CDRRMO if it needs more.",
+    tl:
+      "Bahagya nang naipasa ang ulat na ito bago hawakan ng CDRRMO ng lungsod ang pagpasa ng mga Emergency. " +
+      "Ang CDRRMO na lang ang makakapagdagdag ng ahensya; makipag-ugnayan sa CDRRMO kung kailangan pa.",
   },
   "cdrrmo.handedBack": {
-    en: "Every agency sent it back. CDRRMO routes it from here.",
-    tl: "Ibinalik ito ng lahat ng ahensya. Ang CDRRMO ang magpapasa nito mula rito.",
+    en: "Every agency sent it back. Only the city's CDRRMO can send it to another agency; contact CDRRMO if it needs action.",
+    tl: "Ibinalik ito ng lahat ng ahensya. Ang CDRRMO ng lungsod lang ang makakapagpasa nito sa ibang ahensya; makipag-ugnayan sa CDRRMO kung kailangan itong aksyunan.",
   },
   "cdrrmo.rejectedByCdrrmo": { en: "Rejected by CDRRMO", tl: "Tinanggihan ng CDRRMO" },
   "cdrrmo.rejectedByCdrrmoBody": {
     en:
-      "CDRRMO rejected this report after it was routed. Agencies that hadn't acknowledged it no longer see it; " +
+      "The city's CDRRMO rejected this report after it was routed. Agencies that hadn't acknowledged it no longer see it; " +
       "an agency already responding keeps it until it closes it. The barangay can't overturn a CDRRMO rejection.",
     tl:
-      "Tinanggihan ng CDRRMO ang ulat na ito matapos itong maipasa. Hindi na ito nakikita ng mga ahensyang hindi pa kumikilala rito; " +
+      "Tinanggihan ng CDRRMO ng lungsod ang ulat na ito matapos itong maipasa. Hindi na ito nakikita ng mga ahensyang hindi pa kumikilala rito; " +
       "mananatili ito sa ahensyang tumutugon na hanggang isara nila ito. Hindi mababawi ng barangay ang pagtanggi ng CDRRMO.",
   },
-  "cdrrmo.outcome.validated": {
-    en: "{id} validated — CDRRMO dispatch sent it to its agencies.",
-    tl: "Na-validate ang {id} — ipinasa na ito ng CDRRMO dispatch sa mga ahensya nito.",
+  "cdrrmo.outcome.routed": {
+    en: "{id} validated and sent to its agencies.",
+    tl: "Na-validate ang {id} at naipasa na sa mga ahensya nito.",
+  },
+  "cdrrmo.outcome.recorded": {
+    en: "{id}: your barangay's validation is recorded. It was already with its agencies.",
+    tl: "{id}: naitala na ang validation ng inyong barangay. Nasa mga ahensya na ito.",
+  },
+  "cdrrmo.outcome.validated_no_open_agency": {
+    en: "{id} validated. Every agency it maps to had already sent it back, so it is now with CDRRMO to send on.",
+    tl: "Na-validate ang {id}. Naibalik na ito ng lahat ng nakatalagang ahensya, kaya nasa CDRRMO na ito para ipasa.",
   },
   "cdrrmo.outcome.rejected": {
     en: "{id} rejected — moved to Validation History",
     tl: "Tinanggihan ang {id} — inilipat sa Kasaysayan ng Pag-validate",
   },
-  "cdrrmo.outcome.validated_no_open_agency": {
-    en: "{id} validated, but every agency it maps to had already sent it back. CDRRMO will route it.",
-    tl: "Na-validate ang {id}, pero naibalik na ito ng lahat ng nakatalagang ahensya. Ang CDRRMO ang magpapasa nito.",
+  "cdrrmo.outcome.overridden": {
+    en: "{id}: saved. The queue has been refreshed to show where it stands.",
+    tl: "{id}: na-save. Na-refresh ang pila para makita ang kalagayan nito.",
+  },
+  "cdrrmo.outcome.saved-unknown": {
+    en: "{id}: saved. The queue has been refreshed to show where it stands.",
+    tl: "{id}: na-save. Na-refresh ang pila para makita ang kalagayan nito.",
   },
   "cdrrmo.outcome.already_validated": {
-    en: "This report was already validated. Refresh to see where it stands.",
-    tl: "Na-validate na ang ulat na ito. I-refresh para makita ang kalagayan nito.",
+    en: "Your barangay already validated this report. Nothing more is needed here.",
+    tl: "Na-validate na ng inyong barangay ang ulat na ito. Wala nang kailangang gawin dito.",
   },
   "cdrrmo.outcome.already_rejected": {
     en: "This report was already rejected.",
     tl: "Natanggihan na ang ulat na ito.",
   },
   "cdrrmo.outcome.cdrrmo_validated": {
-    en: "CDRRMO already validated and routed this report, so it can't be rejected from the barangay desk.",
-    tl: "Na-validate at naipasa na ng CDRRMO ang ulat na ito, kaya hindi na ito matatanggihan mula sa desk ng barangay.",
+    en: "The city's CDRRMO already validated this report, so it can't be rejected from the barangay desk.",
+    tl: "Na-validate na ng CDRRMO ng lungsod ang ulat na ito, kaya hindi na ito matatanggihan mula sa desk ng barangay.",
   },
   "cdrrmo.outcome.cdrrmo_rejected": {
-    en: "CDRRMO rejected this report. The barangay can't overturn a CDRRMO rejection.",
-    tl: "Tinanggihan ng CDRRMO ang ulat na ito. Hindi ito mababawi ng barangay.",
+    en: "The city's CDRRMO rejected this report. The barangay can't overturn a CDRRMO rejection.",
+    tl: "Tinanggihan ng CDRRMO ng lungsod ang ulat na ito. Hindi ito mababawi ng barangay.",
   },
   "cdrrmo.outcome.already_routed": {
-    en: "This report was already sent to agencies automatically, so it can't be rejected now. You can still validate it.",
-    tl: "Awtomatiko na itong naipasa sa mga ahensya, kaya hindi na ito matatanggihan. Maaari pa rin itong i-validate.",
+    en: "This report was already sent to agencies automatically, so it can't be rejected. You can validate it from Recent validated.",
+    tl: "Awtomatiko na itong naipasa sa mga ahensya, kaya hindi na ito matatanggihan. Maaari itong i-validate mula sa Kamakailang Na-validate.",
   },
   "cdrrmo.outcome.handed_back": {
-    en: "Every agency sent this report back. CDRRMO routes it from here.",
-    tl: "Ibinalik ng lahat ng ahensya ang ulat na ito. Ang CDRRMO ang magpapasa nito mula rito.",
+    en: "Every agency sent this report back. Only the city's CDRRMO can send it to another agency; contact CDRRMO if it needs action.",
+    tl: "Ibinalik ng lahat ng ahensya ang ulat na ito. Ang CDRRMO ng lungsod lang ang makakapagpasa nito sa ibang ahensya; makipag-ugnayan sa CDRRMO kung kailangan itong aksyunan.",
   },
-  "cdrrmo.outcome.override_window_closed": {
-    en: "The 24-hour window to change this decision has closed.",
-    tl: "Sarado na ang 24 na oras na palugit para baguhin ang desisyong ito.",
+  "cdrrmo.outcome.other_party_validated": {
+    en: "The city's CDRRMO has already decided on this report. The queue has been refreshed to show where it stands.",
+    tl: "May desisyon na ang CDRRMO ng lungsod sa ulat na ito. Na-refresh ang pila para makita ang kalagayan nito.",
+  },
+  "cdrrmo.outcome.not_emergency": {
+    en: "This isn't an Emergency report, so it's validated the usual way. The queue has been refreshed.",
+    tl: "Hindi Emergency ang ulat na ito, kaya sa karaniwang paraan ito vina-validate. Na-refresh ang pila.",
+  },
+  "cdrrmo.outcome.not_found": {
+    en: "That report isn't in your barangay, or no longer exists.",
+    tl: "Wala sa inyong barangay ang ulat na iyon, o wala na ito.",
+  },
+  "cdrrmo.outcome.reason_required": {
+    en: "Choose a reason to reject this report.",
+    tl: "Pumili ng dahilan para tanggihan ang ulat na ito.",
+  },
+  "cdrrmo.outcome.refused": {
+    en: "This report can't be changed from here. The queue has been refreshed to show where it stands.",
+    tl: "Hindi na mababago ang ulat na ito mula rito. Na-refresh ang pila para makita ang kalagayan nito.",
   },
   "cdrrmo.outcome.disabled": {
-    en: "CDRRMO dispatch is switched off. Use the usual Validate and Route to agency.",
-    tl: "Naka-off ang CDRRMO dispatch. Gamitin ang karaniwang I-validate at Ipasa sa ahensya.",
-  },
-  "cdrrmo.outcome.stale": {
-    en: "This report changed since the page loaded. Refresh to see where it stands.",
-    tl: "Nagbago ang ulat na ito mula nang mag-load ang page. I-refresh para makita ang kalagayan nito.",
+    en: "Emergency routing through the city's CDRRMO is switched off. Use the usual Validate and Route to agency.",
+    tl: "Naka-off ang pagpasa ng mga Emergency sa pamamagitan ng CDRRMO ng lungsod. Gamitin ang karaniwang I-validate at Ipasa sa ahensya.",
   },
   "cdrrmo.outcome.not-permitted": {
-    en: "Not permitted — wrong barangay, or the report is no longer here.",
-    tl: "Hindi pinapayagan — ibang barangay, o wala na rito ang ulat.",
+    en: "Not permitted — wrong barangay, or your account can't do this.",
+    tl: "Hindi pinapayagan — ibang barangay, o hindi ito magagawa ng inyong account.",
   },
   "cdrrmo.outcome.invalid": {
     en: "That decision wasn't accepted. Refresh the report and try again.",
@@ -391,10 +432,13 @@ export const MESSAGES = {
     tl: "Nag-expire ang iyong session. Mag-sign in muli.",
   },
   "cdrrmo.outcome.unreachable": {
-    en: "Couldn't reach the server. Check your connection, then try again.",
-    tl: "Hindi maabot ang server. Suriin ang koneksyon, saka subukang muli.",
+    en: "Couldn't confirm the answer. The queue has been refreshed; check the report before trying again.",
+    tl: "Hindi nakumpirma ang sagot. Na-refresh ang pila; suriin ang ulat bago subukang muli.",
   },
-  "cdrrmo.outcome.failed": { en: "Something went wrong. Try again.", tl: "May nangyaring mali. Subukang muli." },
+  "cdrrmo.outcome.unknown": {
+    en: "Couldn't confirm the result. The queue has been refreshed to show where it stands.",
+    tl: "Hindi nakumpirma ang resulta. Na-refresh ang pila para makita ang kalagayan nito.",
+  },
   "reason.label": { en: "Reason", tl: "Dahilan" },
   "reason.placeholder": {
     en: "e.g. Same incident as the report filed at 10:42",
@@ -720,6 +764,7 @@ export const MESSAGES = {
   "history.resolution.confirmedFalse": { en: "Confirmed false by an agency", tl: "Kinumpirmang mali ng ahensya" },
   "history.resolution.duplicate": { en: "Closed as a duplicate", tl: "Isinara bilang doble" },
   "history.resolution.returned": { en: "Returned out of scope", tl: "Ibinalik, labas sa saklaw" },
+  "history.resolution.rejectedByCdrrmo": { en: "Rejected by CDRRMO after routing", tl: "Tinanggihan ng CDRRMO matapos maipasa" },
   "history.export": { en: "Export CSV", tl: "I-export ang CSV" },
   "history.exportNothing": {
     en: "Nothing to export with these filters",

@@ -14,6 +14,7 @@ export const RESOLUTION_ORDER: ResolutionStatus[] = [
   "confirmedFalse",
   "duplicate",
   "returned",
+  "rejectedByCdrrmo",
 ];
 
 export const RESOLUTION_LABELS: Record<ResolutionStatus, MessageKey> = {
@@ -24,4 +25,5 @@ export const RESOLUTION_LABELS: Record<ResolutionStatus, MessageKey> = {
   confirmedFalse: "history.resolution.confirmedFalse",
   duplicate: "history.resolution.duplicate",
   returned: "history.resolution.returned",
+  rejectedByCdrrmo: "history.resolution.rejectedByCdrrmo",
 };

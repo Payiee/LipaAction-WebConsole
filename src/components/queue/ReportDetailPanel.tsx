@@ -30,6 +30,7 @@ import {
   agencyProgressLabel,
   canResolveAtBarangay,
   dispatchDefaultSet,
+  dispatchPastReview,
   dispatchValidateCopy,
   everyAgencyReturned,
   isAutoRouted,
@@ -134,7 +135,7 @@ export function ReportDetailPanel({
     isRejecting ||
     routing.isConfirming ||
     barangayResolve.isPrompting ||
-    emergency.isConfirming ||
+    emergency.confirming !== null ||
     emergency.isRejecting ||
     mapExpanded ||
     chatViewerOpen;
@@ -198,29 +199,32 @@ export function ReportDetailPanel({
   // review pair before a decision, routing and resolving after it. A decided
   // report can't be reviewed again (review_report() refuses it with 42501), so
   // review buttons never show for one.
-  const dispatchPastReview =
-    viaDispatch &&
-    (routeState.kind === "ready" ||
-      routeState.kind === "incomplete" ||
-      routeState.kind === "no-mapping" ||
-      routeState.kind === "unavailable");
+  // An Emergency report past review while CDRRMO dispatch is on: what the
+  // desk may still do with it (see dispatchPastReview). null when off.
+  const dispatchNext = viaDispatch && !isReviewable(d.status) ? dispatchPastReview(report, routeState) : null;
   const actions = isReviewable(d.status) && viaDispatch ? (
     <>
-      <Button variant="primary" size="sm" disabled={writing} onClick={emergency.openConfirm}>
+      <Button variant="primary" size="sm" disabled={writing} onClick={emergency.openSend}>
         {t("review.validate")}
       </Button>
       <Button variant="secondary" size="sm" disabled={writing} onClick={emergency.openReject}>
         {t("review.reject")}
       </Button>
     </>
-  ) : dispatchPastReview ? (
-    // Validated, but no agency holds it open: CDRRMO dispatch routes it. The
-    // database answers for its exact state (spec 3.4's table).
-    <Button variant="primary" size="sm" disabled={writing} onClick={emergency.openConfirm}>
+  ) : dispatchNext === "send" ? (
+    // Validated the old way and never sent anywhere: validating routes it.
+    <Button variant="primary" size="sm" disabled={writing} onClick={emergency.openSend}>
       {t("cdrrmo.validateConfirm")}
     </Button>
-  ) : viaDispatch && routeState.kind === "returned" ? (
-    <p className="max-w-xs text-xs text-ink-500">{t("cdrrmo.handedBack")}</p>
+  ) : dispatchNext === "record" ? (
+    // Already with its agencies, without this barangay's validation.
+    <Button variant="primary" size="sm" disabled={writing} onClick={emergency.openRecord}>
+      {t("review.validate")}
+    </Button>
+  ) : dispatchNext === "partial" || dispatchNext === "handedBack" ? (
+    <p className="max-w-xs text-xs text-ink-500">
+      {t(dispatchNext === "partial" ? "cdrrmo.legacyPartial" : "cdrrmo.handedBack")}
+    </p>
   ) : isReviewable(d.status) ? (
     <>
       <Button variant="primary" size="sm" disabled={isPending} onClick={validate}>
@@ -487,14 +491,15 @@ export function ReportDetailPanel({
           title={t("review.rejectTitle", { id: report.id })}
           description={t("review.rejectDescription")}
           confirmLabel={t("review.rejectConfirm")}
+          busy={emergency.isPending}
           onCancel={emergency.cancelReject}
           onConfirm={emergency.reject}
         />
       )}
 
-      {emergency.isConfirming && (
+      {emergency.confirming && (
         <ConfirmModal
-          {...dispatchValidateCopy(report, dispatch.cdrrmoAgency, t)}
+          {...dispatchValidateCopy(report, dispatch.cdrrmoAgency, emergency.confirming, t)}
           busy={emergency.isPending}
           onCancel={emergency.cancelConfirm}
           onConfirm={emergency.validate}
@@ -609,7 +614,7 @@ function RoutingSection({
       return (
         <div>
           <p className="mb-2 text-xs text-priority-medium">
-            {t(state.kind === "returned" ? "cdrrmo.handedBack" : "cdrrmo.pastReview")}
+            {t(state.kind === "returned" ? "cdrrmo.handedBack" : "cdrrmo.legacyPartial")}
           </p>
           <AgencyList rows={current} />
           <EarlierList rows={earlier} />

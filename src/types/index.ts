@@ -2,6 +2,7 @@
 // All data consumed by these types is static/dummy — see src/data/*.
 
 import type { RejectReasonCode } from "@/lib/utils";
+import type { PartyDecisions } from "@/lib/cdrrmo-dispatch";
 
 export type PriorityTier = "Critical" | "High" | "Medium" | "Low";
 
@@ -121,6 +122,13 @@ export interface ReportDetails {
   routingOptions: RoutingOption[] | null;
   // Where the reporter's phone was when they filed, for the drawer's map.
   position: ReportPosition;
+  // When the report was reviewed (incident_reports.reviewed_at), null when
+  // nobody has: an auto-routed report carries none.
+  reviewedAt: string | null;
+  // Who decided on it under CDRRMO dispatch (report_validations), read only
+  // while the switch is on and only for Recent validated. null when not read
+  // or when the read failed.
+  partyDecisions: PartyDecisions | null;
 }
 
 /**
@@ -227,6 +235,10 @@ export interface ValidationRecord {
   // outcome), from its agency rows. null on a rejected report, which never
   // reaches an agency, and when the agency rows couldn't be read.
   resolution: ResolutionStatus | null;
+  // Set when the decision shown is the city's CDRRMO's, not this barangay's
+  // (CDRRMO dispatch, report_validations party 'cdrrmo'). Such a record is
+  // listed but never counted among the barangay's own decisions (spec 3.3).
+  decidedBy?: "cdrrmo";
 }
 
 /**
@@ -243,7 +255,10 @@ export type ResolutionStatus =
   | "resolved"
   | "confirmedFalse"
   | "duplicate"
-  | "returned";
+  | "returned"
+  // Validated by this barangay, then rejected by the city's CDRRMO after it
+  // was routed (CDRRMO dispatch).
+  | "rejectedByCdrrmo";
 
 export interface ValidationSummary {
   total: number;

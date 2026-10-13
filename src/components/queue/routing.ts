@@ -3,6 +3,7 @@ import type { AgencyRouting, QueueReport, RoutingOption, RoutingPlanEntry } from
 // a hook, so they stay plain functions the row and the drawer can share.
 import type { Translate } from "@/lib/i18n";
 import { BARANGAY_RESOLVE_LIVE } from "@/lib/features";
+import { canRecordBarangayValidation } from "@/lib/cdrrmo-dispatch";
 
 /**
  * Where a report stands with respect to agencies — one reading shared by the
@@ -333,13 +334,56 @@ export function routeConfirmCopy(
 export function dispatchValidateCopy(
   report: QueueReport,
   cdrrmo: RoutingOption | null,
+  mode: "send" | "record",
   t: Translate
 ): { title: string; description: string; confirmLabel: string } {
+  if (mode === "record") {
+    // Already with its agencies: validating records the barangay's word and
+    // routes nothing.
+    return {
+      title: t("cdrrmo.validateTitle", { id: report.id }),
+      description: t("cdrrmo.recordDescription"),
+      confirmLabel: t("cdrrmo.recordConfirm"),
+    };
+  }
   return {
     title: t("cdrrmo.validateTitle", { id: report.id }),
     description: t("cdrrmo.validateDescription", { names: dispatchDefaultSet(report.details.routingPlan, cdrrmo, t) }) + discreetNote(report, t),
     confirmLabel: t("cdrrmo.validateConfirm"),
   };
+}
+
+/**
+ * What the desk can do with an Emergency report past review while CDRRMO
+ * dispatch is on (backend binding items 18-20 and the spec's state table):
+ * - send: validated, and no agency has ever held it (a report validated the
+ *   old way before the switch went on). validate_emergency_report() routes it.
+ * - record: routed without this barangay's validation (auto-routed, or
+ *   routed after CDRRMO validated). Validating records it, routing nothing.
+ * - partial: validated with some agency rows from before the switch. The
+ *   function refuses it (already_validated); only CDRRMO can add agencies.
+ * - handedBack: every agency sent it back. CDRRMO sends it on, not the desk.
+ * - null: nothing to do here.
+ */
+export type DispatchPastReview = "send" | "record" | "partial" | "handedBack" | null;
+
+export function dispatchPastReview(report: QueueReport, state: RoutingState): DispatchPastReview {
+  switch (state.kind) {
+    case "ready":
+    case "no-mapping":
+    case "unavailable":
+      return "send";
+    case "incomplete":
+      return "partial";
+    case "returned":
+      return "handedBack";
+    case "downstream":
+      return canRecordBarangayValidation(report.details.status, report.details.reviewedAt, report.details.partyDecisions)
+        ? "record"
+        : null;
+    default:
+      return null;
+  }
 }
 
 /**

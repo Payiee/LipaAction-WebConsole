@@ -5,18 +5,10 @@ import { createClient } from "@/lib/supabase/server";
 import { isUuid, MAX_REASON_LENGTH, parseRejectReason } from "@/lib/utils";
 import {
   mapValidateEmergencyResult,
+  refreshesQueue,
   VALIDATE_EMERGENCY_RPC,
   type EmergencyValidationOutcome,
 } from "@/lib/cdrrmo-dispatch";
-
-// Answers after which the report is where it was: nothing to refresh.
-const NOTHING_MOVED = new Set<EmergencyValidationOutcome>([
-  "invalid",
-  "not-permitted",
-  "session-expired",
-  "unreachable",
-  "failed",
-]);
 
 /**
  * Validates or rejects an Emergency report through CDRRMO dispatch
@@ -31,8 +23,8 @@ const NOTHING_MOVED = new Set<EmergencyValidationOutcome>([
  *
  * The answer is a code (EmergencyValidationOutcome); the page words it. The
  * database decides everything else: the switch, the barangay, the state
- * table. The queue is refreshed after any answer that means the report
- * moved, done or not.
+ * table. Outcomes come back as returned text, refusals as 55000 + DETAIL
+ * token (src/lib/cdrrmo-dispatch.ts).
  */
 export async function validateEmergencyReport(
   reportId: string,
@@ -61,6 +53,8 @@ export async function validateEmergencyReport(
   });
 
   const outcome = mapValidateEmergencyResult({ data, error, status });
-  if (!NOTHING_MOVED.has(outcome)) revalidatePath("/queue");
+  // Every answer that may follow a write refreshes the queue, an unknown
+  // one included: the page then shows where the report really stands.
+  if (refreshesQueue(outcome)) revalidatePath("/queue");
   return { outcome };
 }

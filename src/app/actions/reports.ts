@@ -255,16 +255,15 @@ function dispatchActiveResult(): RouteResult {
 
 /**
  * Whether an Emergency report must go through CDRRMO dispatch instead of
- * this routing. Asked before the first write, so the routing's audit row is
- * never written for a routing the database would then refuse. Fails closed:
- * any doubt about the switch is OFF, and the routing goes ahead exactly as
- * before (the database still refuses it if the switch is in fact on).
+ * this routing. The switch is read in parallel with the action's first
+ * reads (no extra round trip) and checked before the first write, so the
+ * routing's audit row is never written for a routing the database would
+ * then refuse. Fails closed: any doubt about the switch is OFF, and the
+ * routing goes ahead exactly as before (the database still refuses it if
+ * the switch is in fact on; see sendAndRecord).
  */
-async function emergencyGoesThroughDispatch(
-  supabase: ReturnType<typeof createClient>,
-  entryTier: string | null | undefined
-): Promise<boolean> {
-  return entryTier === "emergency" && (await readCdrrmoDispatchEnabled(supabase));
+function emergencyGoesThroughDispatch(entryTier: string | null | undefined, dispatchOn: boolean): boolean {
+  return entryTier === "emergency" && dispatchOn;
 }
 
 const ROUTE_FAILED = "Something went wrong. Nothing new was routed — try again.";
@@ -374,9 +373,10 @@ export async function routeReport(reportId: string): Promise<RouteResult> {
   // a. — in parallel with the session check, which only has to decide how to
   // read an empty result: under no session this SELECT returns zero rows, not
   // an error.
-  const [session, reportRes] = await Promise.all([
+  const [session, reportRes, dispatchOn] = await Promise.all([
     sessionState(supabase),
     supabase.from("incident_reports").select("id, category, status, entry_tier").eq("id", reportId).maybeSingle(),
+    readCdrrmoDispatchEnabled(supabase),
   ]);
 
   if (session !== "active") {
@@ -399,7 +399,7 @@ export async function routeReport(reportId: string): Promise<RouteResult> {
     // rejected is terminal; pending hasn't been reviewed. Neither routes.
     return { success: false, message: ONLY_VALIDATED };
   }
-  if (await emergencyGoesThroughDispatch(supabase, report.entry_tier)) return dispatchActiveResult();
+  if (emergencyGoesThroughDispatch(report.entry_tier, dispatchOn)) return dispatchActiveResult();
 
   // An Other-report goes to the agencies the desk chose
   // (routeReportToAgencies), not to its mapping. Here it can only be
@@ -506,9 +506,10 @@ export async function rerouteReport(reportId: string, agencyIds: string[]): Prom
 
   // a. As in routeReport: the session check only decides how to read an
   // empty result.
-  const [session, reportRes] = await Promise.all([
+  const [session, reportRes, dispatchOn] = await Promise.all([
     sessionState(supabase),
     supabase.from("incident_reports").select("id, status, entry_tier").eq("id", reportId).maybeSingle(),
+    readCdrrmoDispatchEnabled(supabase),
   ]);
 
   if (session !== "active") {
@@ -532,7 +533,7 @@ export async function rerouteReport(reportId: string, agencyIds: string[]): Prom
   }
   // A handed-back Emergency report is CDRRMO's to send on while dispatch is
   // on; the desk can't pick its agencies.
-  if (await emergencyGoesThroughDispatch(supabase, report.entry_tier)) return dispatchActiveResult();
+  if (emergencyGoesThroughDispatch(report.entry_tier, dispatchOn)) return dispatchActiveResult();
 
   // Who holds it now, and whether the chosen agencies exist.
   const [rows, agenciesRes] = await Promise.all([
@@ -1057,7 +1058,9 @@ export async function resolveAtBarangay(reportId: string, note: string): Promise
 
 export interface BulkValidateResult {
   validated: number;
-  failures: { reportId: string; message: string }[];
+  // reason "cdrrmo-dispatch-active": an Emergency member refused because
+  // CDRRMO dispatch is on (src/lib/cdrrmo-dispatch.ts); the page words it.
+  failures: { reportId: string; message: string; reason?: "cdrrmo-dispatch-active" }[];
 }
 
 /**
@@ -1112,13 +1115,15 @@ export async function validateReports(reportIds: string[]): Promise<BulkValidate
       for (const remaining of ids.slice(index)) failures.push({ reportId: remaining, message: transport });
       break;
     }
-    failures.push({
-      reportId,
+    if (isCdrrmoDispatchActiveError(error)) {
       // An Emergency member while CDRRMO dispatch is on: it is validated one
       // at a time, through Validate, which routes it too.
-      message: isCdrrmoDispatchActiveError(error)
-        ? DISPATCH_ACTIVE
-        : (await alreadyDecidedMessage(supabase, reportId, error)) ?? messageForReviewError(error),
+      failures.push({ reportId, message: DISPATCH_ACTIVE, reason: "cdrrmo-dispatch-active" });
+      continue;
+    }
+    failures.push({
+      reportId,
+      message: (await alreadyDecidedMessage(supabase, reportId, error)) ?? messageForReviewError(error),
     });
   }
 

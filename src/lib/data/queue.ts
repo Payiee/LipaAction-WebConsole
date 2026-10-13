@@ -1,7 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { loadPositions } from "@/lib/data/positions";
-import { readCdrrmoDispatchEnabled } from "@/lib/cdrrmo-dispatch";
+import { partyDecisionsByReport, readCdrrmoDispatchEnabled, type PartyDecisions } from "@/lib/cdrrmo-dispatch";
 import { isRejectedByCdrrmo } from "@/components/queue/routing";
 import { categoryLabel, distinctCategories, medianAgeMinutes, reporterLabel, startOfManilaDay, timeAgo } from "@/lib/utils";
 import type { AgencyRouting, KpiSummary, QueueReport, QueueTabId, RoutingOption, RoutingPlanEntry, SituationCluster, ReportPosition } from "@/types";
@@ -227,12 +227,20 @@ export async function getBarangayQueue(
       );
   const validatedUnavailable = Boolean(awaitingRes.error) || routedFailed;
 
-  const [routingExtras, positions, cdrrmoAgency] = await Promise.all([
+  // With CDRRMO dispatch on, two more reads, each failing soft to the
+  // console's behaviour without them: who decided on the Recent validated
+  // reports (report_validations), and today's barangay validations.
+  const [routingExtras, positions, cdrrmoAgency, decisions, barangayToday] = await Promise.all([
     loadRouting(supabase, pending, awaiting, routed),
     loadPositions(supabase, [...pending, ...awaiting, ...routed], "queue"),
     cdrrmoDispatch ? loadCdrrmoAgency(supabase) : Promise.resolve(null),
+    cdrrmoDispatch
+      ? loadPartyDecisions(supabase, [...awaiting, ...routed].map((r) => r.id))
+      : Promise.resolve(null),
+    cdrrmoDispatch ? countBarangayValidationsSince(supabase, dayStart) : Promise.resolve(null),
   ]);
   const positionOf = (r: RawReport) => positions.get(r.id) ?? UNKNOWN_POSITION;
+  const decisionsOf = (r: RawReport) => (decisions ? decisions.get(r.id) ?? { barangay: null, cdrrmo: null } : null);
 
   const emergency = pending
     .filter((r) => r.entry_tier === "emergency")
@@ -243,7 +251,7 @@ export async function getBarangayQueue(
   // Awaiting routing first: those still need someone to act. Routed ones
   // are there to show what the agencies have done since.
   const validated = [...awaiting, ...routed]
-    .map((r) => toQueueReport(r, routingExtras.get(r.id), positionOf(r)))
+    .map((r) => toQueueReport(r, routingExtras.get(r.id), positionOf(r), decisionsOf(r)))
     // A rejected report is here only when CDRRMO rejected it after it was
     // routed. One rejected some other way (say, at the desk after a recall)
     // left the queue when it was rejected, as every rejection does.
@@ -298,7 +306,10 @@ export async function getBarangayQueue(
     // back off the tile. This previously counted every validated report ever
     // while the tile was labelled [Validated today].
     // null, not 0, when the count failed: [0 validated today] would be a claim.
-    validatedCount: todayRes.error ? null : todayRes.count ?? 0,
+    // With CDRRMO dispatch on, only this barangay's own validations count
+    // (spec 3.3): a report CDRRMO validated is not one the desk validated.
+    // If that count can't be read, the tile keeps today's count.
+    validatedCount: barangayToday ?? (todayRes.error ? null : todayRes.count ?? 0),
   };
 
   const queueByTab: Record<QueueTabId, QueueReport[]> = {
@@ -326,6 +337,49 @@ export async function getBarangayQueue(
     loadFailed: false,
     validatedUnavailable,
   };
+}
+
+/**
+ * Who decided on each report under CDRRMO dispatch: its report_validations
+ * rows (spec 3.3; the report's barangay roles may read them). null when the
+ * read fails, which every caller treats as "not known", never as "nobody".
+ */
+async function loadPartyDecisions(
+  supabase: ReturnType<typeof createClient>,
+  reportIds: string[]
+): Promise<Map<string, PartyDecisions> | null> {
+  if (reportIds.length === 0) return new Map();
+  const { data, error } = await supabase
+    .from("report_validations")
+    .select("incident_report_id, party, decision")
+    .in("incident_report_id", reportIds);
+  if (error) {
+    console.error("[queue] report_validations load failed", error.code, error.message);
+    return null;
+  }
+  return partyDecisionsByReport((data ?? []) as { incident_report_id: string; party: string; decision: string }[]);
+}
+
+/**
+ * This barangay's own validations since `since`, from report_validations
+ * (party 'barangay'). RLS scopes the rows to this barangay's reports. null
+ * when the count fails.
+ */
+async function countBarangayValidationsSince(
+  supabase: ReturnType<typeof createClient>,
+  since: string
+): Promise<number | null> {
+  const { count, error } = await supabase
+    .from("report_validations")
+    .select("incident_report_id", { count: "exact", head: true })
+    .eq("party", "barangay")
+    .eq("decision", "validated")
+    .gte("created_at", since);
+  if (error) {
+    console.error("[queue] barangay validations count failed", error.code, error.message);
+    return null;
+  }
+  return count ?? 0;
 }
 
 /**
@@ -566,7 +620,8 @@ async function loadRouting(
 function toQueueReport(
   r: RawReport,
   extras: RoutingExtras = NO_ROUTING,
-  position: ReportPosition = UNKNOWN_POSITION
+  position: ReportPosition = UNKNOWN_POSITION,
+  partyDecisions: PartyDecisions | null = null
 ): QueueReport {
   return {
     id: r.id,
@@ -608,6 +663,8 @@ function toQueueReport(
       routingPlan: extras.routingPlan,
       routingOptions: extras.routingOptions,
       position,
+      reviewedAt: r.reviewed_at,
+      partyDecisions,
     },
   };
 }

@@ -57,6 +57,12 @@ export function ValidateClusterButton({
       }
       const { validated, failures } = result;
       const validatedIds = validatedMembers(ids, result);
+      // CDRRMO dispatch was switched on after this page loaded: the backend
+      // refused the Emergency members. The page's copy of the switch turns
+      // on, which swaps their buttons for Validate (and hides this button
+      // for an all-Emergency group).
+      const dispatchActive = failures.some((f) => f.reason === "cdrrmo-dispatch-active");
+      if (dispatchActive) dispatch.setActive(true);
 
       // Partial success is the normal case here, not an edge case: another
       // official can review one member between page load and this click. Say
@@ -77,10 +83,17 @@ export function ValidateClusterButton({
           }),
           "info"
         );
+        // Why the rest failed, when it was CDRRMO dispatch.
+        if (dispatchActive) showToast(t("cdrrmo.useValidate"), "info");
       } else {
         // The server's own reason when it gave one, which stays English like
         // every message a server action returns.
-        showToast(failures[0]?.message ?? t("cluster.toast.failed"), "danger");
+        showToast(
+          failures[0]?.reason === "cdrrmo-dispatch-active"
+            ? t("cdrrmo.useValidate")
+            : failures[0]?.message ?? t("cluster.toast.failed"),
+          "danger"
+        );
       }
       if (validatedIds.length > 0) onValidated(validatedIds, failures.length === 0);
     });

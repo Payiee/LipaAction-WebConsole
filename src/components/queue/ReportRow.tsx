@@ -18,6 +18,7 @@ import { useBarangayResolve } from "./useBarangayResolve";
 import { ResolveNoteModal } from "./ResolveNoteModal";
 import {
   canResolveAtBarangay,
+  dispatchPastReview,
   dispatchValidateCopy,
   downstreamSummary,
   everyAgencyReturned,
@@ -100,21 +101,37 @@ export function ReportRow({
   // on its own — so the button sits exactly where Validate was.
   function renderPastReview() {
     if (viaDispatch) {
-      // A validated Emergency report no agency holds open: CDRRMO dispatch
-      // routes it, not this desk. A handed-back one is CDRRMO's to send on;
-      // anything else can be offered to the Validate flow, and the database
-      // answers for its state (spec 3.4's table).
-      if (state.kind === "returned") {
-        return <span className="max-w-[14rem] text-right text-xs font-medium text-priority-medium">{t("cdrrmo.handedBack")}</span>;
-      }
-      if (state.kind === "ready" || state.kind === "incomplete" || state.kind === "no-mapping" || state.kind === "unavailable") {
+      // An Emergency report while CDRRMO dispatch is on: the desk validates,
+      // the database routes (see dispatchPastReview for each case).
+      const next = dispatchPastReview(report, state);
+      if (next === "send") {
         return (
           <>
             <span className="max-w-[14rem] text-right text-xs text-ink-500">{t("cdrrmo.pastReview")}</span>
-            <Button variant="primary" size="sm" disabled={busy} onClick={emergency.openConfirm}>
+            <Button variant="primary" size="sm" disabled={busy} onClick={emergency.openSend}>
               {t("cdrrmo.validateConfirm")}
             </Button>
           </>
+        );
+      }
+      if (next === "record" && state.kind === "downstream") {
+        return (
+          <>
+            <span className="max-w-[16rem] text-right text-xs text-ink-700">
+              {downstreamSummary(state, t)}
+              <span className="block text-priority-medium">{t("cdrrmo.notValidatedHere")}</span>
+            </span>
+            <Button variant="primary" size="sm" disabled={busy} onClick={emergency.openRecord}>
+              {t("review.validate")}
+            </Button>
+          </>
+        );
+      }
+      if (next === "partial" || next === "handedBack") {
+        return (
+          <span className="max-w-[16rem] text-right text-xs font-medium text-priority-medium">
+            {t(next === "partial" ? "cdrrmo.legacyPartial" : "cdrrmo.handedBack")}
+          </span>
         );
       }
     }
@@ -347,7 +364,7 @@ export function ReportRow({
                 data-validate-button
                 data-report-id={report.id}
                 disabled={isPending || emergency.isPending}
-                onClick={viaDispatch ? emergency.openConfirm : validate}
+                onClick={viaDispatch ? emergency.openSend : validate}
               >
                 {t("review.validate")}
               </Button>
@@ -373,14 +390,15 @@ export function ReportRow({
           title={t("review.rejectTitle", { id: report.id })}
           description={t("review.rejectDescription")}
           confirmLabel={t("review.rejectConfirm")}
+          busy={emergency.isPending}
           onCancel={emergency.cancelReject}
           onConfirm={emergency.reject}
         />
       )}
 
-      {emergency.isConfirming && (
+      {emergency.confirming && (
         <ConfirmModal
-          {...dispatchValidateCopy(report, dispatch.cdrrmoAgency, t)}
+          {...dispatchValidateCopy(report, dispatch.cdrrmoAgency, emergency.confirming, t)}
           busy={emergency.isPending}
           onCancel={emergency.cancelConfirm}
           onConfirm={emergency.validate}
