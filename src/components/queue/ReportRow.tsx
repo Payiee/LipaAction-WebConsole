@@ -256,19 +256,23 @@ export function ReportRow({
               that would only fail — and leaving no [data-validate-button]
               behind is also what keeps [Validate next] from landing on a
               decided report. */}
+          {/* Chat stays on the row after validation: the conversation with
+              the reporter goes on while agencies handle the report, and the
+              staff-only Desk thread exists only once it has been routed.
+              Hidden for a discreet report, as everywhere. */}
+          {isChatOffered(REPORT_CHAT_LIVE, report.details.discreetReporting) && (
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={isPending || busy}
+              onClick={onOpenChat}
+              aria-label={t("row.chatLabel", { id: report.id })}
+            >
+              {t("row.chat")}
+            </Button>
+          )}
           {isReviewable(report.details.status) ? (
             <>
-              {isChatOffered(REPORT_CHAT_LIVE, report.details.discreetReporting) && (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  disabled={isPending}
-                  onClick={onOpenChat}
-                  aria-label={t("row.chatLabel", { id: report.id })}
-                >
-                  {t("row.chat")}
-                </Button>
-              )}
               <Button variant="secondary" size="sm" disabled={isPending} onClick={openReject}>
                 {t("review.reject")}
               </Button>
