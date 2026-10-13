@@ -320,6 +320,7 @@ export const MESSAGES = {
   "routing.outcome.confirmed-false": { en: "confirmed false", tl: "kumpirmadong hindi totoo" },
   "routing.outcome.duplicate": { en: "duplicate", tl: "doble" },
   "routing.outcome.out-of-scope": { en: "out of scope", tl: "labas sa saklaw" },
+  "routing.outcome.recalled": { en: "recalled", tl: "binawi" },
   "routing.progress.closed": { en: "Closed — {outcome}", tl: "Isinara — {outcome}" },
   "routing.progress.acknowledged": { en: "Acknowledged", tl: "Kinilala na" },
   "routing.progress.inProgress": { en: "In progress", tl: "Inaasikaso na" },
@@ -487,6 +488,10 @@ export const MESSAGES = {
   "drawer.plan.finishing": {
     en: "Finishing sends it to all of",
     tl: "Kapag tinapos, ipapasa ito sa lahat ng sumusunod",
+  },
+  "drawer.plan.finishingHeld": {
+    en: "Finishing records the routing to the agencies above. No other agency is added.",
+    tl: "Kapag tinapos, itatala ang pagpasa sa mga ahensya sa itaas. Walang ibang ahensyang idaragdag.",
   },
   "drawer.returned": {
     en: "Every agency it was routed to sent it back as out of scope. Choose another agency, or handle it at the barangay.",
@@ -752,8 +757,8 @@ export const MESSAGES = {
   },
   "reports.catalogue.18.title": { en: "Monthly Override-Recall Usage", tl: "Buwanang Paggamit ng Recall" },
   "reports.catalogue.18.status": {
-    en: "Not available: automatic routing and its recall window are switched off, so nothing can be recalled.",
-    tl: "Hindi available: naka-off ang awtomatikong pagpasa at ang recall window nito, kaya walang maire-recall.",
+    en: "Not available: recall isn't offered in this console yet, so there is nothing to count. The Critical escalation timer is on, and can route an untouched Critical emergency to its agencies automatically.",
+    tl: "Hindi available: wala pang recall sa console na ito, kaya walang mabibilang. Naka-on ang Critical escalation timer, at maaari nitong awtomatikong ipasa sa mga ahensya ang Critical na emergency na hindi pa nagagalaw.",
   },
 
   // --- Cluster Explorer (empty state only; see ClusterExplorerClient) -------

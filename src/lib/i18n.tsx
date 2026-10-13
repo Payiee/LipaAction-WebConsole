@@ -14,9 +14,15 @@ export type Translate = (key: MessageKey, vars?: Record<string, string | number>
  * Looks a message up in the chosen language and fills `{name}` placeholders.
  * Pure, so helpers outside React (routing summaries, status labels) can take
  * a Translate function instead of importing a hook.
+ *
+ * Some keys are built from backend values (`routing.outcome.${outcome}`), so
+ * a value this console has no message for reaches here at runtime despite
+ * the type. That must not throw and take the page down: it falls back to the
+ * English text, else to the key itself.
  */
 export function translate(lang: Lang, key: MessageKey, vars?: Record<string, string | number>): string {
-  let text: string = MESSAGES[key][lang];
+  const entry = (MESSAGES as Partial<Record<string, { en: string; tl: string }>>)[key];
+  let text: string = entry?.[lang] ?? entry?.en ?? key;
   if (vars) {
     for (const [name, value] of Object.entries(vars)) text = text.split(`{${name}}`).join(String(value));
   }

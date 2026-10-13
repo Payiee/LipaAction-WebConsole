@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 // async functions, and ReasonPromptModal needs the same limit.
 import { isUuid, MAX_REASON_LENGTH, parseRejectReason } from "@/lib/utils";
 import { BARANGAY_RESOLVE_LIVE } from "@/lib/features";
+import { type HeldRow, routedTo } from "@/lib/routingAudit";
 
 /*
  * Every function in this file is a public POST endpoint. Its arguments are
@@ -219,12 +220,23 @@ const ROUTE_FAILED = "Something went wrong. Nothing new was routed — try again
 const NOT_IN_BARANGAY = "That report isn't in your barangay, or no longer exists.";
 const ALREADY_ROUTED = "Already routed — another official may have routed it first.";
 const ONLY_VALIDATED = "Only validated reports can be routed.";
+const RESOLVED_AT_BARANGAY = "This report was just resolved at the barangay, so it wasn't sent to any agency.";
 
-/** One agency_routing row, as far as deciding what routing may still do. */
-interface HeldRow {
-  agency_id: string;
-  resolved_at: string | null;
-  resolution_outcome: string | null;
+/**
+ * Why a report that is already routed or resolved can't be routed now.
+ * [Already routed] is false for a report the barangay resolved itself: it
+ * never went to an agency. resolve_report_at_barangay() closes only a report
+ * no agency has ever held, so a resolved report with no routing rows is one
+ * of those. A failed read keeps [Already routed], the answer before this.
+ */
+async function alreadyClosedMessage(
+  supabase: ReturnType<typeof createClient>,
+  reportId: string,
+  status: string
+): Promise<string> {
+  if (status !== "resolved") return ALREADY_ROUTED;
+  const rows = await routingRows(supabase, reportId);
+  return rows !== null && rows.length === 0 ? RESOLVED_AT_BARANGAY : ALREADY_ROUTED;
 }
 
 /**
@@ -232,6 +244,15 @@ interface HeldRow {
  * report the backend's handback returns to the barangay. The same rule as
  * everyAgencyReturned in src/components/queue/routing.ts, which decides the
  * [returned] state on screen; the two must agree.
+ *
+ * 'recalled' is deliberately not counted. A recalled report the desk
+ * re-validates is [Routing incomplete], and [Finish routing] (routeReport)
+ * sends it back to its mapped agencies: the backend's
+ * incident_reports_reroute_recalled trigger reopens the recalled rows on the
+ * move to 'routed' (20261031090000_recall_window, item 7). Counting it here
+ * would refuse that route-back and send the desk to the out-of-scope picker
+ * instead, which offers none of those agencies. Choosing other agencies for
+ * a recalled report is a separate state, not built (owner decision).
  */
 function everyAgencyReturned(rows: HeldRow[]): boolean {
   return rows.length > 0 && rows.every((r) => r.resolved_at !== null && r.resolution_outcome === "out-of-scope");
@@ -295,7 +316,7 @@ export async function routeReport(reportId: string): Promise<RouteResult> {
   }
   if (report.status === "routed" || report.status === "resolved") {
     revalidatePath("/queue");
-    return { success: false, message: ALREADY_ROUTED };
+    return { success: false, message: await alreadyClosedMessage(supabase, reportId, report.status) };
   }
   if (report.status !== "validated") {
     // rejected is terminal; pending hasn't been reviewed. Neither routes.
@@ -320,8 +341,10 @@ export async function routeReport(reportId: string): Promise<RouteResult> {
         message: "Every agency sent this report back as out of scope. Choose another agency for it instead.",
       };
     }
-    const ids = new Set(held.map((row) => row.agency_id));
-    return sendAndRecord(supabase, reportId, new Map([...ids].map((id): [string, boolean] => [id, false])), ids);
+    // Every agency in this plan already holds it, so nothing is inserted;
+    // the audit row is built from the held rows (routedTo), not this plan.
+    const plan = new Map(held.map((row): [string, boolean] => [row.agency_id, row.is_primary]));
+    return sendAndRecord(supabase, reportId, plan, held);
   }
 
   // b.
@@ -373,7 +396,7 @@ export async function routeReport(reportId: string): Promise<RouteResult> {
     };
   }
 
-  return sendAndRecord(supabase, reportId, plan, new Set(rows.map((row) => row.agency_id)));
+  return sendAndRecord(supabase, reportId, plan, rows);
 }
 
 /**
@@ -424,7 +447,7 @@ export async function rerouteReport(reportId: string, agencyIds: string[]): Prom
   }
   if (report.status === "routed" || report.status === "resolved") {
     revalidatePath("/queue");
-    return { success: false, message: ALREADY_ROUTED };
+    return { success: false, message: await alreadyClosedMessage(supabase, reportId, report.status) };
   }
   if (report.status !== "validated") {
     return { success: false, message: ONLY_VALIDATED };
@@ -464,7 +487,7 @@ export async function rerouteReport(reportId: string, agencyIds: string[]): Prom
   }
 
   const plan = new Map(chosen.map((agencyId, index): [string, boolean] => [agencyId, index === 0]));
-  return sendAndRecord(supabase, reportId, plan, held);
+  return sendAndRecord(supabase, reportId, plan, rows);
 }
 
 /**
@@ -511,7 +534,7 @@ export async function routeReportToAgencies(reportId: string, agencyIds: string[
   }
   if (report.status === "routed" || report.status === "resolved") {
     revalidatePath("/queue");
-    return { success: false, message: ALREADY_ROUTED };
+    return { success: false, message: await alreadyClosedMessage(supabase, reportId, report.status) };
   }
   if (report.status !== "validated") {
     return { success: false, message: ONLY_VALIDATED };
@@ -550,7 +573,7 @@ export async function routeReportToAgencies(reportId: string, agencyIds: string[
   }
 
   const plan = new Map(chosen.map((agencyId, index): [string, boolean] => [agencyId, index === 0]));
-  return sendAndRecord(supabase, reportId, plan, new Set());
+  return sendAndRecord(supabase, reportId, plan, []);
 }
 
 /**
@@ -573,15 +596,16 @@ function chosenAgencies(agencyIds: unknown): string[] | null {
  * Steps c to e, shared by routeReport and rerouteReport: send the report to
  * every agency in plan that doesn't hold it yet, record the routing, then
  * mark it routed. plan maps each agency to whether it leads (is_primary);
- * existing is who holds the report already.
+ * existingRows are the routing rows read before this pass.
  */
 async function sendAndRecord(
   supabase: ReturnType<typeof createClient>,
   reportId: string,
   plan: Map<string, boolean>,
-  existing: Set<string>
+  existingRows: HeldRow[]
 ): Promise<RouteResult> {
-  const missing = [...plan.keys()].filter((agencyId) => !existing.has(agencyId));
+  const existing = new Set(existingRows.map((row) => row.agency_id.toLowerCase()));
+  const missing = [...plan.keys()].filter((agencyId) => !existing.has(agencyId.toLowerCase()));
   if (missing.length > 0) {
     const rows = missing.map((agencyId) => routingRow(reportId, agencyId, plan.get(agencyId) ?? false));
     const { error: insertError } = await supabase.from("agency_routing").insert(rows);
@@ -616,10 +640,7 @@ async function sendAndRecord(
         .maybeSingle();
       if (now?.status === "resolved") {
         revalidatePath("/queue");
-        return {
-          success: false,
-          message: "This report was just resolved at the barangay, so it wasn't sent to any agency.",
-        };
+        return { success: false, message: RESOLVED_AT_BARANGAY };
       }
       return { success: false, message: "Not permitted — this report isn't in your barangay's scope." };
     }
@@ -636,11 +657,24 @@ async function sendAndRecord(
     };
   };
 
-  // d.
+  // d. Which agencies, and which one leads, so the trail can answer who
+  // the report was sent to without a join against agency_routing (whose rows
+  // a later recall or reroute can change). Built from the rows, not the plan:
+  // a [Finish routing] after a re-route carries the mapping as its plan,
+  // which names the agencies that sent the report back (routedTo).
+  // log_audit() puts no shape rule on this action's metadata.
+  const sent = routedTo(
+    existingRows,
+    new Map(missing.map((agencyId): [string, boolean] => [agencyId, plan.get(agencyId) ?? false]))
+  );
   const { error: auditError } = await supabase.rpc("log_audit", {
     p_action: "report_routed_manual",
     p_report_id: reportId,
-    p_metadata: { agency_count: plan.size },
+    p_metadata: {
+      agency_count: sent.agencyIds.length,
+      agency_ids: sent.agencyIds,
+      lead_agency_id: sent.leadAgencyId,
+    },
   });
   if (auditError) {
     console.error("[routeReport] log_audit failed", auditError.code, auditError.message);
@@ -690,7 +724,7 @@ async function sendAndRecord(
   }
 
   revalidatePath("/queue");
-  return { success: true, agencyCount: plan.size };
+  return { success: true, agencyCount: sent.agencyIds.length };
 }
 
 function routingRow(reportId: string, agencyId: string, isPrimary: boolean) {
@@ -706,7 +740,7 @@ async function routingRows(
 ): Promise<HeldRow[] | null> {
   const { data, error } = await supabase
     .from("agency_routing")
-    .select("agency_id, resolved_at, resolution_outcome")
+    .select("agency_id, is_primary, routed_at, resolved_at, resolution_outcome")
     .eq("incident_report_id", reportId);
   if (error) {
     console.error("[routeReport] existing read failed", error.code, error.message);
