@@ -790,13 +790,20 @@ async function routingRows(
   return (data ?? []) as HeldRow[];
 }
 
-/** The agencies that already hold this report, or null if the read failed. */
-async function routedAgencyIds(
-  supabase: ReturnType<typeof createClient>,
-  reportId: string
-): Promise<Set<string> | null> {
-  const rows = await routingRows(supabase, reportId);
-  return rows === null ? null : new Set(rows.map((row) => row.agency_id));
+/**
+ * Whether another routing's lead holds the report open: an open row
+ * (is_primary, resolved_at null) for an agency this plan doesn't lead with.
+ * Only a plan that has a lead can collide with one; a plan without a lead
+ * adds supporting agencies, which the one-open-lead guard allows.
+ */
+function foreignOpenLead(rows: HeldRow[], plan: Map<string, boolean>): boolean {
+  const planLeads = new Set(
+    [...plan].filter(([, isPrimary]) => isPrimary).map(([agencyId]) => agencyId.toLowerCase())
+  );
+  if (planLeads.size === 0) return false;
+  return rows.some(
+    (row) => row.is_primary && row.resolved_at === null && !planLeads.has(row.agency_id.toLowerCase())
+  );
 }
 
 /**
@@ -804,22 +811,35 @@ async function routedAgencyIds(
  * re-read proves every planned agency holds the report — the audit and status
  * steps must not run on an assumption.
  *
- * The lead is inserted first. Only a lead row can meet the one-open-lead
- * guard, so if another official's lead already holds the report the run
- * stops ("lead-taken") before any of its own rows are written, rather than
- * leaving its other agencies under a lead it didn't choose.
+ * If another official's lead already holds the report the run stops
+ * ("lead-taken") before any of its own rows are written, rather than leaving
+ * its other agencies under a lead it didn't choose: first by the re-read
+ * (an open lead this plan doesn't name), then by the guard itself, since the
+ * lead is inserted first and only a lead row can meet it.
  */
 async function insertRemainingIndividually(
   supabase: ReturnType<typeof createClient>,
   reportId: string,
   plan: Map<string, boolean>
 ): Promise<"ok" | "lead-taken" | "failed"> {
-  const present = await routedAgencyIds(supabase, reportId);
-  if (present === null) return "failed";
+  const rows = await routingRows(supabase, reportId);
+  if (rows === null) return "failed";
+
+  // The lost race can answer 23505 rather than the guard's 23P01 when one of
+  // this plan's agencies, its lead included, is already held under another
+  // official's lead: the duplicate aborts the statement first. Skipping the
+  // present agencies would then add the rest under that lead and record this
+  // plan's lead in the audit row — so an open lead this plan didn't choose
+  // stops the run here, before anything is written.
+  if (foreignOpenLead(rows, plan)) {
+    console.error("[routeReport] recovery: another lead holds the report");
+    return "lead-taken";
+  }
+  const present = new Set(rows.map((row) => row.agency_id.toLowerCase()));
 
   const leadFirst = [...plan].sort(([, a], [, b]) => Number(b) - Number(a));
   for (const [agencyId, isPrimary] of leadFirst) {
-    if (present.has(agencyId)) continue;
+    if (present.has(agencyId.toLowerCase())) continue;
     const { error } = await supabase.from("agency_routing").insert(routingRow(reportId, agencyId, isPrimary));
     if (isLeadTaken(error)) {
       console.error("[routeReport] recovery: lead already taken", error?.code);
@@ -831,8 +851,10 @@ async function insertRemainingIndividually(
     }
   }
 
-  const after = await routedAgencyIds(supabase, reportId);
-  return after !== null && [...plan.keys()].every((agencyId) => after.has(agencyId)) ? "ok" : "failed";
+  const after = await routingRows(supabase, reportId);
+  if (after === null) return "failed";
+  const held = new Set(after.map((row) => row.agency_id.toLowerCase()));
+  return [...plan.keys()].every((agencyId) => held.has(agencyId.toLowerCase())) ? "ok" : "failed";
 }
 
 const RESOLVE_FAILED = "Something went wrong. The report wasn't resolved — try again.";
