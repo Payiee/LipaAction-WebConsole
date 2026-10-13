@@ -219,6 +219,24 @@ const ROUTE_FAILED = "Something went wrong. Nothing new was routed — try again
 const NOT_IN_BARANGAY = "That report isn't in your barangay, or no longer exists.";
 const ALREADY_ROUTED = "Already routed — another official may have routed it first.";
 const ONLY_VALIDATED = "Only validated reports can be routed.";
+const RESOLVED_AT_BARANGAY = "This report was just resolved at the barangay, so it wasn't sent to any agency.";
+
+/**
+ * Why a report that is already routed or resolved can't be routed now.
+ * [Already routed] is false for a report the barangay resolved itself: it
+ * never went to an agency. resolve_report_at_barangay() closes only a report
+ * no agency has ever held, so a resolved report with no routing rows is one
+ * of those. A failed read keeps [Already routed], the answer before this.
+ */
+async function alreadyClosedMessage(
+  supabase: ReturnType<typeof createClient>,
+  reportId: string,
+  status: string
+): Promise<string> {
+  if (status !== "resolved") return ALREADY_ROUTED;
+  const rows = await routingRows(supabase, reportId);
+  return rows !== null && rows.length === 0 ? RESOLVED_AT_BARANGAY : ALREADY_ROUTED;
+}
 
 /** One agency_routing row, as far as deciding what routing may still do. */
 interface HeldRow {
@@ -303,7 +321,7 @@ export async function routeReport(reportId: string): Promise<RouteResult> {
   }
   if (report.status === "routed" || report.status === "resolved") {
     revalidatePath("/queue");
-    return { success: false, message: ALREADY_ROUTED };
+    return { success: false, message: await alreadyClosedMessage(supabase, reportId, report.status) };
   }
   if (report.status !== "validated") {
     // rejected is terminal; pending hasn't been reviewed. Neither routes.
@@ -435,7 +453,7 @@ export async function rerouteReport(reportId: string, agencyIds: string[]): Prom
   }
   if (report.status === "routed" || report.status === "resolved") {
     revalidatePath("/queue");
-    return { success: false, message: ALREADY_ROUTED };
+    return { success: false, message: await alreadyClosedMessage(supabase, reportId, report.status) };
   }
   if (report.status !== "validated") {
     return { success: false, message: ONLY_VALIDATED };
@@ -522,7 +540,7 @@ export async function routeReportToAgencies(reportId: string, agencyIds: string[
   }
   if (report.status === "routed" || report.status === "resolved") {
     revalidatePath("/queue");
-    return { success: false, message: ALREADY_ROUTED };
+    return { success: false, message: await alreadyClosedMessage(supabase, reportId, report.status) };
   }
   if (report.status !== "validated") {
     return { success: false, message: ONLY_VALIDATED };
@@ -627,10 +645,7 @@ async function sendAndRecord(
         .maybeSingle();
       if (now?.status === "resolved") {
         revalidatePath("/queue");
-        return {
-          success: false,
-          message: "This report was just resolved at the barangay, so it wasn't sent to any agency.",
-        };
+        return { success: false, message: RESOLVED_AT_BARANGAY };
       }
       return { success: false, message: "Not permitted — this report isn't in your barangay's scope." };
     }
