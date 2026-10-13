@@ -51,6 +51,14 @@ const ACTION_LABELS: Record<string, MessageKey> = {
   media_phashes_purged: "audit.action.media_phashes_purged",
   resident_attested_tier1: "audit.action.resident_attested_tier1",
   trust_score_changed: "audit.action.trust_score_changed",
+  // CDRRMO dispatch's own events (backend spec 3.2-3.5), once its
+  // allow-list change to barangay_audit_log is live. Kept apart from the
+  // barangay's report_validated / report_rejected.
+  report_validated_cdrrmo: "audit.action.report_validated_cdrrmo",
+  report_rejected_cdrrmo: "audit.action.report_rejected_cdrrmo",
+  report_reject_overridden_cdrrmo: "audit.action.report_reject_overridden_cdrrmo",
+  report_agencies_added_cdrrmo: "audit.action.report_agencies_added_cdrrmo",
+  cdrrmo_media_view: "audit.action.cdrrmo_media_view",
   [ACCESS_LOG_OPENED]: "city.access.action.opened",
   [DATA_EXPORTED]: "city.access.action.exported",
 };
@@ -67,6 +75,10 @@ const ACTION_TONES: Record<string, "neutral" | "brand" | "warning"> = {
   resident_sanction_lifted: "brand",
   resident_attested_tier1: "brand",
   profile_scope_changed: "warning",
+  report_validated_cdrrmo: "brand",
+  report_rejected_cdrrmo: "warning",
+  report_reject_overridden_cdrrmo: "warning",
+  report_agencies_added_cdrrmo: "brand",
 };
 
 // Known roles get a label; an unknown one shows as itself, a missing one as

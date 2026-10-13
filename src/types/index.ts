@@ -46,7 +46,10 @@ export interface AgencyRouting {
   resolvedAt: string | null;
   // 'recalled' is written only by the backend's recall_auto_routed_report()
   // (20261031090000_recall_window): the desk took an auto-routed report back.
-  resolutionOutcome: "resolved" | "confirmed-false" | "duplicate" | "out-of-scope" | "recalled" | null;
+  // 'rejected' is written only by CDRRMO dispatch, when CDRRMO rejects a
+  // report after it was routed (backend spec 3.4): the row was closed with
+  // the report, not by the agency's own choice.
+  resolutionOutcome: "resolved" | "confirmed-false" | "duplicate" | "out-of-scope" | "recalled" | "rejected" | null;
 }
 
 /** An agency that routing this report would send it to (category_agency_routing). */

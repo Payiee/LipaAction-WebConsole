@@ -8,6 +8,7 @@ import { validateReports } from "@/app/actions/reports";
 import { callAction } from "@/lib/callAction";
 import { useT } from "@/lib/i18n";
 import type { SituationCluster } from "@/types";
+import { useCdrrmoDispatch } from "./CdrrmoDispatchContext";
 
 /**
  * The members a bulk validation actually decided: every id the action didn't
@@ -43,6 +44,7 @@ export function ValidateClusterButton({
   const t = useT();
   const [isPending, startTransition] = useTransition();
   const [showConfirm, setShowConfirm] = useState(false);
+  const dispatch = useCdrrmoDispatch();
 
   function handleValidate() {
     startTransition(async () => {
@@ -91,6 +93,13 @@ export function ValidateClusterButton({
     cluster.categories.length > 1
       ? `${t("cluster.confirm.body")} ${t("cluster.confirm.mixed", { categories: cluster.categories.join(", ") })}`
       : t("cluster.confirm.body");
+
+  // With CDRRMO dispatch on, an Emergency report is validated one at a time
+  // through Validate, which routes it too, and review_report() refuses it.
+  // A group of Emergency reports only would fail every member, so it offers
+  // no group button; a mixed group still validates its Other-reports, and
+  // each Emergency member comes back with that refusal's message.
+  if (dispatch.active && cluster.members.every((m) => m.details.entryTier === "emergency")) return null;
 
   return (
     <>

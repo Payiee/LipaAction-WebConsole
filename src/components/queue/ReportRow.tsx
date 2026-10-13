@@ -11,11 +11,14 @@ import { REPORT_CHAT_LIVE } from "@/lib/features";
 import { isChatOffered } from "@/lib/reportChat";
 import { isReviewable, statusLabel, useReportReview, type Verdict } from "./useReportReview";
 import { useReportRouting } from "./useReportRouting";
+import { useEmergencyValidation } from "./useEmergencyValidation";
+import { useCdrrmoDispatch, usesDispatch } from "./CdrrmoDispatchContext";
 import { AgencyPickerModal } from "./AgencyPickerModal";
 import { useBarangayResolve } from "./useBarangayResolve";
 import { ResolveNoteModal } from "./ResolveNoteModal";
 import {
   canResolveAtBarangay,
+  dispatchValidateCopy,
   downstreamSummary,
   everyAgencyReturned,
   isAutoRouted,
@@ -60,10 +63,17 @@ export function ReportRow({
   const routing = useReportRouting(report.id);
   const state = routingState(report);
   const barangayResolve = useBarangayResolve(report.id);
+  // CDRRMO dispatch (src/lib/cdrrmo-dispatch.ts): with the backend's switch
+  // on, an Emergency report is validated or rejected through one function
+  // that also routes it, and the desk never picks its agencies. Off, this is
+  // false and the row is exactly what it was.
+  const dispatch = useCdrrmoDispatch();
+  const viaDispatch = usesDispatch(dispatch.active, report);
+  const emergency = useEmergencyValidation(report.id, onResolved);
   const t = useT();
   // One write at a time: routing and resolving both end the report's stay
   // in this list, and neither can be undone.
-  const busy = routing.isPending || barangayResolve.isPending;
+  const busy = routing.isPending || barangayResolve.isPending || emergency.isPending;
 
   // An Other-report the desk may close itself, beside the routing action it
   // can take instead.
@@ -89,6 +99,25 @@ export function ReportRow({
   // validated but not routed has reached no agency at all — nothing routes
   // on its own — so the button sits exactly where Validate was.
   function renderPastReview() {
+    if (viaDispatch) {
+      // A validated Emergency report no agency holds open: CDRRMO dispatch
+      // routes it, not this desk. A handed-back one is CDRRMO's to send on;
+      // anything else can be offered to the Validate flow, and the database
+      // answers for its state (spec 3.4's table).
+      if (state.kind === "returned") {
+        return <span className="max-w-[14rem] text-right text-xs font-medium text-priority-medium">{t("cdrrmo.handedBack")}</span>;
+      }
+      if (state.kind === "ready" || state.kind === "incomplete" || state.kind === "no-mapping" || state.kind === "unavailable") {
+        return (
+          <>
+            <span className="max-w-[14rem] text-right text-xs text-ink-500">{t("cdrrmo.pastReview")}</span>
+            <Button variant="primary" size="sm" disabled={busy} onClick={emergency.openConfirm}>
+              {t("cdrrmo.validateConfirm")}
+            </Button>
+          </>
+        );
+      }
+    }
     switch (state.kind) {
       case "ready":
         return (
@@ -175,6 +204,13 @@ export function ReportRow({
         return (
           <span className="max-w-[16rem] text-right text-xs text-ink-700">
             {downstreamSummary(state, t)}
+          </span>
+        );
+      case "rejectedByCdrrmo":
+        // Routed, then rejected by CDRRMO. Final: nothing to do here.
+        return (
+          <span title={t("cdrrmo.rejectedByCdrrmoBody")} className="text-xs font-medium text-priority-medium">
+            {t("cdrrmo.rejectedByCdrrmo")}
           </span>
         );
       case "none":
@@ -292,7 +328,15 @@ export function ReportRow({
           )}
           {isReviewable(report.details.status) ? (
             <>
-              <Button variant="secondary" size="sm" disabled={isPending} onClick={openReject}>
+              {/* With CDRRMO dispatch on, an Emergency report's Validate opens
+                  a confirmation (it routes the report too) and both go to
+                  validate_emergency_report(). */}
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={isPending || emergency.isPending}
+                onClick={viaDispatch ? emergency.openReject : openReject}
+              >
                 {t("review.reject")}
               </Button>
               {/* data-validate-button: QueueClient's [Validate next] finds the
@@ -302,8 +346,8 @@ export function ReportRow({
                 size="sm"
                 data-validate-button
                 data-report-id={report.id}
-                disabled={isPending}
-                onClick={validate}
+                disabled={isPending || emergency.isPending}
+                onClick={viaDispatch ? emergency.openConfirm : validate}
               >
                 {t("review.validate")}
               </Button>
@@ -321,6 +365,25 @@ export function ReportRow({
           confirmLabel={t("review.rejectConfirm")}
           onCancel={cancelReject}
           onConfirm={reject}
+        />
+      )}
+
+      {emergency.isRejecting && (
+        <ReasonPromptModal
+          title={t("review.rejectTitle", { id: report.id })}
+          description={t("review.rejectDescription")}
+          confirmLabel={t("review.rejectConfirm")}
+          onCancel={emergency.cancelReject}
+          onConfirm={emergency.reject}
+        />
+      )}
+
+      {emergency.isConfirming && (
+        <ConfirmModal
+          {...dispatchValidateCopy(report, dispatch.cdrrmoAgency, t)}
+          busy={emergency.isPending}
+          onCancel={emergency.cancelConfirm}
+          onConfirm={emergency.validate}
         />
       )}
 

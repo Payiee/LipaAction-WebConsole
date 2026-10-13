@@ -38,7 +38,12 @@ export type RoutingState =
   // no-mapping, and must not be shown as one.
   | { kind: "unavailable" }
   // Routed or resolved: agencies own it now; the desk watches.
-  | { kind: "downstream"; status: "routed" | "resolved"; routing: AgencyRouting[] };
+  | { kind: "downstream"; status: "routed" | "resolved"; routing: AgencyRouting[] }
+  // Routed, then rejected by CDRRMO (CDRRMO dispatch's reject after routing,
+  // backend spec 3.4). Only CDRRMO dispatch closes a row 'rejected', so a
+  // rejected report with such a row is exactly this case. Final: the
+  // barangay can't overturn it.
+  | { kind: "rejectedByCdrrmo"; routing: AgencyRouting[] };
 
 export function routingState(report: QueueReport): RoutingState {
   const { status, routing, routingPlan, routingOptions } = report.details;
@@ -70,7 +75,18 @@ export function routingState(report: QueueReport): RoutingState {
     return { kind: "downstream", status, routing };
   }
 
+  if (isRejectedByCdrrmo(status, routing)) return { kind: "rejectedByCdrrmo", routing };
+
   return { kind: "none" };
+}
+
+/**
+ * A report CDRRMO rejected after it was routed: rejected, with a routing row
+ * closed 'rejected'. Data-driven, so it needs no switch check: no such row
+ * exists unless CDRRMO dispatch wrote it.
+ */
+export function isRejectedByCdrrmo(status: string, routing: AgencyRouting[]): boolean {
+  return status === "rejected" && routing.some((r) => r.resolutionOutcome === "rejected");
 }
 
 /**
@@ -305,6 +321,39 @@ export function routeConfirmCopy(
     description: t("routing.routeDescription", { names: names ?? t("routing.mappedAgencies") }) + discreet,
     confirmLabel: t("routing.routeConfirm", { agencies }),
   };
+}
+
+/**
+ * Copy for the Validate confirmation of an Emergency report while CDRRMO
+ * dispatch is on. Names the default set the database will send it to, read
+ * only (backend spec 3.4): the category's mapped agencies, lead first, plus
+ * CDRRMO, which is always included. The database decides the final list;
+ * this is the desk's preview of it, and the barangay can't change it.
+ */
+export function dispatchValidateCopy(
+  report: QueueReport,
+  cdrrmo: RoutingOption | null,
+  t: Translate
+): { title: string; description: string; confirmLabel: string } {
+  return {
+    title: t("cdrrmo.validateTitle", { id: report.id }),
+    description: t("cdrrmo.validateDescription", { names: dispatchDefaultSet(report.details.routingPlan, cdrrmo, t) }) + discreetNote(report, t),
+    confirmLabel: t("cdrrmo.validateConfirm"),
+  };
+}
+
+/**
+ * The default set in words: the mapped agencies, then CDRRMO unless the
+ * mapping already names it. A mapping that couldn't be loaded is described
+ * rather than guessed at.
+ */
+export function dispatchDefaultSet(plan: RoutingPlanEntry[] | null, cdrrmo: RoutingOption | null, t: Translate): string {
+  if (plan === null) return t("cdrrmo.mappedAndCdrrmo");
+  const mapped = plan.length > 0 ? describePlan(plan, t) : "";
+  const cdrrmoMapped = cdrrmo !== null && plan.some((p) => p.agencyId === cdrrmo.agencyId);
+  if (cdrrmoMapped) return mapped;
+  const always = cdrrmo ? `${cdrrmo.agencyName} ${t("cdrrmo.alwaysSuffix")}` : t("cdrrmo.cdrrmoAlways");
+  return mapped ? `${mapped}, ${always}` : always;
 }
 
 /**

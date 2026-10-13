@@ -17,6 +17,8 @@ import { useFocusTrap } from "@/components/ui/useFocusTrap";
 import { isReviewable, statusLabel, useReportReview, type Verdict } from "./useReportReview";
 import { LocationPreview } from "./LocationPreview";
 import { useReportRouting } from "./useReportRouting";
+import { useEmergencyValidation } from "./useEmergencyValidation";
+import { useCdrrmoDispatch, usesDispatch } from "./CdrrmoDispatchContext";
 import { AgencyPickerModal } from "./AgencyPickerModal";
 import { useBarangayResolve } from "./useBarangayResolve";
 import { ResolveNoteModal } from "./ResolveNoteModal";
@@ -27,6 +29,8 @@ import { isChatOffered } from "@/lib/reportChat";
 import {
   agencyProgressLabel,
   canResolveAtBarangay,
+  dispatchDefaultSet,
+  dispatchValidateCopy,
   everyAgencyReturned,
   isAutoRouted,
   isReturnedToBarangay,
@@ -106,6 +110,16 @@ export function ReportDetailPanel({
   // buttons.
   const barangayResolve = useBarangayResolve(report.id, onClose);
   const mayResolve = canResolveAtBarangay(report, routeState);
+  // CDRRMO dispatch (src/lib/cdrrmo-dispatch.ts): with the backend's switch
+  // on, an Emergency report is validated or rejected through one function
+  // that also routes it. Off, viaDispatch is false and the drawer is
+  // exactly what it was. A decision closes the drawer, as a review does.
+  const dispatch = useCdrrmoDispatch();
+  const viaDispatch = usesDispatch(dispatch.active, report);
+  const emergency = useEmergencyValidation(report.id, (verdict) => {
+    onResolved(verdict);
+    onClose();
+  });
   const { showToast } = useToast();
   const t = useT();
 
@@ -116,8 +130,15 @@ export function ReportDetailPanel({
   const [mapExpanded, setMapExpanded] = useState(false);
   // So is a chat photo or video at full size (REPORT_CHAT_MEDIA).
   const [chatViewerOpen, setChatViewerOpen] = useState(false);
-  const stacked = isRejecting || routing.isConfirming || barangayResolve.isPrompting || mapExpanded || chatViewerOpen;
-  const writing = isPending || routing.isPending || barangayResolve.isPending;
+  const stacked =
+    isRejecting ||
+    routing.isConfirming ||
+    barangayResolve.isPrompting ||
+    emergency.isConfirming ||
+    emergency.isRejecting ||
+    mapExpanded ||
+    chatViewerOpen;
+  const writing = isPending || routing.isPending || barangayResolve.isPending || emergency.isPending;
   useDismissOnEscape(onClose, !stacked && !writing);
 
   // The scrim and the close button honour the same rule as Escape: not while
@@ -177,7 +198,30 @@ export function ReportDetailPanel({
   // review pair before a decision, routing and resolving after it. A decided
   // report can't be reviewed again (review_report() refuses it with 42501), so
   // review buttons never show for one.
-  const actions = isReviewable(d.status) ? (
+  const dispatchPastReview =
+    viaDispatch &&
+    (routeState.kind === "ready" ||
+      routeState.kind === "incomplete" ||
+      routeState.kind === "no-mapping" ||
+      routeState.kind === "unavailable");
+  const actions = isReviewable(d.status) && viaDispatch ? (
+    <>
+      <Button variant="primary" size="sm" disabled={writing} onClick={emergency.openConfirm}>
+        {t("review.validate")}
+      </Button>
+      <Button variant="secondary" size="sm" disabled={writing} onClick={emergency.openReject}>
+        {t("review.reject")}
+      </Button>
+    </>
+  ) : dispatchPastReview ? (
+    // Validated, but no agency holds it open: CDRRMO dispatch routes it. The
+    // database answers for its exact state (spec 3.4's table).
+    <Button variant="primary" size="sm" disabled={writing} onClick={emergency.openConfirm}>
+      {t("cdrrmo.validateConfirm")}
+    </Button>
+  ) : viaDispatch && routeState.kind === "returned" ? (
+    <p className="max-w-xs text-xs text-ink-500">{t("cdrrmo.handedBack")}</p>
+  ) : isReviewable(d.status) ? (
     <>
       <Button variant="primary" size="sm" disabled={isPending} onClick={validate}>
         {t("review.validate")}
@@ -224,6 +268,16 @@ export function ReportDetailPanel({
 
   const details = (
     <>
+      {/* Routed, then rejected by CDRRMO (CDRRMO dispatch). Said first: the
+          agency rows below read differently once it is. */}
+      {routeState.kind === "rejectedByCdrrmo" && (
+        <p
+          role="note"
+          className="mb-4 rounded-md border border-priority-medium/30 bg-priority-mediumBg px-3 py-2 text-sm text-priority-medium"
+        >
+          <span className="font-semibold">{t("cdrrmo.rejectedByCdrrmo")}.</span> {t("cdrrmo.rejectedByCdrrmoBody")}
+        </p>
+      )}
       {/* First thing in the details, above everything the official reads
           before acting: discreet reporting is always on for domestic
           violence, where a call or a text can reach the wrong person. The
@@ -283,7 +337,10 @@ export function ReportDetailPanel({
             would say nothing. */}
         {d.subCategory && <Row label={t("drawer.subCategory")} value={d.subCategory} />}
         <Row label={t("drawer.confidence")} value={d.confidenceBand ?? <NotProvided />} />
-        <Row label={t("drawer.status")} value={statusLabel(d.status, t)} />
+        <Row
+          label={t("drawer.status")}
+          value={routeState.kind === "rejectedByCdrrmo" ? t("cdrrmo.rejectedByCdrrmo") : statusLabel(d.status, t)}
+        />
         {d.clusterId && (
           <Row label={t("drawer.cluster")} value={<span className="font-mono text-xs">{d.clusterId}</span>} />
         )}
@@ -312,7 +369,11 @@ export function ReportDetailPanel({
           <p className="mb-1.5 mt-5 text-[11px] font-semibold uppercase tracking-wide text-ink-500">
             {t("drawer.section.routing")}
           </p>
-          <RoutingPreview plan={d.routingPlan} routing={d.routing} chooses={d.entryTier === "other_reports"} />
+          {viaDispatch && !everyAgencyReturned(d.routing) ? (
+            <DispatchPreview text={dispatchDefaultSet(d.routingPlan, dispatch.cdrrmoAgency, t)} />
+          ) : (
+            <RoutingPreview plan={d.routingPlan} routing={d.routing} chooses={d.entryTier === "other_reports"} />
+          )}
         </>
       )}
 
@@ -321,7 +382,7 @@ export function ReportDetailPanel({
           <p className="mb-1.5 mt-5 text-[11px] font-semibold uppercase tracking-wide text-ink-500">
             {t("drawer.section.routing")}
           </p>
-          <RoutingSection state={routeState} chooses={d.entryTier === "other_reports"} />
+          <RoutingSection state={routeState} chooses={d.entryTier === "other_reports"} viaDispatch={viaDispatch} />
         </>
       )}
     </>
@@ -421,6 +482,25 @@ export function ReportDetailPanel({
         />
       )}
 
+      {emergency.isRejecting && (
+        <ReasonPromptModal
+          title={t("review.rejectTitle", { id: report.id })}
+          description={t("review.rejectDescription")}
+          confirmLabel={t("review.rejectConfirm")}
+          onCancel={emergency.cancelReject}
+          onConfirm={emergency.reject}
+        />
+      )}
+
+      {emergency.isConfirming && (
+        <ConfirmModal
+          {...dispatchValidateCopy(report, dispatch.cdrrmoAgency, t)}
+          busy={emergency.isPending}
+          onCancel={emergency.cancelConfirm}
+          onConfirm={emergency.validate}
+        />
+      )}
+
       {routing.isConfirming && (routeState.kind === "ready" || routeState.kind === "incomplete") && (
         <ConfirmModal
           {...routeConfirmCopy(report, routeState.plan, routeState.kind === "incomplete", t)}
@@ -487,6 +567,8 @@ function footerNote(state: RoutingState, t: Translate): string {
       // Every agency sent it back as out of scope: it is the barangay's
       // again, and saying the agencies own it would be false.
       return t(isReturnedToBarangay(state) ? "drawer.footer.returned" : "drawer.footer.downstream");
+    case "rejectedByCdrrmo":
+      return t("cdrrmo.rejectedByCdrrmo");
     default:
       return t("drawer.footer.reviewed");
   }
@@ -506,8 +588,35 @@ function footerNote(state: RoutingState, t: Translate): string {
  * keeps exactly the agencies already holding it (routeReport), so its
  * category mapping is not where finishing sends it.
  */
-function RoutingSection({ state, chooses }: { state: ReturnType<typeof routingState>; chooses: boolean }) {
+function RoutingSection({
+  state,
+  chooses,
+  viaDispatch,
+}: {
+  state: ReturnType<typeof routingState>;
+  chooses: boolean;
+  // An Emergency report while CDRRMO dispatch is on: CDRRMO dispatch routes
+  // it, so nothing here says where finishing or routing would send it.
+  viaDispatch: boolean;
+}) {
   const t = useT();
+  if (viaDispatch) {
+    if (state.kind === "ready" || state.kind === "no-mapping" || state.kind === "unavailable") {
+      return <p className="text-sm text-ink-700">{t("cdrrmo.pastReview")}</p>;
+    }
+    if (state.kind === "incomplete" || state.kind === "returned") {
+      const { current, earlier } = splitRouting(state.routing);
+      return (
+        <div>
+          <p className="mb-2 text-xs text-priority-medium">
+            {t(state.kind === "returned" ? "cdrrmo.handedBack" : "cdrrmo.pastReview")}
+          </p>
+          <AgencyList rows={current} />
+          <EarlierList rows={earlier} />
+        </div>
+      );
+    }
+  }
   switch (state.kind) {
     case "ready":
       return <PlanList plan={state.plan} lead={t("drawer.plan.willRoute")} />;
@@ -574,9 +683,37 @@ function RoutingSection({ state, chooses }: { state: ReturnType<typeof routingSt
         </div>
       );
     }
+    case "rejectedByCdrrmo": {
+      // Each agency's row says how it ended: closed with the rejection, or
+      // still open at an agency that was already responding.
+      const { current, earlier } = splitRouting(state.routing);
+      return (
+        <div>
+          <AgencyList rows={current} />
+          <EarlierList rows={earlier} />
+        </div>
+      );
+    }
     case "none":
       return null;
   }
+}
+
+/**
+ * Where CDRRMO dispatch will send an Emergency report once validated: the
+ * category's mapped agencies plus CDRRMO, read only. The database decides
+ * the final list; the barangay can't change it (backend spec 3.4, owner
+ * answers a-c).
+ */
+function DispatchPreview({ text }: { text: string }) {
+  const t = useT();
+  return (
+    <div>
+      <p className="mb-1 text-xs text-ink-500">{t("cdrrmo.preview")}:</p>
+      <p className="mb-1 text-sm text-ink-900">{text}</p>
+      <p className="text-[11px] text-ink-500">{t("cdrrmo.previewNote")}</p>
+    </div>
+  );
 }
 
 /**

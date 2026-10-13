@@ -9,6 +9,7 @@ import { isUuid, MAX_REASON_LENGTH, parseRejectReason } from "@/lib/utils";
 import { BARANGAY_RESOLVE_LIVE } from "@/lib/features";
 import { type HeldRow, routedTo } from "@/lib/routingAudit";
 import { MESSAGES } from "@/lib/messages";
+import { isCdrrmoDispatchActiveError, readCdrrmoDispatchEnabled } from "@/lib/cdrrmo-dispatch";
 
 /*
  * Every function in this file is a public POST endpoint. Its arguments are
@@ -22,7 +23,19 @@ import { MESSAGES } from "@/lib/messages";
 interface UpdateResult {
   success: boolean;
   message?: string;
+  /**
+   * "cdrrmo-dispatch-active": the backend's CDRRMO dispatch switch is on and
+   * this is an Emergency report, so the old path refused it
+   * (src/lib/cdrrmo-dispatch.ts). The page switches the report to the
+   * Validate flow and words the message itself.
+   */
+  reason?: "cdrrmo-dispatch-active";
 }
+
+// The English text for a cdrrmo_dispatch_active refusal, for callers that
+// don't read `reason`; the page shows the same key in the official's
+// language.
+const DISPATCH_ACTIVE = MESSAGES["cdrrmo.useValidate"].en;
 
 // Same wording as profile.ts, so an expired session reads the same
 // everywhere it can surface.
@@ -139,6 +152,12 @@ export async function updateReportStatus(
   });
 
   if (error) {
+    // Before any other reading: with CDRRMO dispatch on, review_report()
+    // refuses an Emergency report with 42501 and this prefix, and 42501
+    // alone would read as [wrong barangay].
+    if (isCdrrmoDispatchActiveError(error)) {
+      return { success: false, message: DISPATCH_ACTIVE, reason: "cdrrmo-dispatch-active" };
+    }
     return {
       success: false,
       message:
@@ -220,7 +239,32 @@ export interface RouteResult {
    * show it in the official's language. message carries the English text
    * for any caller that doesn't read this.
    */
-  reason?: "lead-taken";
+  reason?: "lead-taken" | "cdrrmo-dispatch-active";
+}
+
+/**
+ * CDRRMO dispatch is on and this is an Emergency report: the desk validates
+ * it, and the database routes it (src/lib/cdrrmo-dispatch.ts). Nothing of
+ * this run was written by the time this is returned, except where a caller
+ * says otherwise.
+ */
+function dispatchActiveResult(): RouteResult {
+  revalidatePath("/queue");
+  return { success: false, message: DISPATCH_ACTIVE, reason: "cdrrmo-dispatch-active" };
+}
+
+/**
+ * Whether an Emergency report must go through CDRRMO dispatch instead of
+ * this routing. Asked before the first write, so the routing's audit row is
+ * never written for a routing the database would then refuse. Fails closed:
+ * any doubt about the switch is OFF, and the routing goes ahead exactly as
+ * before (the database still refuses it if the switch is in fact on).
+ */
+async function emergencyGoesThroughDispatch(
+  supabase: ReturnType<typeof createClient>,
+  entryTier: string | null | undefined
+): Promise<boolean> {
+  return entryTier === "emergency" && (await readCdrrmoDispatchEnabled(supabase));
 }
 
 const ROUTE_FAILED = "Something went wrong. Nothing new was routed — try again.";
@@ -355,6 +399,7 @@ export async function routeReport(reportId: string): Promise<RouteResult> {
     // rejected is terminal; pending hasn't been reviewed. Neither routes.
     return { success: false, message: ONLY_VALIDATED };
   }
+  if (await emergencyGoesThroughDispatch(supabase, report.entry_tier)) return dispatchActiveResult();
 
   // An Other-report goes to the agencies the desk chose
   // (routeReportToAgencies), not to its mapping. Here it can only be
@@ -463,7 +508,7 @@ export async function rerouteReport(reportId: string, agencyIds: string[]): Prom
   // empty result.
   const [session, reportRes] = await Promise.all([
     sessionState(supabase),
-    supabase.from("incident_reports").select("id, status").eq("id", reportId).maybeSingle(),
+    supabase.from("incident_reports").select("id, status, entry_tier").eq("id", reportId).maybeSingle(),
   ]);
 
   if (session !== "active") {
@@ -485,6 +530,9 @@ export async function rerouteReport(reportId: string, agencyIds: string[]): Prom
   if (report.status !== "validated") {
     return { success: false, message: ONLY_VALIDATED };
   }
+  // A handed-back Emergency report is CDRRMO's to send on while dispatch is
+  // on; the desk can't pick its agencies.
+  if (await emergencyGoesThroughDispatch(supabase, report.entry_tier)) return dispatchActiveResult();
 
   // Who holds it now, and whether the chosen agencies exist.
   const [rows, agenciesRes] = await Promise.all([
@@ -643,6 +691,11 @@ async function sendAndRecord(
     const rows = missing.map((agencyId) => routingRow(reportId, agencyId, plan.get(agencyId) ?? false));
     const { error: insertError } = await supabase.from("agency_routing").insert(rows);
 
+    if (isCdrrmoDispatchActiveError(insertError)) {
+      // The switch went on after this action's own check. The insert is one
+      // statement, so none of its rows were written.
+      return dispatchActiveResult();
+    }
     if (isLeadTaken(insertError)) {
       // Not retried: another official's lead holds the report, and adding
       // this run's other agencies under it would leave a routing nobody
@@ -659,6 +712,7 @@ async function sendAndRecord(
       // really does mean that row is present.
       const recovered = await insertRemainingIndividually(supabase, reportId, plan);
       if (recovered === "lead-taken") return leadTakenResult();
+      if (recovered === "dispatch-active") return dispatchActiveResult();
       if (recovered === "failed") {
         revalidatePath("/queue");
         return {
@@ -731,6 +785,13 @@ async function sendAndRecord(
     .eq("status", "validated")
     .select("id");
 
+  if (isCdrrmoDispatchActiveError(statusError)) {
+    // The switch went on between this action's check and here. The rows and
+    // the audit row above stay; the move to 'routed' is CDRRMO dispatch's
+    // now, and the desk's Validate takes it from here.
+    console.error("[routeReport] status refused: cdrrmo dispatch active", statusError?.code);
+    return dispatchActiveResult();
+  }
   if (statusError?.code === "23514") {
     // The backend's guard (agreed 2026-09-29): a report can't become
     // 'routed' while no agency holds it open. Every agency closed its part
@@ -821,7 +882,7 @@ async function insertRemainingIndividually(
   supabase: ReturnType<typeof createClient>,
   reportId: string,
   plan: Map<string, boolean>
-): Promise<"ok" | "lead-taken" | "failed"> {
+): Promise<"ok" | "lead-taken" | "dispatch-active" | "failed"> {
   const rows = await routingRows(supabase, reportId);
   if (rows === null) return "failed";
 
@@ -841,6 +902,7 @@ async function insertRemainingIndividually(
   for (const [agencyId, isPrimary] of leadFirst) {
     if (present.has(agencyId.toLowerCase())) continue;
     const { error } = await supabase.from("agency_routing").insert(routingRow(reportId, agencyId, isPrimary));
+    if (isCdrrmoDispatchActiveError(error)) return "dispatch-active";
     if (isLeadTaken(error)) {
       console.error("[routeReport] recovery: lead already taken", error?.code);
       return "lead-taken";
@@ -1052,7 +1114,11 @@ export async function validateReports(reportIds: string[]): Promise<BulkValidate
     }
     failures.push({
       reportId,
-      message: (await alreadyDecidedMessage(supabase, reportId, error)) ?? messageForReviewError(error),
+      // An Emergency member while CDRRMO dispatch is on: it is validated one
+      // at a time, through Validate, which routes it too.
+      message: isCdrrmoDispatchActiveError(error)
+        ? DISPATCH_ACTIVE
+        : (await alreadyDecidedMessage(supabase, reportId, error)) ?? messageForReviewError(error),
     });
   }
 

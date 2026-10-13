@@ -103,6 +103,9 @@ export async function getMonthlyResolutionTimes(requestedMonth: string | undefin
         returned += 1;
         continue;
       }
+      // Closed by CDRRMO's rejection of the report (CDRRMO dispatch), not by
+      // the agency: neither a resolution nor a return.
+      if (r.resolution_outcome === "rejected") continue;
       resolved += 1;
       const minutes = minutesBetween(r.routed_at ?? r.created_at, r.resolved_at);
       if (minutes !== null) times.push(minutes);

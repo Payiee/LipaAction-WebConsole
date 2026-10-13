@@ -6,6 +6,7 @@ import { rerouteReport, routeReport, routeReportToAgencies, type RouteResult } f
 import { callAction } from "@/lib/callAction";
 import { useT } from "@/lib/i18n";
 import { agencyCount } from "./routing";
+import { useCdrrmoDispatch } from "./CdrrmoDispatchContext";
 
 /**
  * The route-to-agency flow, shared by the queue row and the detail drawer,
@@ -26,6 +27,7 @@ export function useReportRouting(reportId: string) {
   const t = useT();
   const [isPending, startTransition] = useTransition();
   const [isConfirming, setIsConfirming] = useState(false);
+  const dispatch = useCdrrmoDispatch();
 
   function run(action: () => Promise<RouteResult>) {
     startTransition(async () => {
@@ -40,6 +42,12 @@ export function useReportRouting(reportId: string) {
       if (result.success) {
         const count = result.agencyCount ?? 0;
         showToast(t("routing.routedToast", { id: reportId, agencies: agencyCount(count, t) }), "success");
+      } else if (result.reason === "cdrrmo-dispatch-active") {
+        // CDRRMO dispatch is on: an Emergency report is validated here and
+        // routed by the database. The page's copy of the switch turns on,
+        // which swaps the report's routing buttons for that flow.
+        dispatch.setActive(true);
+        showToast(t("cdrrmo.useValidate"), "danger");
       } else {
         // A lost lead race has wording in both languages; other refusals are
         // the action's English text.
