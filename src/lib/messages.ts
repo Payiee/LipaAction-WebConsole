@@ -757,8 +757,8 @@ export const MESSAGES = {
   },
   "reports.catalogue.18.title": { en: "Monthly Override-Recall Usage", tl: "Buwanang Paggamit ng Recall" },
   "reports.catalogue.18.status": {
-    en: "Not available: automatic routing and its recall window are switched off, so nothing can be recalled.",
-    tl: "Hindi available: naka-off ang awtomatikong pagpasa at ang recall window nito, kaya walang maire-recall.",
+    en: "Not available: recall isn't offered in this console yet, so there is nothing to count. The Critical escalation timer is on, and can route an untouched Critical emergency to its agencies automatically.",
+    tl: "Hindi available: wala pang recall sa console na ito, kaya walang mabibilang. Naka-on ang Critical escalation timer, at maaari nitong awtomatikong ipasa sa mga ahensya ang Critical na emergency na hindi pa nagagalaw.",
   },
 
   // --- Cluster Explorer (empty state only; see ClusterExplorerClient) -------
