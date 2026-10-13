@@ -321,7 +321,7 @@ export function ReportDetailPanel({
           <p className="mb-1.5 mt-5 text-[11px] font-semibold uppercase tracking-wide text-ink-500">
             {t("drawer.section.routing")}
           </p>
-          <RoutingSection state={routeState} />
+          <RoutingSection state={routeState} chooses={d.entryTier === "other_reports"} />
         </>
       )}
     </>
@@ -501,8 +501,12 @@ function footerNote(state: RoutingState, t: Translate): string {
  * Agencies that sent the report back before it was routed elsewhere are
  * listed apart, under [Returned earlier], so the agencies holding it now
  * aren't read as the ones that returned it.
+ *
+ * chooses: an Other-report, whose agencies the desk chose. Finishing one
+ * keeps exactly the agencies already holding it (routeReport), so its
+ * category mapping is not where finishing sends it.
  */
-function RoutingSection({ state }: { state: ReturnType<typeof routingState> }) {
+function RoutingSection({ state, chooses }: { state: ReturnType<typeof routingState>; chooses: boolean }) {
   const t = useT();
   switch (state.kind) {
     case "ready":
@@ -528,9 +532,13 @@ function RoutingSection({ state }: { state: ReturnType<typeof routingState> }) {
           <AgencyList rows={current} />
           <EarlierList rows={earlier} />
           {/* Not after a re-route: the mapping names the agencies that sent
-              it back, and finishing doesn't send it to them again. */}
-          {state.plan && earlier.length === 0 && (
-            <PlanList plan={state.plan} lead={t("drawer.plan.finishing")} />
+              it back, and finishing doesn't send it to them again. Not for
+              an Other-report either: finishing keeps the agencies above. */}
+          {chooses ? (
+            <p className="text-xs text-ink-700">{t("drawer.plan.finishingHeld")}</p>
+          ) : (
+            state.plan &&
+            earlier.length === 0 && <PlanList plan={state.plan} lead={t("drawer.plan.finishing")} />
           )}
         </div>
       );

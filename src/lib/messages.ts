@@ -489,6 +489,10 @@ export const MESSAGES = {
     en: "Finishing sends it to all of",
     tl: "Kapag tinapos, ipapasa ito sa lahat ng sumusunod",
   },
+  "drawer.plan.finishingHeld": {
+    en: "Finishing records the routing to the agencies above. No other agency is added.",
+    tl: "Kapag tinapos, itatala ang pagpasa sa mga ahensya sa itaas. Walang ibang ahensyang idaragdag.",
+  },
   "drawer.returned": {
     en: "Every agency it was routed to sent it back as out of scope. Choose another agency, or handle it at the barangay.",
     tl: "Ibinalik ito ng lahat ng ahensyang pinagpasahan bilang labas sa saklaw. Pumili ng ibang ahensya, o asikasuhin ito sa barangay.",
