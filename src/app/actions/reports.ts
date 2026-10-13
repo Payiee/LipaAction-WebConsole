@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isUuid, MAX_REASON_LENGTH, parseRejectReason } from "@/lib/utils";
 import { BARANGAY_RESOLVE_LIVE } from "@/lib/features";
 import { type HeldRow, routedTo } from "@/lib/routingAudit";
+import { MESSAGES } from "@/lib/messages";
 
 /*
  * Every function in this file is a public POST endpoint. Its arguments are
@@ -214,11 +215,43 @@ export interface RouteResult {
   success: boolean;
   message?: string;
   agencyCount?: number;
+  /**
+   * Set when the refusal has wording in src/lib/messages.ts, so the page can
+   * show it in the official's language. message carries the English text
+   * for any caller that doesn't read this.
+   */
+  reason?: "lead-taken";
 }
 
 const ROUTE_FAILED = "Something went wrong. Nothing new was routed — try again.";
 const NOT_IN_BARANGAY = "That report isn't in your barangay, or no longer exists.";
 const ALREADY_ROUTED = "Already routed — another official may have routed it first.";
+
+/**
+ * The backend's one-open-lead guard (agency_routing_one_open_lead): a report
+ * may have only one open lead agency, and the losing writer of a lead race
+ * gets 23P01 with DETAIL open_lead_exists. The whole statement aborts, so
+ * none of this run's rows were written. PostgREST does not forward the
+ * constraint name, so the code is what this branches on.
+ *
+ * The bare unique index answers 23505 naming the index instead, but only
+ * under REPEATABLE READ / SERIALIZABLE or with triggers off; matched by
+ * name so it can never be read as [that row is already there].
+ *
+ * Until the guard is live neither error can occur, and this is never true.
+ */
+const LEAD_GUARD = "agency_routing_one_open_lead";
+function isLeadTaken(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  if (error.code === "23P01") return true;
+  return error.code === "23505" && (error.message ?? "").includes(LEAD_GUARD);
+}
+
+/** Another official's lead won the race; nothing of this run was written. */
+function leadTakenResult(): RouteResult {
+  revalidatePath("/queue");
+  return { success: false, message: MESSAGES["routing.leadTaken"].en, reason: "lead-taken" };
+}
 const ONLY_VALIDATED = "Only validated reports can be routed.";
 const RESOLVED_AT_BARANGAY = "This report was just resolved at the barangay, so it wasn't sent to any agency.";
 
@@ -610,6 +643,13 @@ async function sendAndRecord(
     const rows = missing.map((agencyId) => routingRow(reportId, agencyId, plan.get(agencyId) ?? false));
     const { error: insertError } = await supabase.from("agency_routing").insert(rows);
 
+    if (isLeadTaken(insertError)) {
+      // Not retried: another official's lead holds the report, and adding
+      // this run's other agencies under it would leave a routing nobody
+      // chose. No audit row, no status change.
+      console.error("[routeReport] lead already taken", insertError?.code);
+      return leadTakenResult();
+    }
     if (insertError?.code === "23505") {
       // agency_routing is UNIQUE (incident_report_id, agency_id), and a
       // multi-row INSERT is one statement: a single duplicate aborts it, so
@@ -618,7 +658,8 @@ async function sendAndRecord(
       // insert whatever is still missing one row at a time, where a 23505
       // really does mean that row is present.
       const recovered = await insertRemainingIndividually(supabase, reportId, plan);
-      if (!recovered) {
+      if (recovered === "lead-taken") return leadTakenResult();
+      if (recovered === "failed") {
         revalidatePath("/queue");
         return {
           success: false,
@@ -759,29 +800,39 @@ async function routedAgencyIds(
 }
 
 /**
- * Recovery after a multi-row insert lost a race. Returns true only once a
+ * Recovery after a multi-row insert lost a race. Returns "ok" only once a
  * re-read proves every planned agency holds the report — the audit and status
  * steps must not run on an assumption.
+ *
+ * The lead is inserted first. Only a lead row can meet the one-open-lead
+ * guard, so if another official's lead already holds the report the run
+ * stops ("lead-taken") before any of its own rows are written, rather than
+ * leaving its other agencies under a lead it didn't choose.
  */
 async function insertRemainingIndividually(
   supabase: ReturnType<typeof createClient>,
   reportId: string,
   plan: Map<string, boolean>
-): Promise<boolean> {
+): Promise<"ok" | "lead-taken" | "failed"> {
   const present = await routedAgencyIds(supabase, reportId);
-  if (present === null) return false;
+  if (present === null) return "failed";
 
-  for (const [agencyId, isPrimary] of plan) {
+  const leadFirst = [...plan].sort(([, a], [, b]) => Number(b) - Number(a));
+  for (const [agencyId, isPrimary] of leadFirst) {
     if (present.has(agencyId)) continue;
     const { error } = await supabase.from("agency_routing").insert(routingRow(reportId, agencyId, isPrimary));
+    if (isLeadTaken(error)) {
+      console.error("[routeReport] recovery: lead already taken", error?.code);
+      return "lead-taken";
+    }
     if (error && error.code !== "23505") {
       console.error("[routeReport] recovery insert failed", error.code, error.message);
-      return false;
+      return "failed";
     }
   }
 
   const after = await routedAgencyIds(supabase, reportId);
-  return after !== null && [...plan.keys()].every((agencyId) => after.has(agencyId));
+  return after !== null && [...plan.keys()].every((agencyId) => after.has(agencyId)) ? "ok" : "failed";
 }
 
 const RESOLVE_FAILED = "Something went wrong. The report wasn't resolved — try again.";
