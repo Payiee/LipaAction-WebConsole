@@ -378,6 +378,12 @@ export const MESSAGES = {
   "routing.routeConfirm": { en: "Route to {agencies}", tl: "Ipasa sa {agencies}" },
   "routing.routedToast": { en: "{id} routed to {agencies}", tl: "Naipasa ang {id} sa {agencies}" },
   "routing.failed": { en: "Couldn't route this report", tl: "Hindi naipasa ang ulat na ito" },
+  // A server action's answer, worded here because it is a race the official
+  // can act on (RouteResult.reason "lead-taken").
+  "routing.leadTaken": {
+    en: "Another official has just routed this report. Refresh to see where it went.",
+    tl: "Naipasa na ng ibang opisyal ang ulat na ito. I-refresh para makita kung saan ito napunta.",
+  },
   "reroute.title": { en: "Route {id} to another agency", tl: "Ipasa ang {id} sa ibang ahensya" },
   "reroute.description": {
     en:

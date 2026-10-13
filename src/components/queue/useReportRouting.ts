@@ -41,7 +41,10 @@ export function useReportRouting(reportId: string) {
         const count = result.agencyCount ?? 0;
         showToast(t("routing.routedToast", { id: reportId, agencies: agencyCount(count, t) }), "success");
       } else {
-        showToast(result.message ?? t("routing.failed"), "danger");
+        // A lost lead race has wording in both languages; other refusals are
+        // the action's English text.
+        const message = result.reason === "lead-taken" ? t("routing.leadTaken") : result.message;
+        showToast(message ?? t("routing.failed"), "danger");
       }
     });
   }
