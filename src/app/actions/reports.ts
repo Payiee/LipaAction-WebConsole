@@ -223,6 +223,7 @@ const ONLY_VALIDATED = "Only validated reports can be routed.";
 /** One agency_routing row, as far as deciding what routing may still do. */
 interface HeldRow {
   agency_id: string;
+  is_primary: boolean;
   resolved_at: string | null;
   resolution_outcome: string | null;
 }
@@ -328,7 +329,10 @@ export async function routeReport(reportId: string): Promise<RouteResult> {
       };
     }
     const ids = new Set(held.map((row) => row.agency_id));
-    return sendAndRecord(supabase, reportId, new Map([...ids].map((id): [string, boolean] => [id, false])), ids);
+    // Every agency already holds it, so nothing is inserted; is_primary is
+    // carried only so the audit row names the lead the desk chose.
+    const lead = new Set(held.filter((row) => row.is_primary).map((row) => row.agency_id));
+    return sendAndRecord(supabase, reportId, new Map([...ids].map((id): [string, boolean] => [id, lead.has(id)])), ids);
   }
 
   // b.
@@ -643,11 +647,15 @@ async function sendAndRecord(
     };
   };
 
-  // d.
+  // d. Which agencies, and which one leads, so the trail can answer who
+  // the report was sent to without a join against agency_routing (whose rows
+  // a later recall or reroute can change). log_audit() puts no shape rule on
+  // this action's metadata.
+  const leadAgencyId = [...plan].find(([, isPrimary]) => isPrimary)?.[0] ?? null;
   const { error: auditError } = await supabase.rpc("log_audit", {
     p_action: "report_routed_manual",
     p_report_id: reportId,
-    p_metadata: { agency_count: plan.size },
+    p_metadata: { agency_count: plan.size, agency_ids: [...plan.keys()], lead_agency_id: leadAgencyId },
   });
   if (auditError) {
     console.error("[routeReport] log_audit failed", auditError.code, auditError.message);
@@ -713,7 +721,7 @@ async function routingRows(
 ): Promise<HeldRow[] | null> {
   const { data, error } = await supabase
     .from("agency_routing")
-    .select("agency_id, resolved_at, resolution_outcome")
+    .select("agency_id, is_primary, resolved_at, resolution_outcome")
     .eq("incident_report_id", reportId);
   if (error) {
     console.error("[routeReport] existing read failed", error.code, error.message);
