@@ -322,7 +322,9 @@ In each case the console shows nothing rather than an approximation.
   marked Auto-routed, and one that every agency sends back returns to the Emergency tab,
   marked as returned by the agencies, for a review before another agency is chosen. The
   backend has a recall window for automatically routed reports, but recall is not
-  offered in this console yet. Its other automatic routing (for high-confidence
+  offered in this console yet. A report recalled another way shows as Routing incomplete
+  once validated, its agencies marked recalled, and Finish routing sends it back to them
+  (the backend reopens their rows); choosing other agencies for it is not built. Its other automatic routing (for high-confidence
   emergencies) stays switched off.
 - **Rejection categories are stored inside the reason text.** The database has one
   free-text reason per decision and no category column, so the category is saved as a

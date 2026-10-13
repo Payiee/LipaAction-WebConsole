@@ -96,28 +96,26 @@ function suggestedAgencies(plan: RoutingPlanEntry[] | null): string[] {
 }
 
 /**
- * True when every agency the report went to closed it as out of scope, or
- * had it recalled from them (treated alike, as the backend's recall
- * migration asks). The same rule decides the [returned] state here and is
- * checked again by routeReport and rerouteReport on the server, which must
- * agree with it.
+ * True when every agency the report went to closed it as out of scope. The
+ * same rule decides the [returned] state here and is checked again by
+ * routeReport and rerouteReport on the server, which must agree with it.
+ * 'recalled' is not counted: a re-validated recalled report is [Routing
+ * incomplete], and [Finish routing] sends it back to its mapped agencies
+ * through the backend's reopen trigger (20261031090000_recall_window,
+ * item 7). See the server copy in src/app/actions/reports.ts.
  */
 export function everyAgencyReturned(rows: AgencyRouting[]): boolean {
-  return (
-    rows.length > 0 &&
-    rows.every(
-      (r) => Boolean(r.resolvedAt) && (r.resolutionOutcome === "out-of-scope" || r.resolutionOutcome === "recalled")
-    )
-  );
+  return rows.length > 0 && rows.every((r) => Boolean(r.resolvedAt) && r.resolutionOutcome === "out-of-scope");
 }
 
 /**
  * Splits a report's agency rows into the latest routing and what came
- * before it. An out-of-scope closure is history once the report was routed
- * to some agency after it: the desk chose another agency, and [Returned by
- * X] is no longer what the report is waiting on. Any other closure stays
- * current, so a fix is never hidden. A row without usable timestamps is
- * never moved to history.
+ * before it. An out-of-scope or recalled closure is history once the report
+ * was routed to some agency after it: the desk chose another agency, and
+ * [Returned by X] (or the recalled auto-route, with its auto_routed flag) is
+ * no longer what the report is waiting on. Any other closure stays current,
+ * so a fix is never hidden. A row without usable timestamps is never moved
+ * to history.
  */
 export function splitRouting(rows: AgencyRouting[]): { current: AgencyRouting[]; earlier: AgencyRouting[] } {
   const current: AgencyRouting[] = [];
@@ -126,7 +124,8 @@ export function splitRouting(rows: AgencyRouting[]): { current: AgencyRouting[];
     const closed = time(r.resolvedAt);
     // NaN compares false either way, so an undated row stays current.
     const superseded =
-      r.resolutionOutcome === "out-of-scope" && rows.some((other) => time(other.routedAt) > closed);
+      (r.resolutionOutcome === "out-of-scope" || r.resolutionOutcome === "recalled") &&
+      rows.some((other) => time(other.routedAt) > closed);
     (superseded ? earlier : current).push(r);
   }
   // Can't happen with consistent timestamps (the latest routing is never

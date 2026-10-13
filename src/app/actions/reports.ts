@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 // async functions, and ReasonPromptModal needs the same limit.
 import { isUuid, MAX_REASON_LENGTH, parseRejectReason } from "@/lib/utils";
 import { BARANGAY_RESOLVE_LIVE } from "@/lib/features";
+import { type HeldRow, routedTo } from "@/lib/routingAudit";
 
 /*
  * Every function in this file is a public POST endpoint. Its arguments are
@@ -238,29 +239,23 @@ async function alreadyClosedMessage(
   return rows !== null && rows.length === 0 ? RESOLVED_AT_BARANGAY : ALREADY_ROUTED;
 }
 
-/** One agency_routing row, as far as deciding what routing may still do. */
-interface HeldRow {
-  agency_id: string;
-  is_primary: boolean;
-  resolved_at: string | null;
-  resolution_outcome: string | null;
-}
-
 /**
  * Whether every agency the report went to closed it as out of scope — the
- * report the backend's handback returns to the barangay — or had it recalled
- * from them (the backend's recall window, which the recall migration asks
- * consoles to treat like out-of-scope). The same rule as everyAgencyReturned
- * in src/components/queue/routing.ts, which decides the [returned] state on
- * screen; the two must agree.
+ * report the backend's handback returns to the barangay. The same rule as
+ * everyAgencyReturned in src/components/queue/routing.ts, which decides the
+ * [returned] state on screen; the two must agree.
+ *
+ * 'recalled' is deliberately not counted. A recalled report the desk
+ * re-validates is [Routing incomplete], and [Finish routing] (routeReport)
+ * sends it back to its mapped agencies: the backend's
+ * incident_reports_reroute_recalled trigger reopens the recalled rows on the
+ * move to 'routed' (20261031090000_recall_window, item 7). Counting it here
+ * would refuse that route-back and send the desk to the out-of-scope picker
+ * instead, which offers none of those agencies. Choosing other agencies for
+ * a recalled report is a separate state, not built (owner decision).
  */
 function everyAgencyReturned(rows: HeldRow[]): boolean {
-  return (
-    rows.length > 0 &&
-    rows.every(
-      (r) => r.resolved_at !== null && (r.resolution_outcome === "out-of-scope" || r.resolution_outcome === "recalled")
-    )
-  );
+  return rows.length > 0 && rows.every((r) => r.resolved_at !== null && r.resolution_outcome === "out-of-scope");
 }
 
 /**
@@ -346,11 +341,10 @@ export async function routeReport(reportId: string): Promise<RouteResult> {
         message: "Every agency sent this report back as out of scope. Choose another agency for it instead.",
       };
     }
-    const ids = new Set(held.map((row) => row.agency_id));
-    // Every agency already holds it, so nothing is inserted; is_primary is
-    // carried only so the audit row names the lead the desk chose.
-    const lead = new Set(held.filter((row) => row.is_primary).map((row) => row.agency_id));
-    return sendAndRecord(supabase, reportId, new Map([...ids].map((id): [string, boolean] => [id, lead.has(id)])), ids);
+    // Every agency in this plan already holds it, so nothing is inserted;
+    // the audit row is built from the held rows (routedTo), not this plan.
+    const plan = new Map(held.map((row): [string, boolean] => [row.agency_id, row.is_primary]));
+    return sendAndRecord(supabase, reportId, plan, held);
   }
 
   // b.
@@ -402,7 +396,7 @@ export async function routeReport(reportId: string): Promise<RouteResult> {
     };
   }
 
-  return sendAndRecord(supabase, reportId, plan, new Set(rows.map((row) => row.agency_id)));
+  return sendAndRecord(supabase, reportId, plan, rows);
 }
 
 /**
@@ -493,7 +487,7 @@ export async function rerouteReport(reportId: string, agencyIds: string[]): Prom
   }
 
   const plan = new Map(chosen.map((agencyId, index): [string, boolean] => [agencyId, index === 0]));
-  return sendAndRecord(supabase, reportId, plan, held);
+  return sendAndRecord(supabase, reportId, plan, rows);
 }
 
 /**
@@ -579,7 +573,7 @@ export async function routeReportToAgencies(reportId: string, agencyIds: string[
   }
 
   const plan = new Map(chosen.map((agencyId, index): [string, boolean] => [agencyId, index === 0]));
-  return sendAndRecord(supabase, reportId, plan, new Set());
+  return sendAndRecord(supabase, reportId, plan, []);
 }
 
 /**
@@ -602,15 +596,16 @@ function chosenAgencies(agencyIds: unknown): string[] | null {
  * Steps c to e, shared by routeReport and rerouteReport: send the report to
  * every agency in plan that doesn't hold it yet, record the routing, then
  * mark it routed. plan maps each agency to whether it leads (is_primary);
- * existing is who holds the report already.
+ * existingRows are the routing rows read before this pass.
  */
 async function sendAndRecord(
   supabase: ReturnType<typeof createClient>,
   reportId: string,
   plan: Map<string, boolean>,
-  existing: Set<string>
+  existingRows: HeldRow[]
 ): Promise<RouteResult> {
-  const missing = [...plan.keys()].filter((agencyId) => !existing.has(agencyId));
+  const existing = new Set(existingRows.map((row) => row.agency_id.toLowerCase()));
+  const missing = [...plan.keys()].filter((agencyId) => !existing.has(agencyId.toLowerCase()));
   if (missing.length > 0) {
     const rows = missing.map((agencyId) => routingRow(reportId, agencyId, plan.get(agencyId) ?? false));
     const { error: insertError } = await supabase.from("agency_routing").insert(rows);
@@ -664,13 +659,22 @@ async function sendAndRecord(
 
   // d. Which agencies, and which one leads, so the trail can answer who
   // the report was sent to without a join against agency_routing (whose rows
-  // a later recall or reroute can change). log_audit() puts no shape rule on
-  // this action's metadata.
-  const leadAgencyId = [...plan].find(([, isPrimary]) => isPrimary)?.[0] ?? null;
+  // a later recall or reroute can change). Built from the rows, not the plan:
+  // a [Finish routing] after a re-route carries the mapping as its plan,
+  // which names the agencies that sent the report back (routedTo).
+  // log_audit() puts no shape rule on this action's metadata.
+  const sent = routedTo(
+    existingRows,
+    new Map(missing.map((agencyId): [string, boolean] => [agencyId, plan.get(agencyId) ?? false]))
+  );
   const { error: auditError } = await supabase.rpc("log_audit", {
     p_action: "report_routed_manual",
     p_report_id: reportId,
-    p_metadata: { agency_count: plan.size, agency_ids: [...plan.keys()], lead_agency_id: leadAgencyId },
+    p_metadata: {
+      agency_count: sent.agencyIds.length,
+      agency_ids: sent.agencyIds,
+      lead_agency_id: sent.leadAgencyId,
+    },
   });
   if (auditError) {
     console.error("[routeReport] log_audit failed", auditError.code, auditError.message);
@@ -720,7 +724,7 @@ async function sendAndRecord(
   }
 
   revalidatePath("/queue");
-  return { success: true, agencyCount: plan.size };
+  return { success: true, agencyCount: sent.agencyIds.length };
 }
 
 function routingRow(reportId: string, agencyId: string, isPrimary: boolean) {
@@ -736,7 +740,7 @@ async function routingRows(
 ): Promise<HeldRow[] | null> {
   const { data, error } = await supabase
     .from("agency_routing")
-    .select("agency_id, is_primary, resolved_at, resolution_outcome")
+    .select("agency_id, is_primary, routed_at, resolved_at, resolution_outcome")
     .eq("incident_report_id", reportId);
   if (error) {
     console.error("[routeReport] existing read failed", error.code, error.message);
