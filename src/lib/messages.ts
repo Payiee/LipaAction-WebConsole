@@ -300,8 +300,8 @@ export const MESSAGES = {
   },
   "cdrrmo.validateConfirm": { en: "Validate and send", tl: "I-validate at ipasa" },
   "cdrrmo.recordDescription": {
-    en: "It is already with its agencies. Validating records your barangay's validation; where it went doesn't change.",
-    tl: "Nasa mga ahensya na ito. Itatala ng pag-validate ang validation ng inyong barangay; hindi magbabago kung saan ito napunta.",
+    en: "Records that your barangay validated it. Agencies already sent to keep it; any default agency still missing is added.",
+    tl: "Itatala na na-validate ito ng inyong barangay. Mananatili ito sa mga ahensyang napasahan na; idaragdag ang anumang default na ahensyang kulang pa.",
   },
   "cdrrmo.recordConfirm": { en: "Record validation", tl: "Itala ang validation" },
   "cdrrmo.notValidatedHere": {

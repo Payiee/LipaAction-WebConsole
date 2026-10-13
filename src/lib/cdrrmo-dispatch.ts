@@ -17,7 +17,7 @@
  * - cdrrmo_dispatch_enabled(): no arguments, returns a boolean. The console
  *   reads it once per page load and FAILS CLOSED: an error, a function not
  *   deployed yet (PGRST202) or anything but a literal true is OFF, and the
- *   console behaves exactly as before.
+ *   console behaves exactly as before. PGRST202 means OFF for this read only.
  * - validate_emergency_report(p_report, p_decision, p_reason) RETURNS its
  *   outcome as text: 'routed', 'recorded', 'validated_no_open_agency',
  *   'rejected' or 'overridden'.
@@ -147,8 +147,8 @@ export type DeskRefusal = (typeof DESK_REFUSALS)[number];
  *   Something was written; the page refreshes and says so neutrally.
  * - a desk refusal: the report is not where the desk thought it was.
  * - refused: a contract token the desk never expects (CDRRMO-only).
- * - disabled: the switch is off, or the function isn't deployed. The desk's
- *   usual Validate and Route apply again.
+ * - disabled: the switch is off (55000 + cdrrmo_dispatch_disabled). The
+ *   desk's usual Validate and Route apply again.
  * - not-permitted: a 42501.
  * - unknown: any other error. Whether anything was written isn't known, so
  *   the page refreshes and says so neutrally, never "something went wrong".
@@ -175,8 +175,8 @@ function isOneOf<T extends string>(list: readonly T[], value: unknown): value is
  * database.
  *
  * Order matters. A transport failure is read before any meaning (as
- * reports.ts does); then the function not being deployed; then a 55000
- * refusal by its exact DETAIL; then 42501.
+ * reports.ts does); then a 55000 refusal by its exact DETAIL; then 42501.
+ * Anything else, a missing function (PGRST202) included, is "unknown".
  */
 export function mapValidateEmergencyResult(result: {
   data: unknown;
@@ -193,7 +193,13 @@ export function mapValidateEmergencyResult(result: {
 
   if (status === 0) return "unreachable";
   if (status === 401 || (error.code ?? "").startsWith("PGRST30")) return "session-expired";
-  if (error.code === FUNCTION_NOT_DEPLOYED) return "disabled";
+  // PGRST202 means OFF only for the switch read. Here the page already read
+  // the switch as on, so a missing function is unexpected: treating it as
+  // off would flip the buttons back and forth between the two flows.
+  if (error.code === FUNCTION_NOT_DEPLOYED) {
+    console.error("[validate_emergency_report] function not found while the switch reads on", error.code);
+    return "unknown";
+  }
 
   if (error.code === "55000") {
     const token = error.details ?? null;
@@ -211,6 +217,24 @@ export function mapValidateEmergencyResult(result: {
 export function isEmergencyDecisionDone(outcome: EmergencyValidationOutcome): boolean {
   return isOneOf(SUCCESS_OUTCOMES, outcome);
 }
+
+/**
+ * Refusals that mean the report has moved since the page loaded: the reject
+ * prompt closes and the queue refreshes. Only reason_required, transport
+ * failures and unknown answers keep the prompt open with its reason.
+ */
+export const MOVED_REFUSALS: readonly EmergencyValidationOutcome[] = [
+  "already_routed",
+  "cdrrmo_validated",
+  "already_validated",
+  "already_rejected",
+  "cdrrmo_rejected",
+  "handed_back",
+  "not_found",
+  "other_party_validated",
+  "not_emergency",
+  "refused",
+];
 
 /**
  * Whether the page must refresh after this answer: whenever something may

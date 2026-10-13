@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useToast } from "@/components/ui/Toast";
 import { validateEmergencyReport } from "@/app/actions/cdrrmoDispatch";
 import { callAction } from "@/lib/callAction";
-import { isEmergencyDecisionDone, type EmergencyValidationOutcome } from "@/lib/cdrrmo-dispatch";
+import { isEmergencyDecisionDone, MOVED_REFUSALS, type EmergencyValidationOutcome } from "@/lib/cdrrmo-dispatch";
 import { useT } from "@/lib/i18n";
 import { useCdrrmoDispatch } from "./CdrrmoDispatchContext";
 import type { Verdict } from "./useReportReview";
@@ -27,7 +27,8 @@ const NEUTRAL: EmergencyValidationOutcome[] = ["validated_no_open_agency", "over
  * Reject asks for a reason, as today. Both go to validate_emergency_report().
  *
  * The reject prompt stays open, with the reason in it, until the answer
- * arrives, and stays open after a refusal, so nothing typed is lost. Every
+ * arrives. It closes once the report is decided or has moved; it stays open
+ * only where retrying makes sense, so nothing typed is lost. Every
  * answer is worded from its code (cdrrmo.outcome.*). A refusal that says
  * the switch is off turns this page back to the usual flow.
  */
@@ -41,7 +42,11 @@ export function useEmergencyValidation(reportId: string, onResolved: (verdict: V
 
   function answer(outcome: EmergencyValidationOutcome) {
     const done = isEmergencyDecisionDone(outcome);
-    if (done || outcome === "disabled") setIsRejecting(false);
+    // The report moved (or the switch is off): the prompt has nothing left
+    // to decide, and the server action has refreshed the queue. Kept open,
+    // with the reason, only for reason_required, transport failures and
+    // unknown answers.
+    if (done || outcome === "disabled" || MOVED_REFUSALS.includes(outcome)) setIsRejecting(false);
     if (outcome === "disabled") dispatch.setActive(false);
     if (done && outcome !== "overridden") onResolved(outcome === "rejected" ? "rejected" : "validated");
     const tone = NEUTRAL.includes(outcome)

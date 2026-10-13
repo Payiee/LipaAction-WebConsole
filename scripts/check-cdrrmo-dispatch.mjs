@@ -20,6 +20,7 @@ const {
   partyDecisionsByReport,
   REFUSAL_TOKENS,
   DESK_REFUSALS,
+  MOVED_REFUSALS,
 } = mod;
 
 // The module logs unexpected answers on purpose; keep the run output clean.
@@ -85,7 +86,11 @@ for (const token of ["override_window_closed", "nothing_added", "predates_dispat
 }
 check("refusal: every contract token is mapped", REFUSAL_TOKENS.every((tk) => refuse(tk) !== "unknown"), true);
 check("off: 55000 + cdrrmo_dispatch_disabled", refuse("cdrrmo_dispatch_disabled"), "disabled");
-check("off: PGRST202 (not deployed)", mapValidateEmergencyResult({ data: null, error: { code: "PGRST202" }, status: 404 }), "disabled");
+// PGRST202 is OFF only for the switch read. From validate_emergency_report
+// (the page already read the switch as on) it is unknown: refresh, neutral
+// message, no flip back to the old flow.
+check("not off: PGRST202 from validate", mapValidateEmergencyResult({ data: null, error: { code: "PGRST202" }, status: 404 }), "unknown");
+check("PGRST202 from validate refreshes", refreshesQueue(mapValidateEmergencyResult({ data: null, error: { code: "PGRST202" }, status: 404 })), true);
 check("not off: 42883", mapValidateEmergencyResult({ data: null, error: { code: "42883" }, status: 404 }), "unknown");
 check("exact DETAIL only: token in message", mapValidateEmergencyResult({ data: null, error: { code: "55000", message: "x: already_validated", details: null }, status: 400 }), "unknown");
 check("exact DETAIL only: padded", refuse(" already_validated"), "unknown");
@@ -99,6 +104,14 @@ check("transport: 401", mapValidateEmergencyResult({ data: null, error: { code: 
 check("transport: PGRST301", mapValidateEmergencyResult({ data: null, error: { code: "PGRST301" }, status: 401 }), "session-expired");
 check("no refresh: invalid input", refreshesQueue("invalid"), false);
 check("no refresh: session expired", refreshesQueue("session-expired"), false);
+
+// --- Which refusals close the reject prompt (the report moved) ------------
+for (const token of ["already_routed", "cdrrmo_validated", "already_validated", "already_rejected", "cdrrmo_rejected", "handed_back", "not_found", "other_party_validated", "not_emergency"]) {
+  check(`prompt closes: ${token}`, MOVED_REFUSALS.includes(refuse(token)), true);
+}
+for (const kept of ["reason_required", "unreachable", "session-expired", "unknown"]) {
+  check(`prompt stays open: ${kept}`, MOVED_REFUSALS.includes(kept), false);
+}
 
 // --- Recording the barangay's validation of a routed report (B1) -----------
 const none = { barangay: null, cdrrmo: null };

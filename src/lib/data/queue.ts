@@ -234,10 +234,10 @@ export async function getBarangayQueue(
     loadRouting(supabase, pending, awaiting, routed),
     loadPositions(supabase, [...pending, ...awaiting, ...routed], "queue"),
     cdrrmoDispatch ? loadCdrrmoAgency(supabase) : Promise.resolve(null),
-    cdrrmoDispatch
-      ? loadPartyDecisions(supabase, [...awaiting, ...routed].map((r) => r.id))
-      : Promise.resolve(null),
-    cdrrmoDispatch ? countBarangayValidationsSince(supabase, dayStart) : Promise.resolve(null),
+    // Routed reports only: the decisions decide whether the desk may record
+    // its validation of a routed report; an awaiting one never needs them.
+    cdrrmoDispatch ? loadPartyDecisions(supabase, routed.map((r) => r.id)) : Promise.resolve(null),
+    cdrrmoDispatch ? countBarangayValidationsSince(supabase, barangayId, dayStart) : Promise.resolve(null),
   ]);
   const positionOf = (r: RawReport) => positions.get(r.id) ?? UNKNOWN_POSITION;
   const decisionsOf = (r: RawReport) => (decisions ? decisions.get(r.id) ?? { barangay: null, cdrrmo: null } : null);
@@ -362,16 +362,21 @@ async function loadPartyDecisions(
 
 /**
  * This barangay's own validations since `since`, from report_validations
- * (party 'barangay'). RLS scopes the rows to this barangay's reports. null
- * when the count fails.
+ * (party 'barangay'). report_validations has no barangay column, so the
+ * filter goes through its incident_report_id foreign key to the report's
+ * incident_barangay_id (an inner embed). RLS also scopes the rows to this
+ * barangay's reports; the filter is belt-and-suspenders, as in the queue
+ * reads. null when the count fails.
  */
 async function countBarangayValidationsSince(
   supabase: ReturnType<typeof createClient>,
+  barangayId: string,
   since: string
 ): Promise<number | null> {
   const { count, error } = await supabase
     .from("report_validations")
-    .select("incident_report_id", { count: "exact", head: true })
+    .select("incident_report_id, incident_reports!inner(incident_barangay_id)", { count: "exact", head: true })
+    .eq("incident_reports.incident_barangay_id", barangayId)
     .eq("party", "barangay")
     .eq("decision", "validated")
     .gte("created_at", since);
