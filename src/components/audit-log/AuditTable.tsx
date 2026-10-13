@@ -33,7 +33,6 @@ export const ACTION_LABELS: Record<string, MessageKey> = {
   report_rejected_cdrrmo: "audit.action.report_rejected_cdrrmo",
   report_reject_overridden_cdrrmo: "audit.action.report_reject_overridden_cdrrmo",
   report_agencies_added_cdrrmo: "audit.action.report_agencies_added_cdrrmo",
-  cdrrmo_media_view: "audit.action.cdrrmo_media_view",
 };
 
 const ACTION_TONES: Record<string, "neutral" | "brand" | "warning"> = {

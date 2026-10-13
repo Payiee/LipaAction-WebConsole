@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useToast } from "@/components/ui/Toast";
 import { validateEmergencyReport } from "@/app/actions/cdrrmoDispatch";
 import { callAction } from "@/lib/callAction";
-import { isEmergencyDecisionDone, MOVED_REFUSALS, type EmergencyValidationOutcome } from "@/lib/cdrrmo-dispatch";
+import { CLOSES_PROMPT, isEmergencyDecisionDone, type EmergencyValidationOutcome } from "@/lib/cdrrmo-dispatch";
 import { useT } from "@/lib/i18n";
 import { useCdrrmoDispatch } from "./CdrrmoDispatchContext";
 import type { Verdict } from "./useReportReview";
@@ -42,11 +42,11 @@ export function useEmergencyValidation(reportId: string, onResolved: (verdict: V
 
   function answer(outcome: EmergencyValidationOutcome) {
     const done = isEmergencyDecisionDone(outcome);
-    // The report moved (or the switch is off): the prompt has nothing left
-    // to decide, and the server action has refreshed the queue. Kept open,
-    // with the reason, only for reason_required, transport failures and
-    // unknown answers.
-    if (done || outcome === "disabled" || MOVED_REFUSALS.includes(outcome)) setIsRejecting(false);
+    // Done, the switch off, or the report moved (CLOSES_PROMPT): the prompt
+    // has nothing left to decide, and the server action has refreshed the
+    // queue. Kept open, with the reason, for reason_required, not-permitted,
+    // saved-unknown, unknown and the transport failures.
+    if (done || outcome === "disabled" || CLOSES_PROMPT.includes(outcome)) setIsRejecting(false);
     if (outcome === "disabled") dispatch.setActive(false);
     if (done && outcome !== "overridden") onResolved(outcome === "rejected" ? "rejected" : "validated");
     const tone = NEUTRAL.includes(outcome)

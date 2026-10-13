@@ -338,12 +338,16 @@ export function dispatchValidateCopy(
   t: Translate
 ): { title: string; description: string; confirmLabel: string } {
   if (mode === "record") {
-    // Already with its agencies: validating records the barangay's word and
-    // routes nothing.
+    // Already routed. Two cases, as validate_emergency_report() tells them
+    // apart: never reviewed (auto-routed by CARD or CRIT-ESC), where the
+    // desk's validation also adds any missing default agency (returns
+    // 'routed'); or validated by CDRRMO, whose stamp it carries, where it
+    // only records (returns 'recorded').
+    const autoRouted = report.details.reviewedAt === null;
     return {
       title: t("cdrrmo.validateTitle", { id: report.id }),
-      description: t("cdrrmo.recordDescription"),
-      confirmLabel: t("cdrrmo.recordConfirm"),
+      description: t(autoRouted ? "cdrrmo.autoDescription" : "cdrrmo.recordDescription"),
+      confirmLabel: t(autoRouted ? "review.validate" : "cdrrmo.recordConfirm"),
     };
   }
   return {
@@ -358,8 +362,10 @@ export function dispatchValidateCopy(
  * dispatch is on (backend binding items 18-20 and the spec's state table):
  * - send: validated, and no agency has ever held it (a report validated the
  *   old way before the switch went on). validate_emergency_report() routes it.
- * - record: routed without this barangay's validation (auto-routed, or
- *   routed after CDRRMO validated). Validating records it, routing nothing.
+ * - record: routed without this barangay's validation. Auto-routed and
+ *   never reviewed: validating also adds any missing default agency,
+ *   CDRRMO included ('routed'). Routed after CDRRMO validated: it only
+ *   records ('recorded').
  * - partial: validated with some agency rows from before the switch. The
  *   function refuses it (already_validated); only CDRRMO can add agencies.
  * - handedBack: every agency sent it back. CDRRMO sends it on, not the desk.

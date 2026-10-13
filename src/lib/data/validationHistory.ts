@@ -272,7 +272,8 @@ async function loadPartyDecisions(
  * The barangay's own row, when there is one, is the decision this page
  * shows: its verdict, its official, its reason, whatever CDRRMO did after
  * (a later CDRRMO rejection shows as the resolution, [Rejected by CDRRMO
- * after routing]). With only a CDRRMO row, the record is CDRRMO's: labelled
+ * after routing]; a CDRRMO override of the barangay's rejection as [Sent on
+ * by CDRRMO after your rejection]). With only a CDRRMO row, the record is CDRRMO's: labelled
  * [Validated by CDRRMO] / [Rejected by CDRRMO] instead of an official, and
  * marked decidedBy so no figure counts it as the barangay's.
  */
@@ -299,7 +300,11 @@ function withPartyDecisions(
       reasonCode: parsed?.code ?? null,
       reasonNote: parsed?.note,
       resolution:
-        confirmed && r.status === "rejected" && cdrrmo?.decision === "rejected" ? "rejectedByCdrrmo" : record.resolution,
+        confirmed && r.status === "rejected" && cdrrmo?.decision === "rejected"
+          ? "rejectedByCdrrmo"
+          : !confirmed && cdrrmo?.decision === "validated"
+            ? "overriddenByCdrrmo"
+            : record.resolution,
     };
   }
   if (cdrrmo) {

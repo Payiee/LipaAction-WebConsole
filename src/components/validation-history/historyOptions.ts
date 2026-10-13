@@ -15,6 +15,7 @@ export const RESOLUTION_ORDER: ResolutionStatus[] = [
   "duplicate",
   "returned",
   "rejectedByCdrrmo",
+  "overriddenByCdrrmo",
 ];
 
 export const RESOLUTION_LABELS: Record<ResolutionStatus, MessageKey> = {
@@ -26,4 +27,5 @@ export const RESOLUTION_LABELS: Record<ResolutionStatus, MessageKey> = {
   duplicate: "history.resolution.duplicate",
   returned: "history.resolution.returned",
   rejectedByCdrrmo: "history.resolution.rejectedByCdrrmo",
+  overriddenByCdrrmo: "history.resolution.overriddenByCdrrmo",
 };

@@ -240,7 +240,11 @@ export async function getBarangayQueue(
     cdrrmoDispatch ? countBarangayValidationsSince(supabase, barangayId, dayStart) : Promise.resolve(null),
   ]);
   const positionOf = (r: RawReport) => positions.get(r.id) ?? UNKNOWN_POSITION;
-  const decisionsOf = (r: RawReport) => (decisions ? decisions.get(r.id) ?? { barangay: null, cdrrmo: null } : null);
+  // Only routed reports had their decisions read; an awaiting one carries
+  // null (not read), never an empty decision pair.
+  const routedIds = new Set(routed.map((r) => r.id));
+  const decisionsOf = (r: RawReport) =>
+    decisions && routedIds.has(r.id) ? decisions.get(r.id) ?? { barangay: null, cdrrmo: null } : null;
 
   const emergency = pending
     .filter((r) => r.entry_tier === "emergency")

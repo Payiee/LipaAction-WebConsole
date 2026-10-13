@@ -258,7 +258,10 @@ export type ResolutionStatus =
   | "returned"
   // Validated by this barangay, then rejected by the city's CDRRMO after it
   // was routed (CDRRMO dispatch).
-  | "rejectedByCdrrmo";
+  | "rejectedByCdrrmo"
+  // Rejected by this barangay, then validated and sent on by the city's
+  // CDRRMO within its 24-hour override window (CDRRMO dispatch).
+  | "overriddenByCdrrmo";
 
 export interface ValidationSummary {
   total: number;

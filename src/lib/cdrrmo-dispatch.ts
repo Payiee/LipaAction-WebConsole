@@ -1,6 +1,6 @@
 /**
  * CDRRMO dispatch v2, the barangay desk's side (backend spec
- * docs/specs/2026-10-14-cdrrmo-dispatch-design.md, section 5 row D).
+ * docs/specs/2026-10-14-cdrrmo-dispatch-v2-design.md, section 5 row D).
  *
  * With the backend's switch on, an Emergency report is no longer validated
  * and then routed by hand here. The desk validates or rejects it through one
@@ -13,7 +13,9 @@
  * file, and nothing here imports from the app, so scripts/check-cdrrmo-
  * dispatch.mjs can check it under plain Node.
  *
- * THE CONTRACT (backend PR A binding items 7, 13, 18 and 19):
+ * THE CONTRACT (backend PR A binding items 7, 13, 18 and 19; verified
+ * against SuryaZZDev/LipaAction#347 at 23d7dfe, migration
+ * 20261129090000_cdrrmo_dispatch.sql):
  * - cdrrmo_dispatch_enabled(): no arguments, returns a boolean. The console
  *   reads it once per page load and FAILS CLOSED: an error, a function not
  *   deployed yet (PGRST202) or anything but a literal true is OFF, and the
@@ -99,10 +101,15 @@ export function isCdrrmoDispatchActiveError(error: { message?: string } | null |
 export const SUCCESS_OUTCOMES = ["routed", "recorded", "validated_no_open_agency", "rejected", "overridden"] as const;
 export type EmergencySuccess = (typeof SUCCESS_OUTCOMES)[number];
 
-/** Every refusal token in the contract (binding items 18-19), as DETAIL. */
+/**
+ * Every refusal token the dispatch functions raise (PR A at 23d7dfe), as
+ * DETAIL. not_routable and nothing_added come from cdrrmo_add_agencies
+ * only; override_window_closed and predates_dispatch from CDRRMO's calls.
+ */
 export const REFUSAL_TOKENS = [
   "already_validated",
   "already_rejected",
+  "already_resolved",
   "cdrrmo_validated",
   "cdrrmo_rejected",
   "already_routed",
@@ -110,7 +117,7 @@ export const REFUSAL_TOKENS = [
   "override_window_closed",
   "cdrrmo_dispatch_disabled",
   "nothing_added",
-  "other_party_validated",
+  "not_routable",
   "not_emergency",
   "not_found",
   "reason_required",
@@ -120,17 +127,18 @@ export type RefusalToken = (typeof REFUSAL_TOKENS)[number];
 
 /**
  * Refusals the barangay desk can meet and has its own words for. The rest
- * (override_window_closed, nothing_added, predates_dispatch) answer CDRRMO's
- * calls only; if one ever reached the desk it reads as "refused".
+ * (override_window_closed, nothing_added, not_routable, predates_dispatch)
+ * answer CDRRMO's calls only; if one ever reached the desk it reads as
+ * "refused".
  */
 export const DESK_REFUSALS = [
   "already_validated",
   "already_rejected",
+  "already_resolved",
   "cdrrmo_validated",
   "cdrrmo_rejected",
   "already_routed",
   "handed_back",
-  "other_party_validated",
   "not_emergency",
   "not_found",
   "reason_required",
@@ -219,19 +227,22 @@ export function isEmergencyDecisionDone(outcome: EmergencyValidationOutcome): bo
 }
 
 /**
- * Refusals that mean the report has moved since the page loaded: the reject
- * prompt closes and the queue refreshes. Only reason_required, transport
- * failures and unknown answers keep the prompt open with its reason.
+ * Answers that close the reject prompt: refusals meaning the report has
+ * moved since the page loaded (the queue refreshes), plus "refused", a
+ * CDRRMO-only token that leaves nothing for the desk to retry. Everything
+ * else that isn't done or "disabled" (reason_required, not-permitted,
+ * saved-unknown, unknown and the transport failures) keeps the prompt open
+ * with its reason.
  */
-export const MOVED_REFUSALS: readonly EmergencyValidationOutcome[] = [
+export const CLOSES_PROMPT: readonly EmergencyValidationOutcome[] = [
   "already_routed",
   "cdrrmo_validated",
   "already_validated",
   "already_rejected",
+  "already_resolved",
   "cdrrmo_rejected",
   "handed_back",
   "not_found",
-  "other_party_validated",
   "not_emergency",
   "refused",
 ];

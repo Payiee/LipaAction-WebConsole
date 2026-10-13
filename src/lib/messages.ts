@@ -299,9 +299,18 @@ export const MESSAGES = {
       "Hindi na ito mababawi mula sa console na ito.",
   },
   "cdrrmo.validateConfirm": { en: "Validate and send", tl: "I-validate at ipasa" },
+  // A routed report the city's CDRRMO validated: the desk's validation is
+  // recorded and nothing about the routing changes (returns 'recorded').
   "cdrrmo.recordDescription": {
-    en: "Records that your barangay validated it. Agencies already sent to keep it; any default agency still missing is added.",
-    tl: "Itatala na na-validate ito ng inyong barangay. Mananatili ito sa mga ahensyang napasahan na; idaragdag ang anumang default na ahensyang kulang pa.",
+    en: "The city's CDRRMO already validated it and it is with its agencies. This records that your barangay validated it too; nothing about its routing changes.",
+    tl: "Na-validate na ito ng CDRRMO ng lungsod at nasa mga ahensya na ito. Itatala nito na na-validate rin ito ng inyong barangay; walang magbabago sa pagpasa nito.",
+  },
+  // A report sent to agencies automatically, before any review: validating
+  // records the review and adds any default agency still missing, CDRRMO
+  // included (returns 'routed').
+  "cdrrmo.autoDescription": {
+    en: "It was sent to agencies automatically, before any review. Validating records your barangay's review and adds any default agency still missing, CDRRMO included. Agencies already sent to keep it.",
+    tl: "Awtomatiko itong naipasa sa mga ahensya bago masuri. Itatala ng pag-validate ang pagsusuri ng inyong barangay at idaragdag ang anumang default na ahensyang kulang pa, kasama ang CDRRMO. Mananatili ito sa mga ahensyang napasahan na.",
   },
   "cdrrmo.recordConfirm": { en: "Record validation", tl: "Itala ang validation" },
   "cdrrmo.notValidatedHere": {
@@ -375,6 +384,10 @@ export const MESSAGES = {
     en: "Your barangay already validated this report. Nothing more is needed here.",
     tl: "Na-validate na ng inyong barangay ang ulat na ito. Wala nang kailangang gawin dito.",
   },
+  "cdrrmo.outcome.already_resolved": {
+    en: "This report is already resolved.",
+    tl: "Nalutas na ang ulat na ito.",
+  },
   "cdrrmo.outcome.already_rejected": {
     en: "This report was already rejected.",
     tl: "Natanggihan na ang ulat na ito.",
@@ -394,10 +407,6 @@ export const MESSAGES = {
   "cdrrmo.outcome.handed_back": {
     en: "Every agency sent this report back. Only the city's CDRRMO can send it to another agency; contact CDRRMO if it needs action.",
     tl: "Ibinalik ng lahat ng ahensya ang ulat na ito. Ang CDRRMO ng lungsod lang ang makakapagpasa nito sa ibang ahensya; makipag-ugnayan sa CDRRMO kung kailangan itong aksyunan.",
-  },
-  "cdrrmo.outcome.other_party_validated": {
-    en: "The city's CDRRMO has already decided on this report. The queue has been refreshed to show where it stands.",
-    tl: "May desisyon na ang CDRRMO ng lungsod sa ulat na ito. Na-refresh ang pila para makita ang kalagayan nito.",
   },
   "cdrrmo.outcome.not_emergency": {
     en: "This isn't an Emergency report, so it's validated the usual way. The queue has been refreshed.",
@@ -765,6 +774,10 @@ export const MESSAGES = {
   "history.resolution.duplicate": { en: "Closed as a duplicate", tl: "Isinara bilang doble" },
   "history.resolution.returned": { en: "Returned out of scope", tl: "Ibinalik, labas sa saklaw" },
   "history.resolution.rejectedByCdrrmo": { en: "Rejected by CDRRMO after routing", tl: "Tinanggihan ng CDRRMO matapos maipasa" },
+  "history.resolution.overriddenByCdrrmo": {
+    en: "Sent on by CDRRMO after your rejection",
+    tl: "Ipinasa ng CDRRMO matapos ninyong tanggihan",
+  },
   "history.export": { en: "Export CSV", tl: "I-export ang CSV" },
   "history.exportNothing": {
     en: "Nothing to export with these filters",
