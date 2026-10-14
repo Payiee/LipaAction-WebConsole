@@ -14,8 +14,10 @@ import type { QueueReport } from "@/types";
  * - send (no agency holds it yet): the agency checklist, as for any report
  *   (owner decision Q4, the barangay checklist wins). The ticks go to
  *   validate_emergency_report() in tick order, and CDRRMO always goes too.
- *   With no list to offer (agencyChecklist's options null or empty), a plain
- *   confirmation instead: validating without ticks sends it to CDRRMO alone.
+ *   A recalled report may go with no tick (dispatchChecklistCopy).
+ *   With no list to offer, a plain confirmation instead, validating without
+ *   ticks; dispatchNoChecklistCopy words apart a list that didn't load
+ *   (options null) and one with nothing left to tick (options []).
  * - record (already with its agencies): a plain confirmation, no list.
  */
 export function EmergencyValidationDialog({
@@ -42,10 +44,11 @@ export function EmergencyValidationDialog({
   }
 
   const checklist = agencyChecklist(report);
-  if (!checklist.options || checklist.options.length === 0) {
+  // null: the list didn't load. []: every agency already holds the report.
+  if (checklist.options === null || checklist.options.length === 0) {
     return (
       <ConfirmModal
-        {...dispatchNoChecklistCopy(report, cdrrmoAgency, t)}
+        {...dispatchNoChecklistCopy(report, checklist.options, cdrrmoAgency, t)}
         busy={emergency.isPending}
         onCancel={emergency.cancelConfirm}
         onConfirm={emergency.validate}

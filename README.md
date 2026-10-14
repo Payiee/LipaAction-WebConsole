@@ -318,8 +318,9 @@ In each case the console shows nothing rather than an approximation.
   With CDRRMO dispatch switched on, the list applies to emergencies too (owner decision
   Q4): Validate opens it, and the database routes the agencies ticked as it validates,
   the first one leading, and always adds CDRRMO, as a supporting agency unless ticked.
-  With nothing ticked, which the console sends only when the agency list could not be
-  loaded, it goes to CDRRMO alone, which can pass it on. An emergency already with its
+  With nothing ticked, which the console sends for a recalled report or when the agency
+  list could not be loaded, the database adds CDRRMO alone, which can pass it on. An
+  emergency already with its
   agencies when the barangay validates it gets no list. An official also chooses the
   agencies for a report that every agency
   closed as out of scope: the database returns it to the barangay as validated, and the
@@ -335,9 +336,12 @@ In each case the console shows nothing rather than an approximation.
   Recall button while it is open (Critical 5 minutes, High 15, a responder's report 15
   for any class below Critical); after the window, or once an agency has sent a unit,
   Record recall in the drawer only records the attempt. A recalled report returns to the
-  Emergency tab as pending. Once validated it shows as Routing incomplete, its agencies
-  marked recalled, and Finish routing sends it back to them
-  (the backend reopens their rows); choosing other agencies for it is not built. Its other automatic routing (for high-confidence
+  Emergency tab as pending. With CDRRMO dispatch on, Validate opens the agency list: the
+  report goes back to the agencies it was recalled from, its old lead still leading,
+  plus any others ticked (none are needed) and CDRRMO. With dispatch off, once validated
+  it shows as Routing incomplete, its agencies marked recalled, and Finish routing sends
+  it back to them (the backend reopens their rows); choosing other agencies for it is
+  not built there. Its other automatic routing (for high-confidence
   emergencies) stays switched off.
 - **Rejection categories are stored inside the reason text.** The database has one
   free-text reason per decision and no category column, so the category is saved as a

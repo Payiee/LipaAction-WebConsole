@@ -9,9 +9,12 @@
  * wins"; backend migration 20261208090000) a validation carries the agencies
  * the desk ticked, in tick order, from the same checklist every other report
  * uses: the first new tick leads, and CDRRMO is always added, as a supporting
- * agency when it wasn't ticked. With no ticks the database sends it to CDRRMO
- * alone, as the lead. A report already with its agencies is validated without
- * a list. Other-reports are unchanged: the desk routes them itself.
+ * agency when it wasn't ticked. With no ticks the database adds CDRRMO alone,
+ * as the lead unless the report already has an open one. A recalled report
+ * also goes back to the agencies it was recalled from, its old lead keeping
+ * the lead, so it may be validated with no tick. A report already with its
+ * agencies is validated without a list. Other-reports are unchanged: the desk
+ * routes them itself.
  *
  * Everything the console needs to know about the switch lives in this one
  * file, and nothing here imports from the app, so scripts/check-cdrrmo-
@@ -80,8 +83,11 @@ export function checklistAgencyIds(decision: string, agencyIds: unknown): string
   if (agencyIds.length === 0) return [];
   if (decision !== "validated") return null;
   if (agencyIds.length > MAX_CHECKLIST_AGENCIES) return null;
-  if (!agencyIds.every((id) => typeof id === "string" && UUID_SHAPE.test(id))) return null;
-  return [...new Set((agencyIds as string[]).map((id) => id.toLowerCase()))];
+  // Array.from turns a hole in a sparse array into undefined, which the check
+  // below refuses; every() and map() on the array itself would skip it.
+  const ids: unknown[] = Array.from(agencyIds);
+  if (!ids.every((id) => typeof id === "string" && UUID_SHAPE.test(id))) return null;
+  return [...new Set((ids as string[]).map((id) => id.toLowerCase()))];
 }
 
 /**

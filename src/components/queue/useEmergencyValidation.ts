@@ -99,7 +99,8 @@ export function useEmergencyValidation(reportId: string, onResolved: (verdict: V
     // No list: the record case, and the send case with no checklist to offer.
     // Takes no argument on purpose: ConfirmModal passes its click event.
     validate: () => run("validated"),
-    // The send case's checklist (AgencyPickerModal): the ticks, in order.
+    // The send case's checklist (AgencyPickerModal): the ticks, in order; []
+    // for a recalled report validated with none, which sends no list.
     validateWith: (agencyIds: string[]) => run("validated", undefined, agencyIds),
     reject: (reason: string) => run("rejected", reason),
   };

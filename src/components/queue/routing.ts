@@ -361,79 +361,141 @@ export function dispatchRecordCopy(
 }
 
 /**
- * Copy for the checklist Validate opens on an Emergency report no agency
- * holds yet while CDRRMO dispatch is on (dispatchPastReview's "send"; owner
- * decision Q4, the barangay checklist wins). The same wording as a validated
- * report's [Route to agency] list, titled as the validation it also is, plus
- * dispatchChecklistNote's line. Confirming validates and routes at once.
- * A report every agency sent back (back for review after an automatic
- * routing) gets the [Route to another agency] wording instead, naming who
- * returned it: its mapped agencies are those, and aren't offered again.
+ * Copy and settings for the checklist Validate opens on an Emergency report
+ * no agency holds yet while CDRRMO dispatch is on (dispatchPastReview's
+ * "send"; owner decision Q4, the barangay checklist wins). Confirming
+ * validates and routes at once. Three wordings:
+ * - usual: a validated report's [Route to agency] list, titled as the
+ *   validation it also is;
+ * - every agency sent it back (back for review after an automatic routing):
+ *   the [Route to another agency] wording, naming who returned it (its mapped
+ *   agencies are those, and aren't offered again);
+ * - recalled by the desk: validating reopens the rows of the agencies it was
+ *   recalled from whatever is ticked, and an old lead among them keeps the
+ *   lead (the database never demotes an open lead). So the callout says who
+ *   gets it back, no tick is needed (none is the three-argument call), and
+ *   while that lead is reopened nothing says the first tick leads.
+ * The button counts every agency the validation sends it to
+ * (dispatchSendCount), CDRRMO included when it will be added.
  */
 export function dispatchChecklistCopy(
   report: QueueReport,
   checklist: Extract<RoutingState, { kind: "choose" }>,
   cdrrmo: RoutingOption | null,
   t: Translate
-): { title: string; description: string; hint: string; note: string; confirmLabel: (agencies: string) => string } {
+): {
+  title: string;
+  description: string;
+  hint: string;
+  callout?: string;
+  note: string;
+  allowNone: boolean;
+  markLead: boolean;
+  confirmLabel: (chosen: string[]) => string;
+} {
   const { routing } = report.details;
-  const { description, hint } = everyAgencyReturned(routing)
-    ? {
-        description: rerouteCopy(report, { kind: "returned", routing, options: checklist.options }, t).description,
-        hint: t("reroute.leadHint"),
-      }
-    : chooseCopy(report, checklist, t);
+  const recalled = recalledNote(report, t);
+  const { description, hint } = recalled
+    ? { description: t("cdrrmo.recalledDescription") + discreetNote(report, t), hint: t("cdrrmo.recalledHint") }
+    : everyAgencyReturned(routing)
+      ? {
+          description: rerouteCopy(report, { kind: "returned", routing, options: checklist.options }, t).description,
+          hint: t("reroute.leadHint"),
+        }
+      : chooseCopy(report, checklist, t);
   return {
     title: t("cdrrmo.validateTitle", { id: report.id }),
     description,
     hint,
-    note: dispatchChecklistNote(report, cdrrmo, t),
-    confirmLabel: (agencies) => t("cdrrmo.checklistConfirm", { agencies }),
+    callout: recalled || undefined,
+    note: cdrrmoNote(report, cdrrmo, t),
+    allowNone: recalled !== "",
+    markLead: !recalledRows(report).some((r) => r.isPrimary),
+    confirmLabel: (chosen) =>
+      t("cdrrmo.checklistConfirm", { agencies: agencyCount(dispatchSendCount(report, chosen, cdrrmo), t) }),
   };
 }
 
 /**
- * Copy for the send case when there is no checklist to offer: the agency
- * list wasn't loaded (the read failed, or this page turned CDRRMO dispatch on
- * from a write's answer, after the loader ran). Validating without ticks
- * sends the report to CDRRMO alone, as the lead (the database's fallback),
- * so an emergency is never held up by a secondary read.
+ * Copy for the send case when there is no checklist to offer. Validating
+ * then sends no ticks (the three-argument call), and the database adds
+ * CDRRMO alone, unless CDRRMO already holds a row. Two reasons, worded apart:
+ * - options null: the agency list wasn't loaded (the read failed, or this
+ *   page turned CDRRMO dispatch on from a write's answer, after the loader
+ *   ran). An emergency is never held up by a secondary read.
+ * - options []: every agency already holds a row, so none is left to tick.
+ * A recalled report also goes back to the agencies it was recalled from.
  */
 export function dispatchNoChecklistCopy(
   report: QueueReport,
+  options: RoutingOption[] | null,
   cdrrmo: RoutingOption | null,
   t: Translate
 ): { title: string; description: string; confirmLabel: string } {
+  const recalled = recalledNote(report, t);
+  const why =
+    options === null
+      ? t("cdrrmo.noChecklistDescription", { cdrrmo: cdrrmoName(cdrrmo) })
+      : t("cdrrmo.noOtherAgencyDescription");
   return {
     title: t("cdrrmo.validateTitle", { id: report.id }),
-    description: t("cdrrmo.noChecklistDescription", { cdrrmo: cdrrmoName(cdrrmo) }) + discreetNote(report, t),
-    confirmLabel: t("cdrrmo.validateConfirm"),
+    description: why + (recalled ? ` ${recalled}` : "") + discreetNote(report, t),
+    confirmLabel: t(options === null ? "cdrrmo.validateConfirm" : "review.validate"),
   };
 }
 
 /**
- * The checklist's extra line, in the picker and in the drawer's preview, read
- * from the rows and options the queue already loaded (no query):
- * - [CDRRMO is always included ...], unless CDRRMO already holds a row on
- *   this report: it is then missing from the options (named agencies minus
- *   those holding a row), and the database doesn't add it again, so the
- *   line would be false. A recalled CDRRMO is named by the next sentence.
- * - for a report the desk recalled (wasRecalled's rule; recallView imports
- *   this file, so it isn't imported here), who it was recalled from: the
- *   validation's move to routed reopens their rows whatever is ticked
- *   (backend 20261031090000, reopen_recalled_routing_on_route).
+ * The drawer's preview of the checklist's lines, read from the rows and
+ * options the queue already loaded (no query): the CDRRMO note, and who a
+ * recalled report goes back to.
  */
 export function dispatchChecklistNote(report: QueueReport, cdrrmo: RoutingOption | null, t: Translate): string {
+  return [cdrrmoNote(report, cdrrmo, t), recalledNote(report, t)].filter(Boolean).join(" ");
+}
+
+// The rows the desk recalled (wasRecalled's rule; recallView imports this
+// file, so it isn't imported here). Validating moves the report to routed,
+// which reopens them all whatever is ticked, each keeping its lead flag
+// (backend 20261031090000, reopen_recalled_routing_on_route).
+function recalledRows(report: QueueReport): AgencyRouting[] {
+  return report.details.routing.filter((r) => r.resolutionOutcome === "recalled");
+}
+
+// [It was recalled from BFP (lead), PNP, so it goes back to them too.], or ""
+// for a report that wasn't recalled.
+function recalledNote(report: QueueReport, t: Translate): string {
+  const rows = recalledRows(report);
+  if (rows.length === 0) return "";
+  const names = rows.map((r) => (r.isPrimary ? `${r.agencyName} ${t("routing.lead")}` : r.agencyName)).join(", ");
+  return t("cdrrmo.checklistRecalled", { names });
+}
+
+// Whether CDRRMO already holds a row on this report, as far as the loaded
+// data tells: it is then missing from the options (named agencies minus
+// those holding a row). false when that can't be told.
+function cdrrmoHoldsRow(report: QueueReport, cdrrmo: RoutingOption | null): boolean {
   const { routing, routingOptions } = report.details;
-  const cdrrmoHeld =
+  return (
     cdrrmo !== null &&
     routing.length > 0 &&
     routingOptions !== null &&
-    !routingOptions.some((o) => o.agencyId === cdrrmo.agencyId);
-  const lines = cdrrmoHeld ? [] : [t("cdrrmo.checklistNote", { cdrrmo: cdrrmoName(cdrrmo) })];
-  const recalledFrom = routing.filter((r) => r.resolutionOutcome === "recalled").map((r) => r.agencyName);
-  if (recalledFrom.length > 0) lines.push(t("cdrrmo.checklistRecalled", { names: recalledFrom.join(", ") }));
-  return lines.join(" ");
+    !routingOptions.some((o) => o.agencyId === cdrrmo.agencyId)
+  );
+}
+
+// [CDRRMO is always included ...], or "" when CDRRMO already holds a row: the
+// database doesn't add it again (a recalled CDRRMO is named in recalledNote).
+function cdrrmoNote(report: QueueReport, cdrrmo: RoutingOption | null, t: Translate): string {
+  return cdrrmoHoldsRow(report, cdrrmo) ? "" : t("cdrrmo.checklistNote", { cdrrmo: cdrrmoName(cdrrmo) });
+}
+
+// How many agencies a validation with these ticks sends the report to: the
+// ticks (the list never offers an agency that holds a row), the agencies it
+// was recalled from, reopened, and CDRRMO when it will be added (known, not
+// ticked, holding no row).
+function dispatchSendCount(report: QueueReport, chosen: readonly string[], cdrrmo: RoutingOption | null): number {
+  const cdrrmoAdded = cdrrmo !== null && !chosen.includes(cdrrmo.agencyId) && !cdrrmoHoldsRow(report, cdrrmo);
+  return chosen.length + recalledRows(report).length + (cdrrmoAdded ? 1 : 0);
 }
 
 // The loader names CDRRMO from agencies.code = 'cdrrmo'; null when that read

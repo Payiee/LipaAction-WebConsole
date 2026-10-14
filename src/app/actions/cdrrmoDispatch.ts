@@ -18,9 +18,10 @@ import {
  * the database routes the report in the same transaction; there is no
  * separate routing step. agencyIds are the agencies the desk ticked, in tick
  * order (owner decision Q4): the first new one leads and CDRRMO is always
- * added. Without ticks (the record case, or no agency list to offer) the
- * call has no list, and the database sends a report no agency holds yet to
- * CDRRMO alone.
+ * added. Without ticks (the record case, a recalled report validated with
+ * none, or no agency list to offer) the call has no list, and the database
+ * adds CDRRMO alone; a recalled report also goes back to the agencies it was
+ * recalled from.
  *
  * A public POST endpoint like every action in reports.ts, so the input is
  * proven first, with the same reason rules as a review_report() rejection:

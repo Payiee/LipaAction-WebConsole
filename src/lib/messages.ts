@@ -288,24 +288,50 @@ export const MESSAGES = {
     en: "{cdrrmo} is always included: if you don't tick it, it's added as a supporting agency.",
     tl: "Laging kasama ang {cdrrmo}: kung hindi mo ito i-tsek, idaragdag ito bilang katuwang na ahensya.",
   },
-  // Added to the note for a report the desk recalled: the database reopens the
-  // recalled agencies' rows when the validation routes it, whatever is ticked.
+  // For a report the desk recalled (the checklist's callout, the drawer's
+  // preview, the no-list confirmations): the database reopens the recalled
+  // agencies' rows when the validation routes it, whatever is ticked. {names}
+  // marks the old lead with routing.lead.
   "cdrrmo.checklistRecalled": {
     en: "It was recalled from {names}, so it goes back to them too.",
     tl: "Binawi ito mula sa {names}, kaya babalik din ito sa kanila.",
   },
   "cdrrmo.checklistConfirm": { en: "Validate and send to {agencies}", tl: "I-validate at ipasa sa {agencies}" },
   // The same step with no list to offer: the call sends no ticks, and the
-  // database sends the report to CDRRMO alone.
+  // database adds CDRRMO alone (a recalled report also goes back to the
+  // agencies it was recalled from: cdrrmo.checklistRecalled is appended).
   "cdrrmo.noChecklistDescription": {
     en:
       "The agency list wasn't loaded, so agencies can't be ticked right now. " +
-      "Validating sends it to {cdrrmo} alone, which can pass it on to other agencies. " +
+      "Validating adds only {cdrrmo}, which can pass it on to other agencies. " +
       "To choose the agencies, refresh the page first. This can't be undone from this console.",
     tl:
       "Hindi na-load ang listahan ng ahensya, kaya hindi pa makakapag-tsek ng ahensya ngayon. " +
-      "Kapag na-validate, sa {cdrrmo} lamang ito ipapasa, na maaaring magpasa nito sa ibang ahensya. " +
+      "Ang {cdrrmo} lamang ang idaragdag ng pag-validate, at maaari nitong ipasa ito sa ibang ahensya. " +
       "Para makapili ng mga ahensya, i-refresh muna ang page. Hindi na ito mababawi mula sa console na ito.",
+  },
+  // The list loaded but every agency already holds the report: nothing is
+  // left to tick, and the database adds no agency.
+  "cdrrmo.noOtherAgencyDescription": {
+    en:
+      "Every agency has already had this report, so there is no other agency to tick. " +
+      "Validating records your barangay's review; only CDRRMO can add agencies after that. " +
+      "This can't be undone from this console.",
+    tl:
+      "Nagkaroon na ng ulat na ito ang lahat ng ahensya, kaya wala nang ibang ahensyang mai-tsek. " +
+      "Itatala ng pag-validate ang pagsusuri ng inyong barangay; ang CDRRMO na lang ang makakapagdagdag ng ahensya pagkatapos nito. " +
+      "Hindi na ito mababawi mula sa console na ito.",
+  },
+  // The checklist for a report the desk recalled: it goes back to the agencies
+  // it was recalled from whatever is ticked (cdrrmo.checklistRecalled, shown
+  // above the list), and the old lead keeps the lead, so ticks only add.
+  "cdrrmo.recalledDescription": {
+    en: "Tick any other agencies it should go to, or none. Routing can't be undone from this console.",
+    tl: "I-tsek ang iba pang ahensyang dapat pagpasahan nito, o huwag nang mag-tsek. Hindi na mababawi ang pagpasa mula sa console na ito.",
+  },
+  "cdrrmo.recalledHint": {
+    en: "Nothing is ticked for you; you can choose more than one.",
+    tl: "Walang naka-tsek nang kusa; maaaring pumili ng higit sa isa.",
   },
   // The drawer, before the decision: where it goes once validated.
   "cdrrmo.previewChecklist": {

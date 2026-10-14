@@ -166,6 +166,9 @@ check("list: a number refused", checklistAgencyIds("validated", [A, 5]), null);
 check("list: a null entry refused", checklistAgencyIds("validated", [A, null]), null);
 check("list: a string, not a list, refused", checklistAgencyIds("validated", A), null);
 check("list: an object refused", checklistAgencyIds("validated", { 0: A }), null);
+// A hole in a sparse array is refused: every() and map() alone would skip it.
+check("list: a hole in a sparse array refused", checklistAgencyIds("validated", [A, , B]), null);
+check("list: an array of holes refused", checklistAgencyIds("validated", new Array(2)), null);
 check("list: never with a reject", checklistAgencyIds("rejected", [A]), null);
 check("list: a reject without ticks is fine", checklistAgencyIds("rejected", []), []);
 check("list: a reject with none is fine", checklistAgencyIds("rejected", undefined), []);
