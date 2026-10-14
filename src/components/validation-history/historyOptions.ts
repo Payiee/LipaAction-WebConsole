@@ -5,6 +5,15 @@ import type { ResolutionStatus } from "@/types";
 // tier: an unscored report isn't Low.
 export const NOT_SCORED = "not-scored";
 
+/**
+ * The official column's value when the barangay decided but its official
+ * can't be named: CDRRMO re-stamped the report's review (an override, or a
+ * reject after routing), so reviewed_by is CDRRMO's, and report_validations
+ * doesn't expose its actor. Shown translated (history.yourBarangay); the CSV
+ * keeps this English text.
+ */
+export const YOUR_BARANGAY = "Your barangay";
+
 // The resolution outcomes, in the order a report moves through them.
 export const RESOLUTION_ORDER: ResolutionStatus[] = [
   "notRouted",

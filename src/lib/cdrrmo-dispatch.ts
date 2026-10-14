@@ -14,7 +14,7 @@
  * dispatch.mjs can check it under plain Node.
  *
  * THE CONTRACT (backend PR A binding items 7, 13, 18 and 19; verified
- * against SuryaZZDev/LipaAction#347 at 23d7dfe, migration
+ * against SuryaZZDev/LipaAction#347 at 81768ff, migration
  * 20261129090000_cdrrmo_dispatch.sql):
  * - cdrrmo_dispatch_enabled(): no arguments, returns a boolean. The console
  *   reads it once per page load and FAILS CLOSED: an error, a function not
@@ -255,6 +255,21 @@ export const CLOSES_PROMPT: readonly EmergencyValidationOutcome[] = [
 export function refreshesQueue(outcome: EmergencyValidationOutcome): boolean {
   return outcome !== "invalid" && outcome !== "session-expired";
 }
+
+/**
+ * The report_validations columns `authenticated` may SELECT (PR A at
+ * 81768ff: `grant select (id, incident_report_id, party, decision, reason,
+ * created_at)`). `actor` is NOT among them: naming it fails the whole read
+ * with permission denied. Every select below stays inside this list, and
+ * scripts/check-cdrrmo-dispatch.mjs pins that.
+ */
+export const REPORT_VALIDATIONS_READABLE = ["id", "incident_report_id", "party", "decision", "reason", "created_at"] as const;
+
+/** The queue's read: who decided, for the record-on-routed rule. */
+export const REPORT_VALIDATIONS_DECISIONS_SELECT = "incident_report_id, party, decision";
+
+/** Validation History's read: who decided, and the barangay's reason. */
+export const REPORT_VALIDATIONS_HISTORY_SELECT = "incident_report_id, party, decision, reason";
 
 /** One report's report_validations rows, as far as the desk reads them. */
 export interface PartyDecisions {

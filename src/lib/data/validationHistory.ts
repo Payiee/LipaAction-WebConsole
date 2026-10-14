@@ -2,7 +2,8 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { categoryLabel, displayName, parseRejectReason, reporterLabel } from "@/lib/utils";
 import { BARANGAY_RESOLVE_LIVE } from "@/lib/features";
-import { readCdrrmoDispatchEnabled } from "@/lib/cdrrmo-dispatch";
+import { readCdrrmoDispatchEnabled, REPORT_VALIDATIONS_HISTORY_SELECT } from "@/lib/cdrrmo-dispatch";
+import { YOUR_BARANGAY } from "@/components/validation-history/historyOptions";
 import type { ResolutionStatus, ValidationRecord, ValidationSummary } from "@/types";
 
 interface RawReviewedReport {
@@ -48,12 +49,14 @@ interface RawOutcome {
   resolution_outcome: string | null;
 }
 
-/** One report_validations row (CDRRMO dispatch, spec 3.3). */
+/**
+ * One report_validations row (CDRRMO dispatch, spec 3.3), granted columns
+ * only: `actor` isn't readable (REPORT_VALIDATIONS_READABLE).
+ */
 interface RawPartyDecision {
   incident_report_id: string;
   party: string;
   decision: string;
-  actor: string | null;
   reason: string | null;
 }
 
@@ -129,11 +132,7 @@ historyColumns)
   const partyRows = cdrrmoDispatch ? await loadPartyDecisions(supabase, rows.map((r) => r.id)) : null;
 
   const reviewerIds = [
-    ...new Set(
-      [...rows.map((r) => r.reviewed_by), ...(partyRows ?? []).map((p) => (p.party === "barangay" ? p.actor : null))].filter(
-        (id): id is string => Boolean(id)
-      )
-    ),
+    ...new Set(rows.map((r) => r.reviewed_by).filter((id): id is string => Boolean(id))),
   ];
   // Confirmed reports only: a rejected one never reaches an agency.
   const confirmedIds = rows.filter((r) => r.status !== "rejected").map((r) => r.id);
@@ -204,7 +203,7 @@ historyColumns)
       notesByReport.get(r.id)
     );
     const parties = partiesByReport.get(r.id);
-    return parties ? withPartyDecisions(record, r, parties, reviewerNames, namesUnavailable) : record;
+    return parties ? withPartyDecisions(record, r, parties) : record;
   });
 
   const summary: ValidationSummary = {
@@ -258,7 +257,7 @@ async function loadPartyDecisions(
   if (reportIds.length === 0) return [];
   const { data, error } = await supabase
     .from("report_validations")
-    .select("incident_report_id, party, decision, actor, reason")
+    .select(REPORT_VALIDATIONS_HISTORY_SELECT)
     .in("incident_report_id", reportIds);
   if (error) {
     console.error("[validation-history] report_validations failed", error.code, error.message);
@@ -270,7 +269,7 @@ async function loadPartyDecisions(
 /**
  * Rewrites a record from its report_validations rows (CDRRMO dispatch).
  * The barangay's own row, when there is one, is the decision this page
- * shows: its verdict, its official, its reason, whatever CDRRMO did after
+ * shows: its verdict, its reason, whatever CDRRMO did after
  * (a later CDRRMO rejection shows as the resolution, [Rejected by CDRRMO
  * after routing]; a CDRRMO override of the barangay's rejection as [Sent on
  * by CDRRMO after your rejection]). With only a CDRRMO row, the record is CDRRMO's: labelled
@@ -280,9 +279,7 @@ async function loadPartyDecisions(
 function withPartyDecisions(
   record: ValidationRecord,
   r: RawReviewedReport,
-  parties: RawPartyDecision[],
-  reviewerNames: Map<string, string>,
-  namesUnavailable: boolean
+  parties: RawPartyDecision[]
 ): ValidationRecord {
   const barangay = parties.find((p) => p.party === "barangay");
   const cdrrmo = parties.find((p) => p.party === "cdrrmo");
@@ -290,12 +287,19 @@ function withPartyDecisions(
     const confirmed = barangay.decision === "validated";
     const reason = confirmed ? null : barangay.reason ?? r.review_reason;
     const parsed = reason ? parseRejectReason(reason) : null;
+    // The official comes from the report's reviewed_by, which is the
+    // barangay's own review unless CDRRMO re-stamped it: after an override
+    // (barangay rejected, CDRRMO validated) or a reject after routing
+    // (barangay validated, CDRRMO rejected). Then reviewed_by is CDRRMO's
+    // reviewer, never shown as the barangay's, and the barangay's actor
+    // isn't readable, so the column says [Your barangay].
+    const restampedByCdrrmo =
+      (barangay.decision === "rejected" && cdrrmo?.decision === "validated") ||
+      (barangay.decision === "validated" && cdrrmo?.decision === "rejected");
     return {
       ...record,
       verdict: confirmed ? "Confirmed" : "Rejected",
-      validatingOfficial: barangay.actor
-        ? reviewerNames.get(barangay.actor) ?? (namesUnavailable ? "Name unavailable" : "Unnamed official")
-        : "Unknown official",
+      validatingOfficial: restampedByCdrrmo ? YOUR_BARANGAY : record.validatingOfficial,
       reason: reason ?? undefined,
       reasonCode: parsed?.code ?? null,
       reasonNote: parsed?.note,

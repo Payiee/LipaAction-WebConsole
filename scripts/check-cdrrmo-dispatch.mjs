@@ -21,6 +21,9 @@ const {
   REFUSAL_TOKENS,
   DESK_REFUSALS,
   CLOSES_PROMPT,
+  REPORT_VALIDATIONS_READABLE,
+  REPORT_VALIDATIONS_DECISIONS_SELECT,
+  REPORT_VALIDATIONS_HISTORY_SELECT,
 } = mod;
 
 // The module logs unexpected answers on purpose; keep the run output clean.
@@ -136,6 +139,23 @@ const folded = partyDecisionsByReport([
 check("fold: both parties", folded.get("a"), { barangay: "validated", cdrrmo: "rejected" });
 check("fold: CDRRMO only", folded.get("b"), { barangay: null, cdrrmo: "validated" });
 check("fold: unknown party ignored", folded.has("c"), false);
+
+// --- report_validations reads stay inside the granted columns -------------
+// PR A at 81768ff grants SELECT on (id, incident_report_id, party, decision,
+// reason, created_at) only; naming `actor` fails the whole read.
+check(
+  "grant: readable columns pinned",
+  [...REPORT_VALIDATIONS_READABLE],
+  ["id", "incident_report_id", "party", "decision", "reason", "created_at"]
+);
+for (const [name, select] of [
+  ["queue decisions", REPORT_VALIDATIONS_DECISIONS_SELECT],
+  ["history", REPORT_VALIDATIONS_HISTORY_SELECT],
+]) {
+  const cols = select.split(",").map((c) => c.trim());
+  check(`grant: ${name} select uses granted columns only`, cols.every((c) => REPORT_VALIDATIONS_READABLE.includes(c)), true);
+  check(`grant: ${name} select never names actor`, cols.includes("actor"), false);
+}
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

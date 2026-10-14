@@ -4,7 +4,7 @@ import { cx } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { Icon } from "@/components/ui/Icon";
 import type { ValidationRecord } from "@/types";
-import { RESOLUTION_LABELS } from "./historyOptions";
+import { RESOLUTION_LABELS, YOUR_BARANGAY } from "./historyOptions";
 
 export function HistoryTable({
   records,
@@ -99,7 +99,9 @@ export function HistoryTable({
                   </div>
                 )}
               </td>
-              <td className="px-4 py-3 text-xs text-ink-700">{record.validatingOfficial}</td>
+              <td className="px-4 py-3 text-xs text-ink-700">
+                {record.validatingOfficial === YOUR_BARANGAY ? t("history.yourBarangay") : record.validatingOfficial}
+              </td>
               <td className="px-4 py-3">
                 <ReporterChip reporter={record.reporter} />
               </td>

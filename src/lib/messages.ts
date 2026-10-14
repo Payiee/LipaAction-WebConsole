@@ -774,6 +774,7 @@ export const MESSAGES = {
   "history.resolution.duplicate": { en: "Closed as a duplicate", tl: "Isinara bilang doble" },
   "history.resolution.returned": { en: "Returned out of scope", tl: "Ibinalik, labas sa saklaw" },
   "history.resolution.rejectedByCdrrmo": { en: "Rejected by CDRRMO after routing", tl: "Tinanggihan ng CDRRMO matapos maipasa" },
+  "history.yourBarangay": { en: "Your barangay", tl: "Ang inyong barangay" },
   "history.resolution.overriddenByCdrrmo": {
     en: "Sent on by CDRRMO after your rejection",
     tl: "Ipinasa ng CDRRMO matapos ninyong tanggihan",

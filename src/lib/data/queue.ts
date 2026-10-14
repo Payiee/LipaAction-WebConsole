@@ -1,7 +1,12 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { loadPositions } from "@/lib/data/positions";
-import { partyDecisionsByReport, readCdrrmoDispatchEnabled, type PartyDecisions } from "@/lib/cdrrmo-dispatch";
+import {
+  partyDecisionsByReport,
+  readCdrrmoDispatchEnabled,
+  REPORT_VALIDATIONS_DECISIONS_SELECT,
+  type PartyDecisions,
+} from "@/lib/cdrrmo-dispatch";
 import { isRejectedByCdrrmo } from "@/components/queue/routing";
 import { categoryLabel, distinctCategories, medianAgeMinutes, reporterLabel, startOfManilaDay, timeAgo } from "@/lib/utils";
 import type { AgencyRouting, KpiSummary, QueueReport, QueueTabId, RoutingOption, RoutingPlanEntry, SituationCluster, ReportPosition } from "@/types";
@@ -355,7 +360,7 @@ async function loadPartyDecisions(
   if (reportIds.length === 0) return new Map();
   const { data, error } = await supabase
     .from("report_validations")
-    .select("incident_report_id, party, decision")
+    .select(REPORT_VALIDATIONS_DECISIONS_SELECT)
     .in("incident_report_id", reportIds);
   if (error) {
     console.error("[queue] report_validations load failed", error.code, error.message);
@@ -377,6 +382,8 @@ async function countBarangayValidationsSince(
   barangayId: string,
   since: string
 ): Promise<number | null> {
+  // Only granted columns (REPORT_VALIDATIONS_READABLE): incident_report_id,
+  // party, decision, created_at.
   const { count, error } = await supabase
     .from("report_validations")
     .select("incident_report_id, incident_reports!inner(incident_barangay_id)", { count: "exact", head: true })
