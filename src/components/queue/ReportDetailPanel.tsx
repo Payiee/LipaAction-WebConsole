@@ -268,7 +268,7 @@ export function ReportDetailPanel({
       </Button>
     </>
   ) : routeState.kind === "choose" && routeState.options && routeState.options.length > 0 ? (
-    // An Other-report: the official picks its agencies.
+    // The official ticks the agencies; the category's are marked Recommended.
     <>
       <Button variant="primary" size="sm" disabled={writing} onClick={routing.openConfirm}>
         {t("routing.routeToAgency")}
@@ -279,10 +279,10 @@ export function ReportDetailPanel({
         </Button>
       )}
     </>
-  ) : routeState.kind === "ready" || routeState.kind === "incomplete" ? (
+  ) : routeState.kind === "incomplete" ? (
     <>
       <Button variant="primary" size="sm" disabled={writing} onClick={routing.openConfirm}>
-        {t(routeState.kind === "ready" ? "routing.routeToAgency" : "routing.finish")}
+        {t("routing.finish")}
       </Button>
       {mayResolve && (
         <Button variant="secondary" size="sm" disabled={writing} onClick={barangayResolve.openPrompt}>
@@ -291,7 +291,7 @@ export function ReportDetailPanel({
       )}
     </>
   ) : mayResolve ? (
-    // No agency is mapped: resolving is the one action left.
+    // The agency list didn't load: resolving is the one action left.
     <Button variant="primary" size="sm" disabled={writing} onClick={barangayResolve.openPrompt}>
       {t("resolve.button")}
     </Button>
@@ -409,7 +409,7 @@ export function ReportDetailPanel({
           {viaDispatch && !everyAgencyReturned(d.routing) ? (
             <DispatchPreview text={dispatchDefaultSet(d.routingPlan, dispatch.cdrrmoAgency, t)} />
           ) : (
-            <RoutingPreview plan={d.routingPlan} routing={d.routing} chooses={d.entryTier === "other_reports"} />
+            <RoutingPreview plan={d.routingPlan} routing={d.routing} />
           )}
         </>
       )}
@@ -421,7 +421,6 @@ export function ReportDetailPanel({
           </p>
           <RoutingSection
             state={routeState}
-            chooses={d.entryTier === "other_reports"}
             viaDispatch={viaDispatch}
             escalated={isEscalated(report)}
             responderUnit={d.responderUnit ?? null}
@@ -561,9 +560,9 @@ export function ReportDetailPanel({
         />
       )}
 
-      {routing.isConfirming && (routeState.kind === "ready" || routeState.kind === "incomplete") && (
+      {routing.isConfirming && routeState.kind === "incomplete" && (
         <ConfirmModal
-          {...routeConfirmCopy(report, routeState.plan, routeState.kind === "incomplete", t)}
+          {...routeConfirmCopy(report, routeState.plan, true, t)}
           busy={routing.isPending}
           onCancel={routing.cancelConfirm}
           onConfirm={routing.route}
@@ -586,7 +585,7 @@ export function ReportDetailPanel({
           <AgencyPickerModal
             {...chooseCopy(report, routeState, t)}
             options={routeState.options}
-            initial={routeState.suggested}
+            recommended={routeState.recommended}
             busy={routing.isPending}
             onCancel={routing.cancelConfirm}
             onConfirm={routing.routeTo}
@@ -611,10 +610,6 @@ export function ReportDetailPanel({
 
 function footerNote(state: RoutingState, t: Translate): string {
   switch (state.kind) {
-    case "no-mapping":
-      return t("drawer.footer.noMapping");
-    case "unavailable":
-      return t("drawer.footer.unavailable");
     case "choose":
       // Shown only when there is no button and no resolve: the agency list
       // didn't load, or names no agency at all.
@@ -644,13 +639,12 @@ function footerNote(state: RoutingState, t: Translate): string {
  * listed apart, under [Returned earlier], so the agencies holding it now
  * aren't read as the ones that returned it.
  *
- * chooses: an Other-report, whose agencies the desk chose. Finishing one
- * keeps exactly the agencies already holding it (routeReport), so its
- * category mapping is not where finishing sends it.
+ * Finishing a part-way routing keeps exactly the agencies already holding
+ * it (routeReport), so the category mapping is never where finishing sends
+ * it.
  */
 function RoutingSection({
   state,
-  chooses,
   viaDispatch,
   escalated = false,
   responderUnit = null,
@@ -658,7 +652,6 @@ function RoutingSection({
   now = 0,
 }: {
   state: ReturnType<typeof routingState>;
-  chooses: boolean;
   // An Emergency report while CDRRMO dispatch is on: CDRRMO dispatch routes
   // it, so nothing here says where finishing or routing would send it.
   viaDispatch: boolean;
@@ -671,7 +664,7 @@ function RoutingSection({
 }) {
   const t = useT();
   if (viaDispatch) {
-    if (state.kind === "ready" || state.kind === "no-mapping" || state.kind === "unavailable") {
+    if (state.kind === "choose") {
       return <p className="text-sm text-ink-700">{t("cdrrmo.pastReview")}</p>;
     }
     if (state.kind === "incomplete" || state.kind === "returned") {
@@ -688,19 +681,10 @@ function RoutingSection({
     }
   }
   switch (state.kind) {
-    case "ready":
-      return <PlanList plan={state.plan} lead={t("drawer.plan.willRoute")} />;
     case "choose":
-      // Nothing is decided yet: the mapping is a suggestion the picker ticks
-      // in advance, not where the report will go.
-      return (
-        <div>
-          <p className="mb-2 text-xs text-ink-700">{t("drawer.choose.body")}</p>
-          {state.plan && state.plan.length > 0 && (
-            <PlanList plan={state.plan} lead={t("drawer.choose.suggested")} />
-          )}
-        </div>
-      );
+      // Nothing is decided yet: the mapping is a recommendation, not where
+      // the report will go.
+      return <ChooseNote plan={state.plan} body={t("drawer.choose.body")} />;
     case "incomplete": {
       const { current, earlier } = splitRouting(state.routing);
       return (
@@ -710,15 +694,8 @@ function RoutingSection({
           </p>
           <AgencyList rows={current} />
           <EarlierList rows={earlier} />
-          {/* Not after a re-route: the mapping names the agencies that sent
-              it back, and finishing doesn't send it to them again. Not for
-              an Other-report either: finishing keeps the agencies above. */}
-          {chooses ? (
-            <p className="text-xs text-ink-700">{t("drawer.plan.finishingHeld")}</p>
-          ) : (
-            state.plan &&
-            earlier.length === 0 && <PlanList plan={state.plan} lead={t("drawer.plan.finishing")} />
-          )}
+          {/* Finishing keeps the agencies above; it adds none. */}
+          <p className="text-xs text-ink-700">{t("drawer.plan.finishingHeld")}</p>
         </div>
       );
     }
@@ -732,14 +709,6 @@ function RoutingSection({
         </div>
       );
     }
-    case "no-mapping":
-      return (
-        <p className="text-sm text-ink-700">{t("drawer.noMapping")}</p>
-      );
-    case "unavailable":
-      return (
-        <p className="text-sm text-ink-500">{t("drawer.unavailable")}</p>
-      );
     case "downstream": {
       if (state.routing.length === 0) {
         return <p className="text-sm text-ink-500">{t("drawer.downstreamMissing")}</p>;
@@ -811,17 +780,7 @@ function DispatchPreview({ text }: { text: string }) {
  * returned it, so there is nothing to preview: the drawer lists them, and
  * says the next agency is chosen after validation.
  */
-function RoutingPreview({
-  plan,
-  routing,
-  chooses,
-}: {
-  plan: RoutingPlanEntry[] | null;
-  routing: AgencyRouting[];
-  // An Other-report: after validation the official chooses its agencies, so
-  // the mapping is only a suggestion.
-  chooses: boolean;
-}) {
+function RoutingPreview({ plan, routing }: { plan: RoutingPlanEntry[] | null; routing: AgencyRouting[] }) {
   const t = useT();
   if (everyAgencyReturned(routing)) {
     const { current, earlier } = splitRouting(routing);
@@ -833,17 +792,30 @@ function RoutingPreview({
       </div>
     );
   }
-  if (chooses) {
-    return (
-      <div>
-        <p className="mb-2 text-xs text-ink-700">{t("drawer.preview.choose")}</p>
-        {plan && plan.length > 0 && <PlanList plan={plan} lead={t("drawer.choose.suggested")} />}
-      </div>
-    );
-  }
-  if (plan === null) return <p className="text-sm text-ink-500">{t("drawer.unavailable")}</p>;
-  if (plan.length === 0) return <p className="text-sm text-ink-700">{t("drawer.preview.noMapping")}</p>;
-  return <PlanList plan={plan} lead={t("drawer.preview.willRoute")} />;
+  // After validation the official ticks the agencies; the mapping is only a
+  // recommendation.
+  return <ChooseNote plan={plan} body={t("drawer.preview.choose")} />;
+}
+
+/**
+ * The agency list's recommendation, in the drawer. A category that maps to
+ * no agency says none is recommended; a mapping that couldn't be loaded
+ * says that instead of claiming there is none.
+ */
+function ChooseNote({ plan, body }: { plan: RoutingPlanEntry[] | null; body: string }) {
+  const t = useT();
+  return (
+    <div>
+      <p className="mb-2 text-xs text-ink-700">{body}</p>
+      {plan === null ? (
+        <p className="text-xs text-ink-500">{t("drawer.unavailable")}</p>
+      ) : plan.length > 0 ? (
+        <PlanList plan={plan} lead={t("drawer.choose.recommended")} />
+      ) : (
+        <p className="text-xs text-ink-700">{t("drawer.choose.noRecommendation")}</p>
+      )}
+    </div>
+  );
 }
 
 function PlanList({ plan, lead }: { plan: RoutingPlanEntry[]; lead: string }) {

@@ -723,19 +723,15 @@ async function loadRouting(
       routingPlan: mappingRes.error ? null : planByCategory.get(r.category) ?? [],
       // The picker's list, in two cases. A validated report that agencies
       // already hold can need another agency: routingState decides whether it
-      // does (every agency sent it back). A validated Other-report no agency
-      // holds yet goes to the agencies the desk picks, from every named
-      // agency. A failed agency list is null, never [], which would claim
-      // that no agency exists.
-      routingOptions: held
-        ? agenciesRes.error
-          ? null
-          : namedAgencies.filter((a) => !held.has(a.agencyId))
-        : r.entry_tier === "other_reports"
-          ? agenciesRes.error
-            ? null
-            : namedAgencies
-          : null,
+      // does (every agency sent it back). A validated report no agency holds
+      // yet, Emergency or Standard intake, goes to the agencies the desk
+      // ticks, from every named agency (since 2026-10-14). A failed agency
+      // list is null, never [], which would claim that no agency exists.
+      routingOptions: agenciesRes.error
+        ? null
+        : held
+          ? namedAgencies.filter((a) => !held.has(a.agencyId))
+          : namedAgencies,
     });
   }
   for (const r of routed) {

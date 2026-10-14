@@ -11,10 +11,11 @@ import type { RoutingOption } from "@/types";
 
 /**
  * Chooses the agencies a report goes to — where an official, not the category
- * mapping, decides who receives it. Opened in two cases: a validated
- * Other-report, routed to the agencies the desk picks (the mapped ones ticked
- * in advance through initial), and a report every agency it went to sent back
- * as out of scope, whose list already leaves those agencies out.
+ * mapping, decides who receives it. Opened in two cases: a validated report
+ * no agency holds yet, where the category's agencies carry a Recommended tag
+ * and nothing is ticked (agencies asked for this, 2026-10-14: not every
+ * office is on duty around the clock), and a report every agency it went to
+ * sent back as out of scope, whose list already leaves those agencies out.
  *
  * The commit button is the confirmation, as in ConfirmModal: it stays
  * disabled until something is chosen, and it counts what will be sent. The
@@ -25,7 +26,7 @@ export function AgencyPickerModal({
   title,
   description,
   options,
-  initial = [],
+  recommended = [],
   hint,
   busy = false,
   onCancel,
@@ -34,9 +35,9 @@ export function AgencyPickerModal({
   title: string;
   description: string;
   options: RoutingOption[];
-  // Agencies ticked when the picker opens, in order (the first leads). An id
-  // that isn't among the options is dropped.
-  initial?: string[];
+  // Agencies marked Recommended: the category's mapping. Never ticked for
+  // the official.
+  recommended?: string[];
   // The line under the list; the returned case's wording by default.
   hint?: string;
   busy?: boolean;
@@ -45,9 +46,7 @@ export function AgencyPickerModal({
 }) {
   const t = useT();
   // In the order ticked: the first is the lead.
-  const [chosen, setChosen] = useState<string[]>(() =>
-    initial.filter((id) => options.some((option) => option.agencyId === id))
-  );
+  const [chosen, setChosen] = useState<string[]>([]);
   useDismissOnEscape(onCancel, !busy);
   // No autoFocus: focus lands on the dialog, so its title and the names of
   // the agencies that returned the report are announced before any choice.
@@ -104,6 +103,11 @@ export function AgencyPickerModal({
                     className="h-4 w-4 shrink-0 accent-brand-500"
                   />
                   <span className="min-w-0 flex-1">{option.agencyName}</span>
+                  {recommended.includes(option.agencyId) && (
+                    <span className="shrink-0 rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-semibold text-brand-700">
+                      {t("choose.recommendedTag")}
+                    </span>
+                  )}
                   {position === 0 && <span className="shrink-0 text-ink-500">{t("routing.lead")}</span>}
                 </label>
               );

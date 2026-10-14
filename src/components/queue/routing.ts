@@ -13,8 +13,6 @@ import { canRecordBarangayValidation } from "@/lib/cdrrmo-dispatch";
 export type RoutingState =
   // Pending or rejected: routing doesn't apply.
   | { kind: "none" }
-  // Validated, mapping known, not yet sent anywhere.
-  | { kind: "ready"; plan: RoutingPlanEntry[] }
   // Validated but some agencies already hold it: a previous attempt stopped
   // part-way. routeReport is idempotent, so the same action finishes it.
   | { kind: "incomplete"; routing: AgencyRouting[]; plan: RoutingPlanEntry[] | null }
@@ -24,20 +22,17 @@ export type RoutingState =
   // person's choice: options lists the agencies that don't hold it yet, and
   // is null when the agency list couldn't be loaded.
   | { kind: "returned"; routing: AgencyRouting[]; options: RoutingOption[] | null }
-  // A validated Other-report no agency holds yet. The desk chooses which
-  // agencies it belongs to, like tagging it, rather than confirming the
-  // category mapping: an Other-report's category is broad (public order,
-  // welfare…) and the right office depends on what was reported. suggested
-  // holds the mapped agencies' ids, lead first, ticked in advance; it is []
-  // when the category maps to none or the mapping couldn't be loaded.
-  // options lists every named agency, and is null when that list couldn't
-  // be loaded.
-  | { kind: "choose"; options: RoutingOption[] | null; suggested: string[]; plan: RoutingPlanEntry[] | null }
-  // Validated, and the category maps to no agency (e.g. other_emergency).
-  | { kind: "no-mapping" }
-  // Validated, but the mapping couldn't be loaded. Not the same claim as
-  // no-mapping, and must not be shown as one.
-  | { kind: "unavailable" }
+  // A validated report no agency holds yet, Emergency or Standard intake.
+  // The desk ticks the agencies it goes to, like tagging it: agencies asked
+  // (2026-10-14) that the barangay choose, since not every office is on duty
+  // around the clock. The category's mapped agencies are marked Recommended,
+  // and nothing is ticked in advance. recommended holds their ids, lead
+  // first; [] when the category maps to none, and when the mapping couldn't
+  // be loaded (plan null says which). options lists every named agency,
+  // recommended ones first, and is null when that list couldn't be loaded.
+  // With CDRRMO dispatch on, an Emergency report never reaches this state's
+  // list: the database routes it on validation (dispatchPastReview).
+  | { kind: "choose"; options: RoutingOption[] | null; recommended: string[]; plan: RoutingPlanEntry[] | null }
   // Routed or resolved: agencies own it now; the desk watches.
   | { kind: "downstream"; status: "routed" | "resolved"; routing: AgencyRouting[] }
   // Routed, then rejected by CDRRMO (CDRRMO dispatch's reject after routing,
@@ -59,17 +54,13 @@ export function routingState(report: QueueReport): RoutingState {
       }
       return { kind: "incomplete", routing, plan: routingPlan };
     }
-    if (report.details.entryTier === "other_reports") {
-      return {
-        kind: "choose",
-        options: routingOptions ?? null,
-        suggested: suggestedAgencies(routingPlan),
-        plan: routingPlan,
-      };
-    }
-    if (routingPlan === null) return { kind: "unavailable" };
-    if (routingPlan.length === 0) return { kind: "no-mapping" };
-    return { kind: "ready", plan: routingPlan };
+    const recommended = recommendedAgencies(routingPlan);
+    return {
+      kind: "choose",
+      options: routingOptions ? recommendedFirst(routingOptions, recommended) : null,
+      recommended,
+      plan: routingPlan,
+    };
   }
 
   if (status === "routed" || status === "resolved") {
@@ -100,16 +91,25 @@ export function canResolveAtBarangay(report: QueueReport, state: RoutingState): 
   return (
     BARANGAY_RESOLVE_LIVE &&
     report.details.entryTier === "other_reports" &&
-    (state.kind === "ready" || state.kind === "no-mapping" || state.kind === "choose")
+    state.kind === "choose"
   );
 }
 
-// The mapped agencies, lead first, then in mapping order: the order the
-// picker ticks them, and so the order that decides which one leads.
-function suggestedAgencies(plan: RoutingPlanEntry[] | null): string[] {
+// The mapped agencies, lead first, then in mapping order: the ones the
+// list marks Recommended.
+function recommendedAgencies(plan: RoutingPlanEntry[] | null): string[] {
   if (!plan) return [];
   const ids = [...plan.filter((p) => p.isPrimary), ...plan.filter((p) => !p.isPrimary)].map((p) => p.agencyId);
   return [...new Set(ids)];
+}
+
+// The list with the recommended agencies on top, in their own order; the
+// rest keep the loader's order (by name).
+function recommendedFirst(options: RoutingOption[], recommended: string[]): RoutingOption[] {
+  const top = recommended
+    .map((id) => options.find((o) => o.agencyId === id))
+    .filter((o): o is RoutingOption => o !== undefined);
+  return [...top, ...options.filter((o) => !recommended.includes(o.agencyId))];
 }
 
 /**
@@ -375,9 +375,7 @@ export type DispatchPastReview = "send" | "record" | "partial" | "handedBack" | 
 
 export function dispatchPastReview(report: QueueReport, state: RoutingState): DispatchPastReview {
   switch (state.kind) {
-    case "ready":
-    case "no-mapping":
-    case "unavailable":
+    case "choose":
       return "send";
     case "incomplete":
       return "partial";
@@ -426,19 +424,25 @@ export function rerouteCopy(
 }
 
 /**
- * Copy for the agency picker a validated Other-report opens. The mapped
- * agencies are already ticked when there are any, and the description says
- * so, so an official who agrees with them only has to confirm.
+ * Copy for the agency list a validated report opens. Nothing is ticked: the
+ * category's agencies are marked Recommended, and the description says to
+ * tick the ones that are on duty. A category with no mapping says so, and a
+ * mapping that couldn't be loaded says that instead of claiming none.
  */
 export function chooseCopy(
   report: QueueReport,
   state: Extract<RoutingState, { kind: "choose" }>,
   t: Translate
 ): { title: string; description: string; hint: string } {
+  const lead =
+    state.plan === null
+      ? "choose.descriptionUnavailable"
+      : state.recommended.length > 0
+        ? "choose.descriptionRecommended"
+        : "choose.descriptionNoMapping";
   return {
     title: t("choose.title", { id: report.id }),
-    description:
-      t(state.suggested.length > 0 ? "choose.descriptionSuggested" : "choose.description") + discreetNote(report, t),
+    description: t(lead) + discreetNote(report, t),
     hint: t("choose.leadHint"),
   };
 }

@@ -143,15 +143,6 @@ export function ReportRow({
       }
     }
     switch (state.kind) {
-      case "ready":
-        return (
-          <>
-            {resolveButton("secondary")}
-            <Button variant="primary" size="sm" disabled={busy} onClick={routing.openConfirm}>
-              {t("routing.routeToAgency")}
-            </Button>
-          </>
-        );
       case "incomplete":
         return (
           <>
@@ -191,8 +182,10 @@ export function ReportRow({
           </>
         );
       case "choose":
-        // An Other-report goes where the official says: the button opens the
-        // agency picker, with the mapped agencies ticked in advance.
+        // Every report goes where the official says: the button opens the
+        // agency list, with the category's agencies marked Recommended and
+        // nothing ticked. A Standard intake report may be resolved here
+        // instead.
         return state.options === null ? (
           <>
             <span className="max-w-[10rem] text-right text-xs text-ink-500">{t("row.returnedUnavailable")}</span>
@@ -207,22 +200,6 @@ export function ReportRow({
               </Button>
             )}
           </>
-        );
-      case "no-mapping":
-        return (
-          <>
-            <span className="max-w-[14rem] text-right text-xs font-medium text-priority-medium">
-              {t("row.noMapping")}
-            </span>
-            {/* With no agency to send it to, resolving is the one action. */}
-            {resolveButton("primary")}
-          </>
-        );
-      case "unavailable":
-        return (
-          <span className="max-w-[14rem] text-right text-xs text-ink-500">
-            {t("row.routingUnavailable")}
-          </span>
         );
       case "downstream":
         return (
@@ -432,9 +409,9 @@ export function ReportRow({
         />
       )}
 
-      {routing.isConfirming && (state.kind === "ready" || state.kind === "incomplete") && (
+      {routing.isConfirming && state.kind === "incomplete" && (
         <ConfirmModal
-          {...routeConfirmCopy(report, state.plan, state.kind === "incomplete", t)}
+          {...routeConfirmCopy(report, state.plan, true, t)}
           busy={routing.isPending}
           onCancel={routing.cancelConfirm}
           onConfirm={routing.route}
@@ -454,7 +431,7 @@ export function ReportRow({
         <AgencyPickerModal
           {...chooseCopy(report, state, t)}
           options={state.options}
-          initial={state.suggested}
+          recommended={state.recommended}
           busy={routing.isPending}
           onCancel={routing.cancelConfirm}
           onConfirm={routing.routeTo}

@@ -372,33 +372,32 @@ function everyAgencyReturned(rows: HeldRow[]): boolean {
 }
 
 /**
- * Hands a validated report to the agencies its category maps to.
+ * Finishes a routing that stopped part-way.
  *
- * Nothing does this automatically: review_report() stops at 'validated', and
- * auto_route() exists with no callers (backend owner, 2026-09-11). Until an
- * official routes it, a validated report reaches no agency at all. The steps
- * and their order are the backend owner's contract, mirrored from the
- * groupmate's shipped routeReport in apps/dashboards, and all run under the
- * official's own session — RLS decides each one:
+ * Every validated report now goes to the agencies an official ticks in the
+ * agency list (routeReportToAgencies), with the category's agencies marked
+ * Recommended rather than sent to by default: agencies asked for this
+ * (2026-10-14), since not every office is on duty around the clock. So this
+ * action never routes by the category mapping. It handles one case, a
+ * report left 'validated' with agencies already holding it, which the queue
+ * shows as [Routing incomplete] with [Finish routing]:
  *
  *   a. read the report (RLS scopes it to the barangay)
- *   b. read category_agency_routing for its category
- *   c. insert agency_routing rows, auto_routed = false (ar_insert_barangay)
- *   d. log_audit('report_routed_manual')
+ *   b. read who holds it (agency_routing)
+ *   c. nothing is inserted: the holders are the plan
+ *   d. log_audit('report_routed_manual'), built from the held rows
  *   e. set status = 'routed' (the status trigger allows validated → routed)
  *
- * These are five separate calls, not a transaction, and the desk has no
- * DELETE on agency_routing — so a run that stops part-way can't be rolled
- * back, only finished. The action is written to be re-run: step c inserts
- * only agencies not already routed, and a report left 'validated' with
- * routing rows is offered [Finish routing], which lands here again. Step d
- * runs on every pass that reaches it, because a duplicate audit row is
- * acceptable and a missing one is not; for the same reason a failed audit
- * write stops the run before step e, since once the status is 'routed' the
- * report can never come back through here to be logged.
+ * Steps d and e are sendAndRecord's, shared with the other two routing
+ * actions: a failed audit write stops the run before the status, because
+ * once 'routed' the report can never come back here to be logged.
  *
- * No mapping for the category (e.g. other_emergency) is an answer, not an
- * error: the report needs barangay review, and no agency is invented.
+ * A recalled report re-validated by the desk is also [Routing incomplete]:
+ * its rows are closed 'recalled', and the move to 'routed' has the backend's
+ * incident_reports_reroute_recalled trigger reopen them, so finishing sends
+ * it back to the same agencies. A run that stopped before every mapped
+ * agency was inserted (possible only before 2026-10-14) finishes with the
+ * agencies that hold it, never adding one nobody chose.
  */
 export async function routeReport(reportId: string): Promise<RouteResult> {
   if (!isUuid(reportId)) {
@@ -412,7 +411,7 @@ export async function routeReport(reportId: string): Promise<RouteResult> {
   // an error.
   const [session, reportRes, dispatchOn] = await Promise.all([
     sessionState(supabase),
-    supabase.from("incident_reports").select("id, category, status, entry_tier").eq("id", reportId).maybeSingle(),
+    supabase.from("incident_reports").select("id, status, entry_tier").eq("id", reportId).maybeSingle(),
     readCdrrmoDispatchEnabled(supabase),
   ]);
 
@@ -438,80 +437,26 @@ export async function routeReport(reportId: string): Promise<RouteResult> {
   }
   if (emergencyGoesThroughDispatch(report.entry_tier, dispatchOn)) return dispatchActiveResult();
 
-  // An Other-report goes to the agencies the desk chose
-  // (routeReportToAgencies), not to its mapping. Here it can only be
-  // finished: a run that stopped after its insert left the chosen agencies
-  // holding it, and finishing records the routing and sets the status
-  // without adding a mapped agency nobody chose.
-  if (report.entry_tier === "other_reports") {
-    const held = await routingRows(supabase, reportId);
-    if (held === null) return { success: false, message: ROUTE_FAILED };
-    if (held.length === 0) {
-      return { success: false, message: "Choose the agencies this report belongs to, then route it." };
-    }
-    if (everyAgencyReturned(held)) {
-      revalidatePath("/queue");
-      return {
-        success: false,
-        message: "Every agency sent this report back as out of scope. Choose another agency for it instead.",
-      };
-    }
-    // Every agency in this plan already holds it, so nothing is inserted;
-    // the audit row is built from the held rows (routedTo), not this plan.
-    const plan = new Map(held.map((row): [string, boolean] => [row.agency_id, row.is_primary]));
-    return sendAndRecord(supabase, reportId, plan, held);
-  }
-
   // b.
-  const { data: mapping, error: mappingError } = await supabase
-    .from("category_agency_routing")
-    .select("agency_id, is_primary, sort_order")
-    .eq("category_key", report.category)
-    .order("sort_order", { ascending: true });
-
-  if (mappingError) {
-    console.error("[routeReport] mapping read failed", mappingError.code, mappingError.message);
-    return { success: false, message: ROUTE_FAILED };
+  const held = await routingRows(supabase, reportId);
+  if (held === null) return { success: false, message: ROUTE_FAILED };
+  if (held.length === 0) {
+    return { success: false, message: "Choose the agencies this report goes to, then route it." };
   }
-
-  // One entry per agency. Nothing in this repo proves (category_key,
-  // agency_id) is unique in a table another repo owns, and a duplicate here
-  // would make step c insert the same agency twice in one statement — a
-  // guaranteed 23505. If an agency appears twice, it's primary if either
-  // entry says so.
-  const plan = new Map<string, boolean>();
-  for (const m of mapping ?? []) {
-    plan.set(m.agency_id as string, (plan.get(m.agency_id as string) ?? false) || Boolean(m.is_primary));
-  }
-
-  if (plan.size === 0) {
-    return {
-      success: false,
-      message: "No agency is mapped to this category — it needs barangay review.",
-    };
-  }
-
-  // c. Only the agencies not already routed. A second click, a retry after
-  // a partial run, or another official routing at the same moment must not
-  // produce a second row per agency.
-  const rows = await routingRows(supabase, reportId);
-  if (rows === null) return { success: false, message: ROUTE_FAILED };
-
   // A report every agency sent back is 'validated' again with its rows still
-  // there. Routing it by its mapping would find every mapped agency present,
-  // insert nothing, log a routing, and mark it routed with nobody holding it
-  // — so it is refused before anything is written, and the official chooses
-  // other agencies instead (rerouteReport). The queue shows it as returned
-  // once it refreshes.
-  if (everyAgencyReturned(rows)) {
+  // there. Finishing would mark it routed with nobody holding it, so the
+  // official chooses other agencies instead (rerouteReport).
+  if (everyAgencyReturned(held)) {
     revalidatePath("/queue");
     return {
       success: false,
       message: "Every agency sent this report back as out of scope. Choose another agency for it instead.",
     };
   }
-
-  return sendAndRecord(supabase, reportId, plan, rows);
+  // c. Every agency in this plan already holds it, so nothing is inserted;
+  // the audit row is built from the held rows (routedTo), not this plan.
+  const plan = new Map(held.map((row): [string, boolean] => [row.agency_id, row.is_primary]));
+  return sendAndRecord(supabase, reportId, plan, held);
 }
 
 /**
@@ -610,17 +555,16 @@ export async function rerouteReport(reportId: string, agencyIds: string[]): Prom
 }
 
 /**
- * Sends a validated Other-report to the agencies an official chose for it,
- * like tagging it with the offices it belongs to. An Other-report's category
- * is broad (public order, welfare and the like), so the right office depends
- * on what was reported; the picker ticks the mapped agencies in advance, and
- * the official keeps, changes or adds to them. Emergencies keep routeReport:
- * their category decides the responders, and the desk confirms rather than
- * chooses.
+ * Sends a validated report to the agencies an official ticked for it, like
+ * tagging it with the offices it belongs to. The category's agencies are
+ * shown as Recommended and nothing is ticked in advance: agencies asked
+ * (2026-10-14) that the barangay choose, because not every office is on
+ * duty around the clock. Emergencies included, while CDRRMO dispatch is
+ * off; with it on, the database routes an Emergency report on validation.
  *
  * ar_insert_barangay doesn't limit which agency a barangay may route to, so
- * the choice is proven here, as in rerouteReport: the report is validated,
- * an Other-report, and held by no agency yet (a held one is either
+ * the choice is proven here, as in rerouteReport: the report is validated
+ * and held by no agency yet (a held one is either
  * half-routed, which routeReport finishes, or returned, which rerouteReport
  * handles); every id names an agency that exists. The first one chosen leads
  * (is_primary). From the insert on it is routeReport's contract, through
@@ -634,9 +578,10 @@ export async function routeReportToAgencies(reportId: string, agencyIds: string[
 
   const supabase = createClient();
 
-  const [session, reportRes] = await Promise.all([
+  const [session, reportRes, dispatchOn] = await Promise.all([
     sessionState(supabase),
     supabase.from("incident_reports").select("id, status, entry_tier").eq("id", reportId).maybeSingle(),
+    readCdrrmoDispatchEnabled(supabase),
   ]);
 
   if (session !== "active") {
@@ -658,9 +603,10 @@ export async function routeReportToAgencies(reportId: string, agencyIds: string[
   if (report.status !== "validated") {
     return { success: false, message: ONLY_VALIDATED };
   }
-  if (report.entry_tier !== "other_reports") {
-    return { success: false, message: "Emergencies go to the agencies their category maps to. Use Route to agency." };
-  }
+  // With CDRRMO dispatch on, an Emergency report is routed by the database
+  // on validation and the desk never picks its agencies (the backend's
+  // design); the console doesn't offer the list then, and this refuses it.
+  if (emergencyGoesThroughDispatch(report.entry_tier, dispatchOn)) return dispatchActiveResult();
 
   const [rows, agenciesRes] = await Promise.all([
     routingRows(supabase, reportId),

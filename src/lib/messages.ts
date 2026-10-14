@@ -238,14 +238,6 @@ export const MESSAGES = {
     tl: "Na-validate — ipasa ito mula sa Kamakailang Na-validate",
   },
   "row.routingIncomplete": { en: "Routing incomplete", tl: "Hindi pa buo ang pagpasa" },
-  "row.noMapping": {
-    en: "No agency mapped — needs barangay review",
-    tl: "Walang nakatalagang ahensya — kailangang suriin ng barangay",
-  },
-  "row.routingUnavailable": {
-    en: "Couldn't load routing options — refresh",
-    tl: "Hindi na-load ang mga opsyon sa pagpasa — i-refresh",
-  },
   "row.returned": {
     en: "Returned by {agency}{more} — out of scope",
     tl: "Ibinalik ng {agency}{more} — labas sa saklaw",
@@ -575,21 +567,26 @@ export const MESSAGES = {
   "reroute.chooseFirst": { en: "Choose an agency", tl: "Pumili ng ahensya" },
   // The agency picker a validated Other-report opens.
   "choose.title": { en: "Route {id} to agencies", tl: "Ipasa ang {id} sa mga ahensya" },
-  "choose.description": {
-    en: "Choose the agencies this report belongs to. Routing can't be undone from this console.",
-    tl: "Piliin ang mga ahensyang may kinalaman sa ulat na ito. Hindi na mababawi ang pagpasa mula sa console na ito.",
-  },
-  "choose.descriptionSuggested": {
+  "choose.descriptionRecommended": {
     en:
-      "Choose the agencies this report belongs to. The ones its category maps to are ticked already; " +
-      "change them if it belongs elsewhere. Routing can't be undone from this console.",
+      "Tick the agencies this report goes to. The ones its category usually goes to are marked Recommended; " +
+      "tick only those on duty, or others if it belongs elsewhere. Routing can't be undone from this console.",
     tl:
-      "Piliin ang mga ahensyang may kinalaman sa ulat na ito. Naka-tsek na ang mga nakatalaga sa kategorya nito; " +
-      "palitan kung sa iba ito nababagay. Hindi na mababawi ang pagpasa mula sa console na ito.",
+      "I-tsek ang mga ahensyang pagpapasahan ng ulat na ito. Ang karaniwang pinupuntahan ng kategorya nito ay may markang Inirerekomenda; " +
+      "i-tsek lamang ang mga naka-duty, o iba kung sa iba ito nababagay. Hindi na mababawi ang pagpasa mula sa console na ito.",
   },
+  "choose.descriptionNoMapping": {
+    en: "No agency is recommended for this category. Tick the agencies this report goes to. Routing can't be undone from this console.",
+    tl: "Walang inirerekomendang ahensya para sa kategoryang ito. I-tsek ang mga ahensyang pagpapasahan ng ulat na ito. Hindi na mababawi ang pagpasa mula sa console na ito.",
+  },
+  "choose.descriptionUnavailable": {
+    en: "The recommended agencies couldn't be loaded. Tick the agencies this report goes to. Routing can't be undone from this console.",
+    tl: "Hindi na-load ang mga inirerekomendang ahensya. I-tsek ang mga ahensyang pagpapasahan ng ulat na ito. Hindi na mababawi ang pagpasa mula sa console na ito.",
+  },
+  "choose.recommendedTag": { en: "Recommended", tl: "Inirerekomenda" },
   "choose.leadHint": {
-    en: "The first agency ticked leads. You can choose more than one.",
-    tl: "Ang unang ahensyang na-tsek ang mangunguna. Maaaring pumili ng higit sa isa.",
+    en: "Nothing is ticked for you. The first agency ticked leads; you can choose more than one.",
+    tl: "Walang naka-tsek nang kusa. Ang unang ahensyang na-tsek ang mangunguna; maaaring pumili ng higit sa isa.",
   },
 
   // --- Report detail drawer -------------------------------------------------
@@ -647,27 +644,18 @@ export const MESSAGES = {
   },
   "drawer.submitted": { en: "Submitted", tl: "Isinumite" },
   "drawer.section.routing": { en: "Agency routing", tl: "Pagpasa sa ahensya" },
-  "drawer.plan.willRoute": { en: "Will route to", tl: "Ipapasa sa" },
   "drawer.choose.body": {
-    en: "Choose which agencies this report belongs to when you route it.",
-    tl: "Piliin kung aling mga ahensya ang may kinalaman sa ulat na ito kapag ipapasa mo ito.",
+    en: "When you route it, you tick the agencies it goes to.",
+    tl: "Kapag ipinasa mo ito, ikaw ang magte-tsek ng mga ahensyang pagpapasahan nito.",
   },
-  "drawer.choose.suggested": { en: "Suggested from its category", tl: "Mungkahi batay sa kategorya nito" },
+  "drawer.choose.recommended": { en: "Recommended for its category", tl: "Inirerekomenda para sa kategorya nito" },
+  "drawer.choose.noRecommendation": {
+    en: "No agency is recommended for this category; choose the agencies yourself.",
+    tl: "Walang inirerekomendang ahensya para sa kategoryang ito; ikaw ang pumili ng mga ahensya.",
+  },
   "drawer.preview.choose": {
-    en: "After validation, you choose which agencies it goes to.",
-    tl: "Pagkatapos ma-validate, ikaw ang pipili kung saang mga ahensya ito ipapasa.",
-  },
-  "drawer.preview.willRoute": {
-    en: "After validation, routing sends it to",
-    tl: "Pagkatapos ma-validate, ipapasa ito sa",
-  },
-  "drawer.preview.noMapping": {
-    en: "No agency is mapped to this category — after validation it stays with the barangay.",
-    tl: "Walang ahensyang nakatalaga sa kategoryang ito — pagkatapos ma-validate, mananatili ito sa barangay.",
-  },
-  "drawer.plan.finishing": {
-    en: "Finishing sends it to all of",
-    tl: "Kapag tinapos, ipapasa ito sa lahat ng sumusunod",
+    en: "After validation, you tick the agencies it goes to.",
+    tl: "Pagkatapos ma-validate, ikaw ang magte-tsek ng mga ahensyang pagpapasahan nito.",
   },
   "drawer.plan.finishingHeld": {
     en: "Finishing records the routing to the agencies above. No other agency is added.",
@@ -690,10 +678,6 @@ export const MESSAGES = {
     en: "A routing attempt stopped part-way. These agencies already have it:",
     tl: "Huminto sa kalagitnaan ang isang pagtatangkang ipasa ito. Mayroon na nito ang mga ahensyang ito:",
   },
-  "drawer.noMapping": {
-    en: "No agency is mapped to this category, so it can't be routed from here. It needs barangay review.",
-    tl: "Walang ahensyang nakatalaga sa kategoryang ito, kaya hindi ito maipapasa mula rito. Kailangan itong suriin ng barangay.",
-  },
   "drawer.unavailable": {
     en: "Routing options couldn't be loaded. Refresh the page to try again.",
     tl: "Hindi na-load ang mga opsyon sa pagpasa. I-refresh ang page para subukang muli.",
@@ -705,10 +689,6 @@ export const MESSAGES = {
   "drawer.footer.noMapping": {
     en: "No agency is mapped to this category — handle it at the barangay.",
     tl: "Walang ahensyang nakatalaga sa kategoryang ito — asikasuhin ito sa barangay.",
-  },
-  "drawer.footer.unavailable": {
-    en: "Couldn't load routing options. Refresh to try again.",
-    tl: "Hindi na-load ang mga opsyon sa pagpasa. I-refresh para subukang muli.",
   },
   "drawer.footer.downstream": {
     en: "With the agencies now — they update its progress, not this desk.",
