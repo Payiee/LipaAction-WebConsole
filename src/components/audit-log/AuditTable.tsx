@@ -25,6 +25,14 @@ export const ACTION_LABELS: Record<string, MessageKey> = {
   report_returned_to_barangay: "audit.action.report_returned_to_barangay",
   // The report chat's event, if the read function ever lets it through.
   report_message_sent: "audit.action.report_message_sent",
+  // CDRRMO dispatch's own events (backend spec 3.2-3.5), once its
+  // allow-list change to barangay_audit_log is live. Kept apart from the
+  // barangay's report_validated / report_rejected, and out of the
+  // Decisions and Routings chips, which count this desk's own actions.
+  report_validated_cdrrmo: "audit.action.report_validated_cdrrmo",
+  report_rejected_cdrrmo: "audit.action.report_rejected_cdrrmo",
+  report_reject_overridden_cdrrmo: "audit.action.report_reject_overridden_cdrrmo",
+  report_agencies_added_cdrrmo: "audit.action.report_agencies_added_cdrrmo",
 };
 
 const ACTION_TONES: Record<string, "neutral" | "brand" | "warning"> = {
@@ -37,6 +45,10 @@ const ACTION_TONES: Record<string, "neutral" | "brand" | "warning"> = {
   routing_in_progress: "neutral",
   report_resolved_by_agencies: "brand",
   report_returned_to_barangay: "warning",
+  report_validated_cdrrmo: "brand",
+  report_rejected_cdrrmo: "warning",
+  report_reject_overridden_cdrrmo: "warning",
+  report_agencies_added_cdrrmo: "brand",
 };
 
 // Same rule for roles: the known ones get a label, an unknown one shows as

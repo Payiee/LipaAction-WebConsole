@@ -29,12 +29,16 @@ export function ReasonPromptModal({
   title,
   description,
   confirmLabel,
+  busy = false,
   onCancel,
   onConfirm,
 }: {
   title: string;
   description: string;
   confirmLabel: string;
+  // True while the decision is being written: the prompt stays open, with
+  // the reason in it, until the answer arrives (CDRRMO dispatch's reject).
+  busy?: boolean;
   onCancel: () => void;
   onConfirm: (reason: string) => void;
 }) {
@@ -42,7 +46,7 @@ export function ReasonPromptModal({
   const [note, setNote] = useState("");
   const t = useT();
   const lang = useLang();
-  useDismissOnEscape(onCancel);
+  useDismissOnEscape(onCancel, !busy);
   const dialogRef = useFocusTrap<HTMLDivElement>();
   const trimmedNote = note.trim();
   const noteRequired = code === "other";
@@ -54,6 +58,7 @@ export function ReasonPromptModal({
         aria-label={t("common.cancel")}
         className="absolute inset-0 bg-ink-900/40"
         onClick={onCancel}
+        disabled={busy}
       />
       <div
         ref={dialogRef}
@@ -126,13 +131,13 @@ export function ReasonPromptModal({
         />
 
         <div className="flex justify-end gap-2">
-          <Button variant="secondary" size="sm" onClick={onCancel}>
+          <Button variant="secondary" size="sm" disabled={busy} onClick={onCancel}>
             {t("common.cancel")}
           </Button>
           <Button
             variant="danger"
             size="sm"
-            disabled={!ready}
+            disabled={!ready || busy}
             onClick={() => {
               if (code) onConfirm(composeRejectReason(code, trimmedNote));
             }}

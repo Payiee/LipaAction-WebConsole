@@ -150,8 +150,10 @@ function matchesRange(record: ValidationRecord, range: RangeFilter): boolean {
 function summarize(records: ValidationRecord[]): ValidationSummary {
   return {
     total: records.length,
-    confirmed: records.filter((r) => r.verdict === "Confirmed").length,
-    rejected: records.filter((r) => r.verdict === "Rejected").length,
+    // A decision the city's CDRRMO made is listed, never counted as this
+    // barangay's own (CDRRMO dispatch, spec 3.3).
+    confirmed: records.filter((r) => r.verdict === "Confirmed" && r.decidedBy !== "cdrrmo").length,
+    rejected: records.filter((r) => r.verdict === "Rejected" && r.decidedBy !== "cdrrmo").length,
     identityWithheld: records.filter((r) => r.reporter.identityWithheld).length,
   };
 }

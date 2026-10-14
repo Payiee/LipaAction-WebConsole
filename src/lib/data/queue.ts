@@ -1,6 +1,13 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { loadPositions } from "@/lib/data/positions";
+import {
+  partyDecisionsByReport,
+  readCdrrmoDispatchEnabled,
+  REPORT_VALIDATIONS_DECISIONS_SELECT,
+  type PartyDecisions,
+} from "@/lib/cdrrmo-dispatch";
+import { isRejectedByCdrrmo } from "@/components/queue/routing";
 import { categoryLabel, distinctCategories, medianAgeMinutes, reporterLabel, startOfManilaDay, timeAgo } from "@/lib/utils";
 import type { AgencyRouting, KpiSummary, QueueReport, QueueTabId, RoutingOption, RoutingPlanEntry, SituationCluster, ReportPosition } from "@/types";
 
@@ -17,6 +24,13 @@ const DOWNSTREAM_STATUSES = ["routed", "resolved"];
 // today]; counting only status = 'validated' would make routing a report
 // subtract it from the tile.
 const VALIDATED_OR_LATER = ["validated", ...DOWNSTREAM_STATUSES];
+
+// With CDRRMO dispatch on, CDRRMO can reject a report after it was routed
+// (backend spec 3.4, owner Q10). Such a report stays in the routed half of
+// Recent validated, marked [Rejected by CDRRMO], so the desk sees what
+// became of a report it routed. Only while the switch is on: with it off,
+// the routed half is exactly what it was.
+const DOWNSTREAM_WITH_CDRRMO_REJECTS = [...DOWNSTREAM_STATUSES, "rejected"];
 
 // The routed half of the Recent validated tab is a glance at what just
 // happened, not a history; Validation History is the full record. The
@@ -106,6 +120,13 @@ export interface QueueData {
   duplicateClusters: SituationCluster[];
   queueByTab: Record<QueueTabId, QueueReport[]>;
   queueTabMeta: { id: QueueTabId; label: string; count: number }[];
+  // The backend's CDRRMO dispatch switch, read once for this page load
+  // (src/lib/cdrrmo-dispatch.ts); false on any doubt. While false, nothing on
+  // the page differs from the console before CDRRMO dispatch.
+  cdrrmoDispatch: boolean;
+  // CDRRMO, which CDRRMO dispatch always notifies; named in the Validate
+  // confirmation. null while the switch is off, or if it couldn't be read.
+  cdrrmoAgency: RoutingOption | null;
   // True when the queries failed and the empty shape above is a fallback,
   // not the truth. The page must say so — an outage rendered as [No reports
   // in this queue right now] is the one message an emergency console must
@@ -138,7 +159,7 @@ export async function getBarangayQueue(
   // size is the backlog itself); recently routed is capped; today's count is
   // a HEAD request that returns no rows at all.
   const dayStart = startOfManilaDay().toISOString();
-  const [pendingRes, awaitingRes, recentRes, todayRes] = await Promise.all([
+  const [pendingRes, awaitingRes, recentRes, todayRes, cdrrmoDispatch] = await Promise.all([
     supabase
       .from("incident_reports")
       .select(REPORT_COLUMNS)
@@ -180,6 +201,7 @@ export async function getBarangayQueue(
       .eq("incident_barangay_id", barangayId)
       .in("status", VALIDATED_OR_LATER)
       .gte("reviewed_at", dayStart),
+    readCdrrmoDispatchEnabled(supabase),
   ]);
 
   // Only the pending list takes the page down. It IS the emergency console;
@@ -205,15 +227,29 @@ export async function getBarangayQueue(
     : await loadRecentlyRouted(
         supabase,
         barangayId,
-        (recentRes.data ?? []) as { incident_report_id: string }[]
+        (recentRes.data ?? []) as { incident_report_id: string }[],
+        cdrrmoDispatch ? DOWNSTREAM_WITH_CDRRMO_REJECTS : DOWNSTREAM_STATUSES
       );
   const validatedUnavailable = Boolean(awaitingRes.error) || routedFailed;
 
-  const [routingExtras, positions] = await Promise.all([
+  // With CDRRMO dispatch on, two more reads, each failing soft to the
+  // console's behaviour without them: who decided on the Recent validated
+  // reports (report_validations), and today's barangay validations.
+  const [routingExtras, positions, cdrrmoAgency, decisions, barangayToday] = await Promise.all([
     loadRouting(supabase, pending, awaiting, routed),
     loadPositions(supabase, [...pending, ...awaiting, ...routed], "queue"),
+    cdrrmoDispatch ? loadCdrrmoAgency(supabase) : Promise.resolve(null),
+    // Routed reports only: the decisions decide whether the desk may record
+    // its validation of a routed report; an awaiting one never needs them.
+    cdrrmoDispatch ? loadPartyDecisions(supabase, routed.map((r) => r.id)) : Promise.resolve(null),
+    cdrrmoDispatch ? countBarangayValidationsSince(supabase, barangayId, dayStart) : Promise.resolve(null),
   ]);
   const positionOf = (r: RawReport) => positions.get(r.id) ?? UNKNOWN_POSITION;
+  // Only routed reports had their decisions read; an awaiting one carries
+  // null (not read), never an empty decision pair.
+  const routedIds = new Set(routed.map((r) => r.id));
+  const decisionsOf = (r: RawReport) =>
+    decisions && routedIds.has(r.id) ? decisions.get(r.id) ?? { barangay: null, cdrrmo: null } : null;
 
   const emergency = pending
     .filter((r) => r.entry_tier === "emergency")
@@ -223,9 +259,12 @@ export async function getBarangayQueue(
     .map((r) => toQueueReport(r, routingExtras.get(r.id), positionOf(r)));
   // Awaiting routing first: those still need someone to act. Routed ones
   // are there to show what the agencies have done since.
-  const validated = [...awaiting, ...routed].map((r) =>
-    toQueueReport(r, routingExtras.get(r.id), positionOf(r))
-  );
+  const validated = [...awaiting, ...routed]
+    .map((r) => toQueueReport(r, routingExtras.get(r.id), positionOf(r), decisionsOf(r)))
+    // A rejected report is here only when CDRRMO rejected it after it was
+    // routed. One rejected some other way (say, at the desk after a recall)
+    // left the queue when it was rejected, as every rejection does.
+    .filter((r) => r.details.status !== "rejected" || isRejectedByCdrrmo(r.details.status, r.details.routing));
 
   // Duplicates: pending reports that share a cluster_id with at least one
   // other pending report (the duplicate-flagging algorithm's output).
@@ -276,7 +315,10 @@ export async function getBarangayQueue(
     // back off the tile. This previously counted every validated report ever
     // while the tile was labelled [Validated today].
     // null, not 0, when the count failed: [0 validated today] would be a claim.
-    validatedCount: todayRes.error ? null : todayRes.count ?? 0,
+    // With CDRRMO dispatch on, only this barangay's own validations count
+    // (spec 3.3): a report CDRRMO validated is not one the desk validated.
+    // If that count can't be read, the tile keeps today's count.
+    validatedCount: barangayToday ?? (todayRes.error ? null : todayRes.count ?? 0),
   };
 
   const queueByTab: Record<QueueTabId, QueueReport[]> = {
@@ -293,7 +335,83 @@ export async function getBarangayQueue(
     { id: "validated", label: "Recent validated", count: validated.length },
   ];
 
-  return { kpiSummary, activeCluster, duplicateClusters, queueByTab, queueTabMeta, loadFailed: false, validatedUnavailable };
+  return {
+    kpiSummary,
+    activeCluster,
+    duplicateClusters,
+    queueByTab,
+    queueTabMeta,
+    cdrrmoDispatch,
+    cdrrmoAgency,
+    loadFailed: false,
+    validatedUnavailable,
+  };
+}
+
+/**
+ * Who decided on each report under CDRRMO dispatch: its report_validations
+ * rows (spec 3.3; the report's barangay roles may read them). null when the
+ * read fails, which every caller treats as "not known", never as "nobody".
+ */
+async function loadPartyDecisions(
+  supabase: ReturnType<typeof createClient>,
+  reportIds: string[]
+): Promise<Map<string, PartyDecisions> | null> {
+  if (reportIds.length === 0) return new Map();
+  const { data, error } = await supabase
+    .from("report_validations")
+    .select(REPORT_VALIDATIONS_DECISIONS_SELECT)
+    .in("incident_report_id", reportIds);
+  if (error) {
+    console.error("[queue] report_validations load failed", error.code, error.message);
+    return null;
+  }
+  return partyDecisionsByReport((data ?? []) as { incident_report_id: string; party: string; decision: string }[]);
+}
+
+/**
+ * This barangay's own validations since `since`, from report_validations
+ * (party 'barangay'). report_validations has no barangay column, so the
+ * filter goes through its incident_report_id foreign key to the report's
+ * incident_barangay_id (an inner embed). RLS also scopes the rows to this
+ * barangay's reports; the filter is belt-and-suspenders, as in the queue
+ * reads. null when the count fails.
+ */
+async function countBarangayValidationsSince(
+  supabase: ReturnType<typeof createClient>,
+  barangayId: string,
+  since: string
+): Promise<number | null> {
+  // Only granted columns (REPORT_VALIDATIONS_READABLE): incident_report_id,
+  // party, decision, created_at.
+  const { count, error } = await supabase
+    .from("report_validations")
+    .select("incident_report_id, incident_reports!inner(incident_barangay_id)", { count: "exact", head: true })
+    .eq("incident_reports.incident_barangay_id", barangayId)
+    .eq("party", "barangay")
+    .eq("decision", "validated")
+    .gte("created_at", since);
+  if (error) {
+    console.error("[queue] barangay validations count failed", error.code, error.message);
+    return null;
+  }
+  return count ?? 0;
+}
+
+/**
+ * CDRRMO's agency row, by its code (backend spec 3.1: CDRRMO is identified
+ * by agencies.code = 'cdrrmo', never by a uuid). Read only while CDRRMO
+ * dispatch is on; a failure only costs its name in the Validate
+ * confirmation, which then says [CDRRMO] in words.
+ */
+async function loadCdrrmoAgency(supabase: ReturnType<typeof createClient>): Promise<RoutingOption | null> {
+  const { data, error } = await supabase.from("agencies").select("id, name").eq("code", "cdrrmo").maybeSingle();
+  if (error || !data) {
+    if (error) console.error("[queue] cdrrmo agency load failed", error.code, error.message);
+    return null;
+  }
+  const row = data as { id: string; name: string | null };
+  return { agencyId: row.id, agencyName: row.name?.trim() || "CDRRMO" };
 }
 
 /**
@@ -310,7 +428,8 @@ export async function getBarangayQueue(
 async function loadRecentlyRouted(
   supabase: ReturnType<typeof createClient>,
   barangayId: string,
-  rows: { incident_report_id: string }[]
+  rows: { incident_report_id: string }[],
+  statuses: string[]
 ): Promise<{ routed: RawReport[]; failed: boolean }> {
   // The rows arrive newest first; a report's first row is its latest routing.
   const rank = new Map<string, number>();
@@ -325,7 +444,7 @@ async function loadRecentlyRouted(
     .select(REPORT_COLUMNS)
     .eq("incident_barangay_id", barangayId)
     .in("id", ids)
-    .in("status", DOWNSTREAM_STATUSES);
+    .in("status", statuses);
   if (error) {
     console.error("[queue] recently-routed failed", status, error.code, error.message);
     return { routed: [], failed: true };
@@ -517,7 +636,8 @@ async function loadRouting(
 function toQueueReport(
   r: RawReport,
   extras: RoutingExtras = NO_ROUTING,
-  position: ReportPosition = UNKNOWN_POSITION
+  position: ReportPosition = UNKNOWN_POSITION,
+  partyDecisions: PartyDecisions | null = null
 ): QueueReport {
   return {
     id: r.id,
@@ -559,6 +679,8 @@ function toQueueReport(
       routingPlan: extras.routingPlan,
       routingOptions: extras.routingOptions,
       position,
+      reviewedAt: r.reviewed_at,
+      partyDecisions,
     },
   };
 }
@@ -575,6 +697,8 @@ function failedQueueData(): QueueData {
       { id: "duplicates", label: "Flagged duplicates", count: 0 },
       { id: "validated", label: "Recent validated", count: 0 },
     ],
+    cdrrmoDispatch: false,
+    cdrrmoAgency: null,
     loadFailed: true,
     // The whole page failed; the banner already says so.
     validatedUnavailable: false,

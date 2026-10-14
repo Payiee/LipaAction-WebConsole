@@ -6,7 +6,8 @@
     "dev": "next dev -H 127.0.0.1",
     "build": "next build",
     "start": "next start -H 127.0.0.1",
-    "lint": "next lint"
+    "lint": "next lint",
+    "check:cdrrmo": "node scripts/check-cdrrmo-dispatch.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",

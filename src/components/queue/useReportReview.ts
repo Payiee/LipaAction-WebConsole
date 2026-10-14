@@ -5,6 +5,7 @@ import { useToast } from "@/components/ui/Toast";
 import { updateReportStatus } from "@/app/actions/reports";
 import { callAction } from "@/lib/callAction";
 import { useT, type Translate } from "@/lib/i18n";
+import { useCdrrmoDispatch } from "./CdrrmoDispatchContext";
 
 export type Verdict = "validated" | "rejected";
 
@@ -54,6 +55,19 @@ export function useReportReview(reportId: string, onResolved: (verdict: Verdict)
   const t = useT();
   const [isPending, startTransition] = useTransition();
   const [isRejecting, setIsRejecting] = useState(false);
+  const dispatch = useCdrrmoDispatch();
+
+  // CDRRMO dispatch was switched on after this page loaded, and the backend
+  // refused the old path for this Emergency report. Turning the page's copy
+  // of the switch on swaps this report's buttons for the Validate flow.
+  function failed(result: { message?: string; reason?: "cdrrmo-dispatch-active" }) {
+    if (result.reason === "cdrrmo-dispatch-active") {
+      dispatch.setActive(true);
+      showToast(t("cdrrmo.useValidate"), "danger");
+      return;
+    }
+    showToast(result.message ?? t("review.failed"), "danger");
+  }
 
   function validate() {
     startTransition(async () => {
@@ -66,7 +80,7 @@ export function useReportReview(reportId: string, onResolved: (verdict: Verdict)
         onResolved("validated");
         showToast(t("review.validatedToast", { id: reportId }), "success");
       } else {
-        showToast(result.message ?? t("review.failed"), "danger");
+        failed(result);
       }
     });
   }
@@ -85,7 +99,7 @@ export function useReportReview(reportId: string, onResolved: (verdict: Verdict)
         // design — so say where they went, or the official goes looking.
         showToast(t("review.rejectedToast", { id: reportId }), "danger");
       } else {
-        showToast(result.message ?? t("review.failed"), "danger");
+        failed(result);
       }
     });
   }

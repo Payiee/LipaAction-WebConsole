@@ -157,17 +157,21 @@ export async function getCityResponseTimes(): Promise<CityResponseData> {
 
     for (const r of group) {
       const outOfScope = r.resolution_outcome === "out-of-scope";
+      // Closed by CDRRMO's rejection of the report (CDRRMO dispatch), not by
+      // the agency: counted as neither resolved nor returned, and no time to
+      // resolve.
+      const withdrawn = r.resolution_outcome === "rejected";
       // An agency may mark a report in progress without acknowledging it
       // first; it is being worked on, so it isn't waiting either.
       if (!r.acknowledged_at && !r.in_progress_at && !r.resolved_at) awaitingAcknowledgement += 1;
       if (r.in_progress_at && !r.resolved_at) inProgress += 1;
-      if (r.resolved_at) {
+      if (r.resolved_at && !withdrawn) {
         if (outOfScope) returned += 1;
         else resolved += 1;
       }
       const ack = minutesBetween(r.routed_at ?? r.created_at, r.acknowledged_at);
       if (ack !== null) toAcknowledge.push(ack);
-      const fix = outOfScope ? null : minutesBetween(r.acknowledged_at, r.resolved_at);
+      const fix = outOfScope || withdrawn ? null : minutesBetween(r.acknowledged_at, r.resolved_at);
       if (fix !== null) toResolve.push(fix);
 
       const category = categoryOf.get(r.incident_report_id);

@@ -2,6 +2,7 @@
 // All data consumed by these types is static/dummy — see src/data/*.
 
 import type { RejectReasonCode } from "@/lib/utils";
+import type { PartyDecisions } from "@/lib/cdrrmo-dispatch";
 
 export type PriorityTier = "Critical" | "High" | "Medium" | "Low";
 
@@ -46,7 +47,10 @@ export interface AgencyRouting {
   resolvedAt: string | null;
   // 'recalled' is written only by the backend's recall_auto_routed_report()
   // (20261031090000_recall_window): the desk took an auto-routed report back.
-  resolutionOutcome: "resolved" | "confirmed-false" | "duplicate" | "out-of-scope" | "recalled" | null;
+  // 'rejected' is written only by CDRRMO dispatch, when CDRRMO rejects a
+  // report after it was routed (backend spec 3.4): the row was closed with
+  // the report, not by the agency's own choice.
+  resolutionOutcome: "resolved" | "confirmed-false" | "duplicate" | "out-of-scope" | "recalled" | "rejected" | null;
 }
 
 /** An agency that routing this report would send it to (category_agency_routing). */
@@ -118,6 +122,13 @@ export interface ReportDetails {
   routingOptions: RoutingOption[] | null;
   // Where the reporter's phone was when they filed, for the drawer's map.
   position: ReportPosition;
+  // When the report was reviewed (incident_reports.reviewed_at), null when
+  // nobody has: an auto-routed report carries none.
+  reviewedAt: string | null;
+  // Who decided on it under CDRRMO dispatch (report_validations), read only
+  // while the switch is on and only for Recent validated. null when not read
+  // or when the read failed.
+  partyDecisions: PartyDecisions | null;
 }
 
 /**
@@ -224,6 +235,15 @@ export interface ValidationRecord {
   // outcome), from its agency rows. null on a rejected report, which never
   // reaches an agency, and when the agency rows couldn't be read.
   resolution: ResolutionStatus | null;
+  // Set when the decision shown is the city's CDRRMO's, not this barangay's
+  // (CDRRMO dispatch, report_validations party 'cdrrmo'). Such a record is
+  // listed but never counted among the barangay's own decisions (spec 3.3).
+  decidedBy?: "cdrrmo";
+  // True when the barangay decided but its official can't be named, because
+  // the report's review stamp is CDRRMO's (isReviewStampedByCdrrmo).
+  // validatingOfficial then holds the English [Your barangay] for the CSV
+  // and the filter; the table shows it translated.
+  officialIsBarangayGeneric?: boolean;
 }
 
 /**
@@ -240,7 +260,13 @@ export type ResolutionStatus =
   | "resolved"
   | "confirmedFalse"
   | "duplicate"
-  | "returned";
+  | "returned"
+  // Validated by this barangay, then rejected by the city's CDRRMO after it
+  // was routed (CDRRMO dispatch).
+  | "rejectedByCdrrmo"
+  // Rejected by this barangay, then validated and sent on by the city's
+  // CDRRMO within its 24-hour override window (CDRRMO dispatch).
+  | "overriddenByCdrrmo";
 
 export interface ValidationSummary {
   total: number;

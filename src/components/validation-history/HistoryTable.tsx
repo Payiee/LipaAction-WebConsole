@@ -99,7 +99,9 @@ export function HistoryTable({
                   </div>
                 )}
               </td>
-              <td className="px-4 py-3 text-xs text-ink-700">{record.validatingOfficial}</td>
+              <td className="px-4 py-3 text-xs text-ink-700">
+                {record.officialIsBarangayGeneric ? t("history.yourBarangay") : record.validatingOfficial}
+              </td>
               <td className="px-4 py-3">
                 <ReporterChip reporter={record.reporter} />
               </td>
