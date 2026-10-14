@@ -1,11 +1,12 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useState, useTransition } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { recallAutoRoutedReport } from "@/app/actions/recall";
 import { callAction } from "@/lib/callAction";
 import { useT } from "@/lib/i18n";
 import { useToast } from "@/components/ui/Toast";
-import { closesRecallDialog, localMarkAfter, recallToastTone } from "@/lib/recall";
+import { createClient } from "@/lib/supabase/client";
+import { closesRecallDialog, localMarkAfter, probeRecallAvailable, recallToastTone } from "@/lib/recall";
 import type { RecallMark } from "./recallView";
 
 /**
@@ -17,9 +18,12 @@ import type { RecallMark } from "./recallView";
  * nothing offers a recall: fail closed.
  */
 interface RecallContextValue {
-  // The page's probe found the recall functions, and no answer since has
-  // said they are missing.
+  // The probe found the recall functions, and no answer since has said they
+  // are missing.
   available: boolean;
+  // The probe or a recall answered that the functions are missing (or the
+  // probe failed). Not set while the probe is still out.
+  unavailable: boolean;
   // What the server already answered for a report this page load (spec
   // section 8): after_dispatch -> dispatched, after_window -> closed.
   marks: Readonly<Record<string, RecallMark>>;
@@ -33,6 +37,7 @@ interface RecallContextValue {
 
 const RecallContext = createContext<RecallContextValue>({
   available: false,
+  unavailable: false,
   marks: {},
   openFor: null,
   isPending: false,
@@ -45,14 +50,27 @@ export function useRecall(): RecallContextValue {
   return useContext(RecallContext);
 }
 
-export function RecallProvider({ available: serverAvailable, children }: { available: boolean; children: React.ReactNode }) {
+/**
+ * `probeId`: an auto-routed report on the page, or null. The first time there
+ * is one, the provider asks recall_window_ends_at about it, once per page
+ * session (not on every refresh). Until that answers, and for good if it
+ * fails, no recall button shows: fail closed.
+ */
+export function RecallProvider({ probeId, children }: { probeId: string | null; children: React.ReactNode }) {
   const { showToast } = useToast();
   const t = useT();
   const [openFor, setOpenFor] = useState<string | null>(null);
   const [marks, setMarks] = useState<Record<string, RecallMark>>({});
-  const [missing, setMissing] = useState(false);
+  const [probe, setProbe] = useState<"unknown" | "available" | "missing">("unknown");
+  const probing = useRef(false);
   const [isPending, startTransition] = useTransition();
-  const available = serverAvailable && !missing;
+  const available = probe === "available";
+
+  useEffect(() => {
+    if (probe !== "unknown" || !probeId || probing.current) return;
+    probing.current = true;
+    void probeRecallAvailable(createClient(), probeId).then((ok) => setProbe(ok ? "available" : "missing"));
+  }, [probe, probeId]);
 
   const recall = useCallback(
     (severity: string, reason: string) => {
@@ -69,7 +87,7 @@ export function RecallProvider({ available: serverAvailable, children }: { avail
         const { outcome } = answer;
         const mark = localMarkAfter(outcome);
         if (mark) setMarks((prev) => ({ ...prev, [reportId]: mark }));
-        if (outcome === "unavailable") setMissing(true);
+        if (outcome === "unavailable") setProbe("missing");
         if (closesRecallDialog(outcome)) setOpenFor(null);
         showToast(t(`recall.result.${outcome}`, { id: reportId }), recallToastTone(outcome));
       });
@@ -80,6 +98,7 @@ export function RecallProvider({ available: serverAvailable, children }: { avail
   const value = useMemo<RecallContextValue>(
     () => ({
       available,
+      unavailable: probe === "missing",
       marks,
       openFor,
       isPending,
@@ -92,7 +111,7 @@ export function RecallProvider({ available: serverAvailable, children }: { avail
       },
       recall,
     }),
-    [available, marks, openFor, isPending, recall]
+    [available, probe, marks, openFor, isPending, recall]
   );
 
   return <RecallContext.Provider value={value}>{children}</RecallContext.Provider>;

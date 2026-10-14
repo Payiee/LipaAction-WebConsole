@@ -42,7 +42,13 @@ const {
   probeRecallAvailable,
   unreadIdsFrom,
   mayOfferRecall,
+  timerNoticeApplies,
+  recallDialogCopy,
+  windowMayBeOpen,
+  recallPhase,
+  announcementFor,
 } = mod;
+const { readFileSync } = await import("node:fs");
 
 // The module logs unexpected answers on purpose; keep the run output clean.
 console.error = () => {};
@@ -271,6 +277,60 @@ check("probe call: bad id never calls", await probeRecallAvailable({ rpc: () => 
 check("unread: ids", unreadIdsFrom({ data: [{ id: R1 }, { id: "x" }], error: null }), [R1]);
 check("unread: error -> null", unreadIdsFrom({ data: null, error: { code: "42501" } }), null);
 check("unread: not an array -> null", unreadIdsFrom({ data: {}, error: null }), null);
+
+// --- Fix round 1 (review of #14) -------------------------------------------
+// N1: timer rule i (20261127090000_critical_escalation_timer.sql:54) ends the
+// safety net on ANY recall of a Critical report, escalated or not.
+check("timer notice: Critical open", timerNoticeApplies("Critical", "open"), true);
+check("timer notice: Critical closed (server may still recall)", timerNoticeApplies("Critical", "closed"), true);
+check("timer notice: Critical dispatched (never a recall)", timerNoticeApplies("Critical", "dispatched"), false);
+check("timer notice: Critical none", timerNoticeApplies("Critical", "none"), false);
+check("timer notice: High open (the timer never handles it)", timerNoticeApplies("High", "open"), false);
+check("timer notice: responder Critical, not escalated", timerNoticeApplies(recallState(subject({ responder: true }), T0).kind === "open" ? "Critical" : null, "open"), true);
+
+// N2: a closed window is the browser's reading; the copy never claims the outcome.
+check("copy: open", recallDialogCopy(recallState(subject(), T0)), "open");
+check("copy: dispatched", recallDialogCopy(recallState(twoAgencies, T0 + min)), "dispatched");
+check("copy: closed with a time -> closedAt (server decides)", recallDialogCopy(recallState(subject(), endsCrit + 1000)), "closedAt");
+check("copy: no window known -> mayHaveClosed", recallDialogCopy(recallState(subject({ priority: "Medium" }), T0)), "mayHaveClosed");
+check("copy: undated row -> mayHaveClosed", recallDialogCopy(recallState(subject({ routing: [row({ routedAt: null })] }), T0)), "mayHaveClosed");
+check("copy: none", recallDialogCopy({ kind: "none" }), "none");
+
+const messagesSrc = readFileSync(new URL("../src/lib/messages.ts", import.meta.url), "utf8").replace(/\r\n/g, "\n");
+// One entry's body, single-line or multi-line, never running into the next key.
+const entry = (key) =>
+  messagesSrc.match(new RegExp(`\\n  "${key.replace(/[.]/g, "\\.")}": \\{([\\s\\S]*?)\\},?\\n  (?:"|\\})`))?.[1] ?? "";
+check("copy N2: mayHaveClosed says the server decides", /server/.test(entry("recall.desc.mayHaveClosed")), true);
+check("copy N2: mayHaveClosed claims no outcome", /keep the report|nothing is recalled|only recorded/.test(entry("recall.desc.mayHaveClosed")), false);
+check("copy N2: closedAt says the server decides", /server/.test(entry("recall.desc.closed")), true);
+check("copy N1: timer notice wording", /will not send this report again/.test(entry("recall.desc.timer")), true);
+check("copy N1: timer notice has tl", /tl:\s*"/.test(entry("recall.desc.timer")), true);
+// N4: an unknown answer may follow a write; never say it wasn't recalled.
+check("copy N4: unknown says couldn't confirm", /Couldn't confirm the recall/.test(entry("recall.result.unknown")), true);
+check("copy N4: unknown never says wasn't recalled", /wasn't recalled/.test(entry("recall.result.unknown")), false);
+check("copy N8: badge tl", /naipasa nang hindi dumaan sa inyo/.test(entry("recall.badge")), true);
+
+// N6: the 1-second tick stops once no window can still be open.
+check("tick: routed now", windowMayBeOpen([{ routedAt: new Date(T0).toISOString() }], T0), true);
+check("tick: at 15 min exactly", windowMayBeOpen([{ routedAt: new Date(T0).toISOString() }], T0 + 15 * min), true);
+check("tick: past 15 min", windowMayBeOpen([{ routedAt: new Date(T0).toISOString() }], T0 + 15 * min + 1), false);
+check("tick: earliest row counts", windowMayBeOpen([{ routedAt: new Date(T0 + 10 * min).toISOString() }, { routedAt: new Date(T0).toISOString() }], T0 + 16 * min), false);
+check("tick: no dated rows", windowMayBeOpen([{ routedAt: null }], T0), false);
+check("tick: no rows", windowMayBeOpen([], T0), false);
+
+// N3: announce only a crossing seen on screen, never on mount.
+check("announce: mount in minute", announcementFor(undefined, "minute"), null);
+check("announce: mount closed", announcementFor(undefined, "closed"), null);
+check("announce: open -> minute", announcementFor("open", "minute"), "oneMinute");
+check("announce: minute -> closed", announcementFor("minute", "closed"), "closed");
+check("announce: open -> closed", announcementFor("open", "closed"), "closed");
+check("announce: closed -> closed", announcementFor("closed", "closed"), null);
+check("announce: minute -> minute", announcementFor("minute", "minute"), null);
+check("announce: other -> closed", announcementFor("other", "closed"), null);
+check("phase: open", recallPhase(recallState(subject(), T0), T0), "open");
+check("phase: minute", recallPhase(recallState(subject(), T0), endsCrit - 30_000), "minute");
+check("phase: closed", recallPhase(recallState(subject(), endsCrit + 1), endsCrit + 1), "closed");
+check("phase: no window", recallPhase(recallState(subject({ priority: "Medium" }), T0), T0), "other");
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

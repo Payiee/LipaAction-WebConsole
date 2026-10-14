@@ -1,14 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { PriorityBadge } from "@/components/ui/Badge";
 import { useT } from "@/lib/i18n";
 import { useNow } from "@/lib/useNow";
-import { countdown, mayOfferRecall, type RecallState } from "@/lib/recall";
+import { mayOfferRecall, recallPhase, windowMayBeOpen, type RecallState } from "@/lib/recall";
 import { RecallCountdown } from "./RecallCountdown";
 import { useRecall } from "./RecallContext";
-import { isEscalated, openAgencyNames, recallStateOf } from "./recallView";
+import { isEscalated, openAgencyNames, recallStateOf, useRecallAnnouncement } from "./recallView";
 import type { QueueReport } from "@/types";
 
 type Listed = { report: QueueReport; state: Exclude<RecallState, { kind: "none" }> };
@@ -26,23 +26,30 @@ type Listed = { report: QueueReport; state: Exclude<RecallState, { kind: "none" 
  * automatic routings can't push live emergencies down the page; their
  * Record recall lives in the drawer, one entry point per surface.
  *
- * One clock for the whole strip, once a second while any window is open.
+ * One clock for the whole strip, once a second only while some window could
+ * still be open (windowMayBeOpen), every 30 seconds otherwise.
  * One polite live region announces only the one-minute mark and the close.
  */
 export function RecallStrip({
   reports,
   unavailable,
+  capped,
   onOpenDetails,
 }: {
   reports: QueueReport[];
   // The auto-routed read failed.
   unavailable: boolean;
+  // The read hit its cap: older ones exist that this list doesn't show.
+  capped: boolean;
   onOpenDetails: (report: QueueReport) => void;
 }) {
   const t = useT();
   const recall = useRecall();
-  const anyCandidate = reports.length > 0;
-  const tick = useNow(anyCandidate ? 1000 : 60_000);
+  const [fast, setFast] = useState(true);
+  const tick = useNow(fast ? 1000 : 30_000);
+  useEffect(() => {
+    setFast(tick === null || reports.some((r) => windowMayBeOpen(r.details.routing, tick)));
+  }, [tick, reports]);
 
   const { open, rest } = useMemo(() => {
     if (tick === null) return { open: [] as Listed[], rest: [] as Listed[] };
@@ -57,29 +64,11 @@ export function RecallStrip({
     };
   }, [reports, tick, recall.marks]);
 
-  // Announce crossing the one-minute mark and the close, once each.
-  const [announcement, setAnnouncement] = useState("");
-  const phase = useRef(new Map<string, "open" | "minute" | "closed">());
-  useEffect(() => {
-    if (tick === null) return;
-    const seen = phase.current;
-    let message = "";
-    for (const { report, state } of open) {
-      const next = countdown(state.endsAt ?? 0, tick).underMinute ? "minute" : "open";
-      if (next === "minute" && seen.get(report.id) === "open") message = t("recall.live.oneMinute", { id: report.id });
-      seen.set(report.id, next);
-    }
-    const stillOpen = new Set(open.map((item) => item.report.id));
-    for (const [id, was] of seen) {
-      if (was !== "closed" && !stillOpen.has(id)) {
-        if (rest.some((item) => item.report.id === id && item.state.kind === "closed")) {
-          message = t("recall.live.closed", { id });
-        }
-        seen.set(id, "closed");
-      }
-    }
-    if (message) setAnnouncement(message);
-  }, [open, rest, tick, t]);
+  // One polite live region: the one-minute mark and the close, only when
+  // seen crossing (never on mount).
+  const announcement = useRecallAnnouncement(
+    tick === null ? [] : [...open, ...rest].map(({ report, state }) => ({ id: report.id, phase: recallPhase(state, tick) }))
+  );
 
   if (unavailable) {
     return (
@@ -99,10 +88,11 @@ export function RecallStrip({
       className="mb-3 rounded-card border border-priority-medium/30 bg-priority-mediumBg/40 px-4 py-3 shadow-panel"
     >
       <h2 id="recall-strip-title" className="text-sm font-semibold text-ink-900">
-        {t("recall.strip.title")} &middot; {open.length + rest.length}
+        {t("recall.strip.title")} &middot; {capped ? `${open.length + rest.length}+` : open.length + rest.length}
       </h2>
       <p className="mb-2 text-xs text-ink-700">{t("recall.strip.body")}</p>
-      {!recall.available && <p className="mb-2 text-xs text-ink-500">{t("recall.strip.recallUnavailable")}</p>}
+      {capped && <p className="mb-2 text-xs text-ink-500">{t("recall.strip.capped", { count: reports.length })}</p>}
+      {recall.unavailable && <p className="mb-2 text-xs text-ink-500">{t("recall.strip.recallUnavailable")}</p>}
       <p aria-live="polite" className="sr-only">
         {announcement}
       </p>
@@ -118,7 +108,7 @@ export function RecallStrip({
       {rest.length > 0 && (
         <details className="mt-2">
           <summary className="flex min-h-11 cursor-pointer items-center text-xs font-medium text-ink-700">
-            {t("recall.strip.closedSummary", { count: rest.length })}
+            {t(open.length > 0 ? "recall.strip.closedSummary" : "recall.strip.closedSummaryOnly", { count: rest.length })}
           </summary>
           <ul className="divide-y divide-ink-100 rounded-md border border-ink-100 bg-white">
             {rest.map(({ report, state }) => (

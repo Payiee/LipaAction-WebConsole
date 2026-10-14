@@ -32,9 +32,8 @@ export default async function QueuePage() {
       <CdrrmoDispatchProvider initial={queueData.cdrrmoDispatch} cdrrmoAgency={queueData.cdrrmoAgency}>
         {/* RECALL-UI: the one Recall dialog and what the server already
             answered, shared by the strip, the rows and the drawer. Off (no
-            button anywhere) unless getBarangayQueue's probe found the recall
-            functions. */}
-        <RecallProvider available={queueData.recallAvailable}>
+            button anywhere) until its one probe finds the recall functions. */}
+        <RecallProvider probeId={queueData.autoRouted[0]?.id ?? null}>
           <QueueClient
             official={official}
             queueData={queueData}

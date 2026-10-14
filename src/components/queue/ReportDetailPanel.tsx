@@ -26,10 +26,10 @@ import { ReportChatSection } from "./ReportChatSection";
 import { ReportChatThreads } from "./ReportChatThreads";
 import { REPORT_CHAT_LIVE, REPORT_CHAT_V2 } from "@/lib/features";
 import { useNow } from "@/lib/useNow";
-import { mayOfferRecall, type RecallState } from "@/lib/recall";
+import { mayOfferRecall, recallPhase, windowMayBeOpen, type RecallState } from "@/lib/recall";
 import { useRecall } from "./RecallContext";
 import { RecallCountdown } from "./RecallCountdown";
-import { isEscalated, recallStateOf } from "./recallView";
+import { isEscalated, recallStateOf, useRecallAnnouncement } from "./recallView";
 import { isChatOffered } from "@/lib/reportChat";
 import {
   agencyProgressLabel,
@@ -132,14 +132,24 @@ export function ReportDetailPanel({
   // RECALL-UI: the countdown and the Recall / Record recall button for a
   // report routed without a review here (src/lib/recall.ts). The dialog is
   // the queue page's (RecallContext); this only opens it. A clock once a
-  // second only while the report is auto-routed.
+  // second only while a window could still be open (windowMayBeOpen).
   const recall = useRecall();
-  const autoRouted = isAutoRouted(routeState);
-  const recallTick = useNow(autoRouted ? 1000 : 60_000);
+  const [recallFast, setRecallFast] = useState(() => report.details.status === "routed");
+  const recallTick = useNow(recallFast ? 1000 : 30_000);
+  useEffect(() => {
+    setRecallFast(
+      recallTick === null ||
+        (report.details.status === "routed" && windowMayBeOpen(report.details.routing, recallTick))
+    );
+  }, [recallTick, report.details.status, report.details.routing]);
   const recallNow = recallTick ?? 0;
   const recallAt = recallTick === null ? ({ kind: "none" } as const) : recallStateOf(report, recallNow, recall.marks[report.id] ?? null);
   const recallOffer = mayOfferRecall(recallAt, recall.available);
   const recallOpenHere = recall.openFor === report.id;
+  // Announces only a crossing seen while the drawer is open, never on mount.
+  const recallAnnouncement = useRecallAnnouncement(
+    recallTick === null ? [] : [{ id: report.id, phase: recallPhase(recallAt, recallNow) }]
+  );
 
   // Disabled while a prompt is stacked on top — the reject reason or the
   // routing confirmation — so Escape backs out one layer at a time, and
@@ -418,14 +428,8 @@ export function ReportDetailPanel({
             recallAt={recallAt}
             now={recallNow}
           />
-          {/* Announces the one-minute mark and the close only: the text
-              changes at those two moments and stays put in between. */}
           <p aria-live="polite" className="sr-only">
-            {recallAt.kind === "open" && recallAt.endsAt - recallNow < 60_000
-              ? t("recall.live.oneMinute", { id: report.id })
-              : recallAt.kind === "closed" && recallAt.endsAt !== null
-                ? t("recall.live.closed", { id: report.id })
-                : ""}
+            {recallAnnouncement}
           </p>
         </>
       )}

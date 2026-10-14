@@ -884,6 +884,7 @@ export function QueueClient({
         <RecallStrip
           reports={queueData.autoRouted}
           unavailable={queueData.autoRoutedUnavailable}
+          capped={queueData.autoRoutedCapped}
           onOpenDetails={(report) => {
             setChatFocus(false);
             setSelected(report);

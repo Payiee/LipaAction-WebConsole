@@ -21,9 +21,10 @@ export const RECALL_RPC = "recall_auto_routed_report";
 /**
  * recall_window_ends_at(p_report): SECURITY INVOKER, read only, EXECUTE for
  * authenticated (20261031090000_recall_window.sql:197-216; body redefined at
- * 20261130120000_responder_routing.sql:476). Called once per page load, on
- * one report, as a probe that the recall functions are deployed (they ship
- * in the same migration). Not called per row: spec section 5.
+ * 20261130120000_responder_routing.sql:476). Called once per page session,
+ * from the browser (RecallContext), on one report, as a probe that the recall
+ * functions are deployed (they ship in the same migration). Not called per
+ * row (spec section 5), and not on every refresh.
  */
 export const RECALL_PROBE_RPC = "recall_window_ends_at";
 
@@ -207,6 +208,72 @@ export function recallState(
  * nothing. `available` is false when the recall functions are not deployed
  * or the probe failed: fail closed, no button.
  */
+/**
+ * Whether the dialog warns that the Critical escalation timer will never send
+ * the report again. Timer rule i refuses any report with an agency_routing
+ * row, open or closed ("previously_routed",
+ * 20261127090000_critical_escalation_timer.sql:54), so ANY recall of a
+ * Critical report ends its safety net, a responder's route included. Shown
+ * whenever the recall may really take the report back: an open window, or a
+ * closed one the server may still see open (the browser clock is advisory).
+ * Not for dispatched: that answer is after_dispatch or after_window, never a
+ * recall.
+ */
+export function timerNoticeApplies(priority: string | null, kind: RecallState["kind"]): boolean {
+  return priority === "Critical" && (kind === "open" || kind === "closed");
+}
+
+/**
+ * Which description the dialog shows. A closed window is the browser's
+ * reading only (clock skew, a responder lookup that failed, an anonymised
+ * credential), so its copy never claims the outcome: the server decides.
+ */
+export type RecallDialogCopy = "open" | "dispatched" | "closedAt" | "mayHaveClosed" | "none";
+
+export function recallDialogCopy(state: RecallState): RecallDialogCopy {
+  switch (state.kind) {
+    case "open":
+      return "open";
+    case "dispatched":
+      return "dispatched";
+    case "closed":
+      return state.endsAt === null ? "mayHaveClosed" : "closedAt";
+    default:
+      return "none";
+  }
+}
+
+/**
+ * True while any window could still be open for this routing: the earliest
+ * routed_at is less than MAX_WINDOW_MINUTES ago. A surface ticks once a
+ * second only then; afterwards nothing on it can change by the second.
+ */
+export function windowMayBeOpen(routing: { routedAt: string | null }[], now: number): boolean {
+  const times = routing.map((r) => (r.routedAt ? Date.parse(r.routedAt) : Number.NaN)).filter((t) => !Number.isNaN(t));
+  if (times.length === 0) return false;
+  return now <= Math.min(...times) + MAX_WINDOW_MINUTES * 60_000;
+}
+
+/** Where a countdown stands, for the one-minute and closed announcements. */
+export type RecallPhase = "open" | "minute" | "closed" | "other";
+
+export function recallPhase(state: RecallState, now: number): RecallPhase {
+  if (state.kind === "open") return state.endsAt - now < 60_000 ? "minute" : "open";
+  if (state.kind === "closed" && state.endsAt !== null) return "closed";
+  return "other";
+}
+
+/**
+ * What to announce when the phase moves from `previous` to `next`: only a
+ * crossing seen on screen. Never on mount (previous undefined), never twice.
+ */
+export function announcementFor(previous: RecallPhase | undefined, next: RecallPhase): "oneMinute" | "closed" | null {
+  if (previous === undefined || previous === next) return null;
+  if (next === "minute" && previous === "open") return "oneMinute";
+  if (next === "closed" && (previous === "open" || previous === "minute")) return "closed";
+  return null;
+}
+
 export function mayOfferRecall(state: { kind: RecallState["kind"] }, available: boolean): "recall" | "record" | null {
   if (!available) return null;
   if (state.kind === "open") return "recall";

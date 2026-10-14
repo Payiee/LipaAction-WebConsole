@@ -9,12 +9,14 @@ import { useNow } from "@/lib/useNow";
 import {
   RECALL_REASON_MAX,
   RECALL_SEVERITIES,
+  recallDialogCopy,
   recallReasonLength,
+  timerNoticeApplies,
   trimRecallReason,
   type RecallSeverity,
 } from "@/lib/recall";
 import { RecallCountdown } from "./RecallCountdown";
-import { isEscalated, openAgencyNames, recallStateOf, type RecallMark } from "./recallView";
+import { openAgencyNames, recallStateOf, type RecallMark } from "./recallView";
 import type { QueueReport } from "@/types";
 
 /**
@@ -59,25 +61,31 @@ export function RecallModal({
   const canSubmit =
     !busy && state.kind !== "none" && severity !== null && trimmedLength > 0 && trimmedLength <= RECALL_REASON_MAX;
 
+  // A closed window is this browser's reading only: its copy never claims the
+  // outcome (src/lib/recall.ts recallDialogCopy). Any recall of a Critical
+  // report ends the escalation timer's safety net (timerNoticeApplies).
   let description: string;
-  switch (state.kind) {
+  switch (recallDialogCopy(state)) {
     case "open":
-      description =
-        t("recall.desc.open", { agencies: report ? openAgencyNames(report) : "" }) +
-        (report && isEscalated(report) ? ` ${t("recall.desc.escalated")}` : "");
+      description = t("recall.desc.open", { agencies: report ? openAgencyNames(report) : "" });
       break;
     case "dispatched":
-      description = t("recall.desc.dispatched", { agency: state.agency ?? t("recall.anAgency") });
+      description = t("recall.desc.dispatched", {
+        agency: (state.kind === "dispatched" && state.agency) || t("recall.anAgency"),
+      });
       break;
-    case "closed":
-      description =
-        state.endsAt === null
-          ? t("recall.desc.noWindow")
-          : t("recall.desc.closed", { minutes: Math.max(0, Math.floor((now - state.endsAt) / 60_000)) });
+    case "closedAt":
+      description = t("recall.desc.closed", {
+        minutes: state.kind === "closed" && state.endsAt !== null ? Math.max(0, Math.floor((now - state.endsAt) / 60_000)) : 0,
+      });
+      break;
+    case "mayHaveClosed":
+      description = t("recall.desc.mayHaveClosed");
       break;
     default:
       description = t("recall.desc.none");
   }
+  if (report && timerNoticeApplies(report.priority, state.kind)) description += ` ${t("recall.desc.timer")}`;
   const confirmLabel = state.kind === "open" ? t("recall.button") : t("recall.record");
 
   function handleSubmit(e: React.FormEvent) {
