@@ -12,6 +12,7 @@ import {
   DESK_AUTO_ROUTED_KIND,
   ROUTING_DISPATCH_COLUMNS,
   UNREAD_AUTO_ROUTED_LIMIT,
+  capIds,
   readResponders,
   unreadIdsFrom,
 } from "@/lib/recall";
@@ -246,7 +247,8 @@ export async function getBarangayQueue(
       .eq("status", "routed")
       .is("reviewed_at", null)
       .order("created_at", { ascending: false })
-      .limit(AUTO_ROUTED_LIMIT),
+      // One over the cap, so [N+] shows only when more exist (capIds).
+      .limit(AUTO_ROUTED_LIMIT + 1),
     // The header badge: notifications_select_own scopes these rows to the
     // signed-in official, and the column grant covers id, kind and read_at
     // (20261110090000_notifications_inbox.sql:85-88).
@@ -295,7 +297,10 @@ export async function getBarangayQueue(
   // The auto-routed reports not already loaded as part of the routed half;
   // the routed half's copies are reused for the rest.
   const routedIdSet = new Set(routed.map((r) => r.id));
-  const autoIds = ((autoRes.error ? [] : autoRes.data ?? []) as { id: string }[]).map((r) => r.id);
+  const { ids: autoIds, capped: autoCapped } = capIds(
+    ((autoRes.error ? [] : autoRes.data ?? []) as { id: string }[]).map((r) => r.id),
+    AUTO_ROUTED_LIMIT
+  );
   const autoOnlyIds = autoIds.filter((id) => !routedIdSet.has(id));
   // Usually none: an automatic routing is recent, so it is in the routed half.
   const autoOnlyRes =
@@ -446,7 +451,7 @@ export async function getBarangayQueue(
     validatedUnavailable,
     autoRouted,
     autoRoutedUnavailable: Boolean(autoRes.error || autoOnlyRes.error),
-    autoRoutedCapped: autoIds.length >= AUTO_ROUTED_LIMIT,
+    autoRoutedCapped: autoCapped,
     unreadAutoRoutedIds: unreadIdsFrom(unreadRes),
   };
 }

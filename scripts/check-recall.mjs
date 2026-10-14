@@ -47,6 +47,7 @@ const {
   windowMayBeOpen,
   recallPhase,
   announcementFor,
+  capIds,
 } = mod;
 const { readFileSync } = await import("node:fs");
 
@@ -281,12 +282,41 @@ check("unread: not an array -> null", unreadIdsFrom({ data: {}, error: null }), 
 // --- Fix round 1 (review of #14) -------------------------------------------
 // N1: timer rule i (20261127090000_critical_escalation_timer.sql:54) ends the
 // safety net on ANY recall of a Critical report, escalated or not.
-check("timer notice: Critical open", timerNoticeApplies("Critical", "open"), true);
-check("timer notice: Critical closed (server may still recall)", timerNoticeApplies("Critical", "closed"), true);
-check("timer notice: Critical dispatched (never a recall)", timerNoticeApplies("Critical", "dispatched"), false);
-check("timer notice: Critical none", timerNoticeApplies("Critical", "none"), false);
-check("timer notice: High open (the timer never handles it)", timerNoticeApplies("High", "open"), false);
-check("timer notice: responder Critical, not escalated", timerNoticeApplies(recallState(subject({ responder: true }), T0).kind === "open" ? "Critical" : null, "open"), true);
+const notice = (over = {}) => timerNoticeApplies({ priority: "Critical", entryTier: "emergency", kind: "open", mark: null, ...over });
+check("timer notice: Critical open", notice(), true);
+check("timer notice: Critical closed (server may still recall)", notice({ kind: "closed" }), true);
+check("timer notice: Critical dispatched (never a recall)", notice({ kind: "dispatched" }), false);
+check("timer notice: Critical none", notice({ kind: "none" }), false);
+check("timer notice: High open (the timer never handles it)", notice({ priority: "High" }), false);
+check("timer notice: unscored", notice({ priority: null }), false);
+// Not circular: the subject's own priority and state, with no escalated row.
+// A responder's Critical route is never escalated, and still gets the notice.
+const responderCrit = subject({ responder: true });
+const responderState = recallState(responderCrit, T0);
+check("timer notice: responder subject is open and not escalated", [responderState.kind, responderState.escalated], ["open", false]);
+check(
+  "timer notice: responder Critical route, not escalated",
+  notice({ priority: responderCrit.priority, kind: responderState.kind }),
+  true
+);
+const escalatedCrit = subject({ routing: [row({ escalated: true })] });
+check("timer notice: escalated Critical route", notice({ priority: escalatedCrit.priority, kind: recallState(escalatedCrit, T0).kind }), true);
+// Follow-up 1: rule e (20261127090000_critical_escalation_timer.sql:49) - Emergency intake only.
+check("timer notice: Other-report Critical", notice({ entryTier: "other_reports" }), false);
+check("timer notice: unknown tier", notice({ entryTier: "" }), false);
+// Follow-up 2: the server already answered after_window for this report.
+check("timer notice: after_window already answered", notice({ kind: "closed", mark: "closed" }), false);
+check("timer notice: after_window mark wins over an open reading", notice({ kind: "open", mark: "closed" }), false);
+check("timer notice: after_dispatch mark is dispatched (no notice)", notice({ kind: recallState(subject(), T0, "dispatched").kind, mark: "dispatched" }), false);
+
+// Follow-up 3: [N+] only when more than the cap exist (read limit + 1).
+const idsOf = (n) => Array.from({ length: n }, (_, i) => `id-${i}`);
+check("cap: under", capIds(idsOf(49), 50), { ids: idsOf(49), capped: false });
+check("cap: exactly the limit is not capped", capIds(idsOf(50), 50).capped, false);
+check("cap: limit + 1 is capped", capIds(idsOf(51), 50).capped, true);
+check("cap: limit + 1 shows the limit", capIds(idsOf(51), 50).ids.length, 50);
+check("cap: keeps the newest first", capIds(idsOf(51), 50).ids[0], "id-0");
+check("cap: none", capIds([], 50), { ids: [], capped: false });
 
 // N2: a closed window is the browser's reading; the copy never claims the outcome.
 check("copy: open", recallDialogCopy(recallState(subject(), T0)), "open");

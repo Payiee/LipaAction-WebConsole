@@ -85,7 +85,12 @@ export function RecallModal({
     default:
       description = t("recall.desc.none");
   }
-  if (report && timerNoticeApplies(report.priority, state.kind)) description += ` ${t("recall.desc.timer")}`;
+  if (
+    report &&
+    timerNoticeApplies({ priority: report.priority, entryTier: report.details.entryTier, kind: state.kind, mark })
+  ) {
+    description += ` ${t("recall.desc.timer")}`;
+  }
   const confirmLabel = state.kind === "open" ? t("recall.button") : t("recall.record");
 
   function handleSubmit(e: React.FormEvent) {

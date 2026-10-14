@@ -203,12 +203,6 @@ export function recallState(
 }
 
 /**
- * Which button a state offers: the primary Recall, the secondary Record
- * recall (dispatched, or the window closed: spec Q2 keeps it for T04), or
- * nothing. `available` is false when the recall functions are not deployed
- * or the probe failed: fail closed, no button.
- */
-/**
  * Whether the dialog warns that the Critical escalation timer will never send
  * the report again. Timer rule i refuses any report with an agency_routing
  * row, open or closed ("previously_routed",
@@ -217,10 +211,32 @@ export function recallState(
  * whenever the recall may really take the report back: an open window, or a
  * closed one the server may still see open (the browser clock is advisory).
  * Not for dispatched: that answer is after_dispatch or after_window, never a
- * recall.
+ * recall. Only for an Emergency-intake report: the timer acts on nothing else
+ * (rule e, not_emergency, 20261127090000_critical_escalation_timer.sql:49).
+ * Not once the server has answered after_window for it (mark "closed"): a
+ * second attempt can't recall it either.
  */
-export function timerNoticeApplies(priority: string | null, kind: RecallState["kind"]): boolean {
-  return priority === "Critical" && (kind === "open" || kind === "closed");
+export function timerNoticeApplies(input: {
+  priority: string | null;
+  entryTier: string;
+  kind: RecallState["kind"];
+  mark: "dispatched" | "closed" | null;
+}): boolean {
+  return (
+    input.priority === "Critical" &&
+    input.entryTier === "emergency" &&
+    input.mark !== "closed" &&
+    (input.kind === "open" || input.kind === "closed")
+  );
+}
+
+/**
+ * The auto-routed ids a page shows, read with one row over the cap: `capped`
+ * is true only when more exist than the page lists, never when exactly
+ * `limit` do.
+ */
+export function capIds(ids: string[], limit: number): { ids: string[]; capped: boolean } {
+  return { ids: ids.slice(0, limit), capped: ids.length > limit };
 }
 
 /**
@@ -274,6 +290,12 @@ export function announcementFor(previous: RecallPhase | undefined, next: RecallP
   return null;
 }
 
+/**
+ * Which button a state offers: the primary Recall, the secondary Record
+ * recall (dispatched, or the window closed: spec Q2 keeps it for T04), or
+ * nothing. `available` is false when the recall functions are not deployed
+ * or the probe failed: fail closed, no button.
+ */
 export function mayOfferRecall(state: { kind: RecallState["kind"] }, available: boolean): "recall" | "record" | null {
   if (!available) return null;
   if (state.kind === "open") return "recall";
