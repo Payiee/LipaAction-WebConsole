@@ -22,6 +22,9 @@ export const EXPORT_KINDS = [
   "access_log_print",
   "verification_activity_csv",
   "verification_activity_print",
+  // The city's report list: no names, but every report in the city one row
+  // at a time, which is more than a count, so it is recorded like the rest.
+  "city_reports_csv",
 ] as const;
 
 export type ExportKind = (typeof EXPORT_KINDS)[number];

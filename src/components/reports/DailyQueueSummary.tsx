@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
+import { CategoryMultiSelect, matchesCategories } from "@/components/ui/CategoryMultiSelect";
 import { PrintButton } from "@/components/ui/PrintButton";
 import { Tile } from "@/components/ui/Tile";
 import { useToast } from "@/components/ui/Toast";
@@ -10,7 +11,7 @@ import { downloadCsv } from "@/lib/downloadCsv";
 import { useT } from "@/lib/i18n";
 import { reportsHref } from "./reportsHref";
 // Type-only import from a server-only module — erased at compile time.
-import type { DailyQueueSummaryData } from "@/lib/data/dailyQueueSummary";
+import type { DailyCounts, DailyQueueSummaryData } from "@/lib/data/dailyQueueSummary";
 
 const DATE_SHAPE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -43,8 +44,16 @@ export function DailyQueueSummary({
   const t = useT();
   const router = useRouter();
   const { showToast } = useToast();
-  const { date, today, rows, totals, loadFailed } = summary;
+  const { date, today, rows: allRows, totals: allTotals, loadFailed } = summary;
   const settleTimer = useRef<number | undefined>(undefined);
+  // Several categories at once, so the file holds only the ones an office
+  // wants (agencies' request, 2026-10-14). The tiles, the table, the CSV and
+  // a print all follow the choice; nothing ticked means every category.
+  const [categories, setCategories] = useState<string[]>([]);
+  const categoryOptions = useMemo(() => allRows.map((r) => r.category), [allRows]);
+  const rows = useMemo(() => allRows.filter((r) => matchesCategories(r.category, categories)), [allRows, categories]);
+  const narrowed = rows.length !== allRows.length;
+  const totals = narrowed ? sumCounts(rows) : allTotals;
 
   useEffect(() => () => window.clearTimeout(settleTimer.current), []);
 
@@ -97,6 +106,9 @@ export function DailyQueueSummary({
               className="min-h-11 rounded-md border border-ink-100 bg-white px-3 text-sm text-ink-900 focus:border-brand-500 focus:outline-none"
             />
           </label>
+          {categoryOptions.length > 1 && (
+            <CategoryMultiSelect options={categoryOptions} chosen={categories} onChange={setCategories} />
+          )}
           {date !== today && (
             <Button variant="secondary" size="sm" onClick={() => showDay(today)}>
               {t("history.range.today")}
@@ -166,10 +178,23 @@ export function DailyQueueSummary({
       )}
 
       <p className="mt-3 text-xs text-ink-500">
+        {narrowed && `${t("reports.categoriesShown", { shown: rows.length, count: allRows.length })} `}
         {t("reports.footer")}
         {summary.capped && ` · ${t("reports.capped", { limit: summary.limit })}`}
       </p>
     </section>
+  );
+}
+
+function sumCounts(rows: DailyCounts[]): DailyCounts {
+  return rows.reduce(
+    (sum, r) => ({
+      submitted: sum.submitted + r.submitted,
+      awaitingReview: sum.awaitingReview + r.awaitingReview,
+      validated: sum.validated + r.validated,
+      rejected: sum.rejected + r.rejected,
+    }),
+    { submitted: 0, awaitingReview: 0, validated: 0, rejected: 0 }
   );
 }
 

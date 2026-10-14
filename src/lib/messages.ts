@@ -742,6 +742,19 @@ export const MESSAGES = {
   "history.allOfficials": { en: "All officials", tl: "Lahat ng opisyal" },
   "history.filterCategory": { en: "Filter by category", tl: "Salain ayon sa kategorya" },
   "history.allCategories": { en: "All categories", tl: "Lahat ng kategorya" },
+  "categories.count": { en: "{count} categories", tl: "{count} kategorya" },
+  "categories.clear": { en: "Show all categories", tl: "Ipakita ang lahat ng kategorya" },
+  "reports.categoriesShown": {
+    en: "Showing {shown} of {count} categories; the totals, the file and a print hold only these.",
+    tl: "Ipinapakita ang {shown} sa {count} kategorya; ito lamang ang laman ng kabuuan, ng file at ng print.",
+  },
+  "city.reports.export": { en: "Export CSV", tl: "I-export ang CSV" },
+  "city.reports.exported": { en: "Exported {count} reports as CSV", tl: "Na-export ang {count} ulat bilang CSV" },
+  "city.reports.exportNothing": { en: "No reports to export", tl: "Walang ulat na mai-e-export" },
+  "city.reports.categoriesShown": {
+    en: "{shown} of the {count} loaded reports match the chosen categories.",
+    tl: "{shown} sa {count} na-load na ulat ang tugma sa mga napiling kategorya.",
+  },
   "history.filterPriority": { en: "Filter by priority", tl: "Salain ayon sa priyoridad" },
   "history.allPriorities": { en: "All priorities", tl: "Lahat ng priyoridad" },
   "history.filterResolution": { en: "Filter by resolution", tl: "Salain ayon sa kinahinatnan" },
@@ -1965,6 +1978,7 @@ export const MESSAGES = {
     en: "Weekly Verification Activity, print",
     tl: "Lingguhang Aktibidad ng Pag-verify, print",
   },
+  "export.kind.city_reports_csv": { en: "City reports list, CSV", tl: "Listahan ng mga ulat ng lungsod, CSV" },
 
   // --- Reports: #13 Weekly Verification Activity by Official -----------------
   "common.shareOf": { en: "{part} of {whole} ({percent}%)", tl: "{part} sa {whole} ({percent}%)" },

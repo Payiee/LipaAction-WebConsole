@@ -3,6 +3,7 @@
 import { cx, manilaTimestamp, REJECT_REASON_LABELS } from "@/lib/utils";
 import { downloadCsv } from "@/lib/downloadCsv";
 import { Button } from "@/components/ui/Button";
+import { CategoryMultiSelect } from "@/components/ui/CategoryMultiSelect";
 import { PrintButton } from "@/components/ui/PrintButton";
 import { useRecordedExport } from "@/components/ui/useRecordedExport";
 import { useToast } from "@/components/ui/Toast";
@@ -41,9 +42,9 @@ export function HistoryFilters({
   onRangeChange,
   onOutcomeChange,
   onOfficialChange,
-  category,
+  categories,
   categoryOptions,
-  onCategoryChange,
+  onCategoriesChange,
   priority,
   priorityOptions,
   onPriorityChange,
@@ -59,9 +60,11 @@ export function HistoryFilters({
   onRangeChange: (value: RangeFilter) => void;
   onOutcomeChange: (value: OutcomeFilter) => void;
   onOfficialChange: (value: string) => void;
-  category: string;
+  // Several at once, so an export can hold only the categories an office
+  // wants (agencies' request, 2026-10-14). Empty means every category.
+  categories: string[];
   categoryOptions: string[];
-  onCategoryChange: (value: string) => void;
+  onCategoriesChange: (value: string[]) => void;
   priority: string;
   priorityOptions: string[];
   onPriorityChange: (value: string) => void;
@@ -139,19 +142,7 @@ export function HistoryFilters({
         )}
 
         {categoryOptions.length > 1 && (
-          <select
-            aria-label={t("history.filterCategory")}
-            value={category}
-            onChange={(e) => onCategoryChange(e.target.value)}
-            className="min-h-11 shrink-0 rounded-full border border-ink-100 bg-white px-4 text-sm font-medium text-ink-700"
-          >
-            <option value="all">{t("history.allCategories")}</option>
-            {categoryOptions.map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </select>
+          <CategoryMultiSelect options={categoryOptions} chosen={categories} onChange={onCategoriesChange} />
         )}
 
         {priorityOptions.length > 1 && (

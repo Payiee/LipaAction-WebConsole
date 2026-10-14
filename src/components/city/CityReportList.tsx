@@ -1,13 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PriorityBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { CategoryMultiSelect, matchesCategories } from "@/components/ui/CategoryMultiSelect";
+import { useToast } from "@/components/ui/Toast";
+import { useRecordedExport } from "@/components/ui/useRecordedExport";
+import { downloadCsv } from "@/lib/downloadCsv";
 import { statusLabel } from "@/components/queue/useReportReview";
 import { splitRouting, agencyProgressLabel } from "@/components/queue/routing";
-import { cx } from "@/lib/utils";
-import { useT, type MessageKey, type Translate } from "@/lib/i18n";
+import { cx, manilaTimestamp } from "@/lib/utils";
+import { translate, useT, type MessageKey, type Translate } from "@/lib/i18n";
 import { CityReportDrawer, barangayOf, formatTimestamp } from "./CityReportDrawer";
 // Type-only imports from a server-only module — erased at compile time.
 import type { CityReport, CityReportsData, CityStatusFilter } from "@/lib/data/cityReports";
@@ -29,6 +33,10 @@ const STAGES: { value: CityStatusFilter; label: MessageKey }[] = [
  *
  * The list shows no description: the resident's own words appear only in
  * the drawer, whose opening is recorded in the access log.
+ *
+ * Categories filter in the page, several at once, over the reports already
+ * loaded (agencies' request, 2026-10-14), and the CSV holds exactly the rows
+ * on screen.
  */
 export function CityReportList({ data }: { data: CityReportsData }) {
   const t = useT();
@@ -39,6 +47,28 @@ export function CityReportList({ data }: { data: CityReportsData }) {
     data.open && data.reports.some((r) => r.id === data.open) ? data.open : null
   );
   const open = data.reports.find((r) => r.id === openId) ?? null;
+  const { showToast } = useToast();
+  const { record, busy } = useRecordedExport();
+  const [categories, setCategories] = useState<string[]>([]);
+  const categoryOptions = useMemo(() => [...new Set(data.reports.map((r) => r.category))].sort(), [data.reports]);
+  const shown = useMemo(
+    () => data.reports.filter((r) => matchesCategories(r.category, categories)),
+    [data.reports, categories]
+  );
+  const byCategory = shown.length !== data.reports.length;
+
+  // One row per report and no names, but more than a count, so the export is
+  // written to the access trail first, like the other per-row exports.
+  async function handleExport() {
+    if (shown.length === 0) {
+      showToast(t("city.reports.exportNothing"), "info");
+      return;
+    }
+    if (!(await record("city_reports_csv", shown.length))) return;
+    const day = manilaTimestamp(new Date().toISOString()).slice(0, 10);
+    downloadCsv(`city-reports-${day}.csv`, cityReportsCsv(shown));
+    showToast(t("city.reports.exported", { count: shown.length }), "success");
+  }
   const openMissing = data.open !== null && !data.loadFailed && !data.reports.some((r) => r.id === data.open);
 
   function closeDrawer() {
@@ -57,7 +87,7 @@ export function CityReportList({ data }: { data: CityReportsData }) {
     router.push(query ? `/city/reports?${query}` : "/city/reports");
   }
 
-  const filtered = data.barangay !== null || data.status !== "all";
+  const filtered = data.barangay !== null || data.status !== "all" || byCategory;
 
   return (
     <section aria-labelledby="city-reports-title" className="mb-6">
@@ -102,6 +132,15 @@ export function CityReportList({ data }: { data: CityReportsData }) {
             </button>
           ))}
         </div>
+        {categoryOptions.length > 1 && (
+          <CategoryMultiSelect options={categoryOptions} chosen={categories} onChange={setCategories} />
+        )}
+        <div className="ml-auto flex flex-col items-end gap-1">
+          <Button variant="secondary" size="sm" disabled={busy || data.loadFailed} onClick={handleExport}>
+            {busy ? t("common.working") : t("city.reports.export")}
+          </Button>
+          <p className="text-[11px] text-ink-500">{t("export.recordedNote")}</p>
+        </div>
       </div>
 
       {openMissing && (
@@ -110,7 +149,7 @@ export function CityReportList({ data }: { data: CityReportsData }) {
         </p>
       )}
 
-      {data.reports.length === 0 ? (
+      {shown.length === 0 ? (
         !data.loadFailed && (
           <div className="rounded-card border border-ink-100 bg-white px-4 py-10 text-center shadow-panel">
             <p className="text-sm text-ink-500">
@@ -136,7 +175,7 @@ export function CityReportList({ data }: { data: CityReportsData }) {
               </tr>
             </thead>
             <tbody>
-              {data.reports.map((r) => (
+              {shown.map((r) => (
                 <tr key={r.id} className="border-b border-ink-100 last:border-0">
                   <td className="whitespace-nowrap px-4 py-2.5 text-xs text-ink-700">{formatTimestamp(r.submittedAt)}</td>
                   <td className="px-4 py-2.5 text-xs text-ink-900">{barangayOf(r, t)}</td>
@@ -174,13 +213,36 @@ export function CityReportList({ data }: { data: CityReportsData }) {
       )}
 
       <p className="mt-3 text-xs text-ink-500">
-        {t("city.reports.footer", { count: data.reports.length })}
+        {byCategory && `${t("city.reports.categoriesShown", { shown: shown.length, count: data.reports.length })} `}
+        {t("city.reports.footer", { count: shown.length })}
         {data.capped && ` ${t("city.reports.capped", { limit: data.limit })}`}
       </p>
 
       {open && <CityReportDrawer report={open} onClose={closeDrawer} />}
     </section>
   );
+}
+
+// The list as CSV, header first: exactly the columns the list shows, in
+// English whatever the interface language, like every file that leaves the
+// console. No description and no reporter, as on screen.
+function cityReportsCsv(reports: CityReport[]): (string | number)[][] {
+  const en: Translate = (key, vars) => translate("en", key, vars);
+  return [
+    ["Report ID", "Submitted", "Barangay", "Category", "Sub-category", "Entry tier", "Priority", "Priority score", "Status", "Agencies"],
+    ...reports.map((r) => [
+      r.id,
+      manilaTimestamp(r.submittedAt),
+      barangayOf(r, en),
+      r.category,
+      r.subCategory ?? "",
+      r.entryTier === "emergency" ? "Emergency" : "Other report",
+      r.priority ?? "Not scored",
+      r.priorityScore ?? "",
+      statusLabel(r.status, en),
+      agencySummary(r, en),
+    ]),
+  ];
 }
 
 // [Bureau of Fire Protection +1 · Acknowledged], from the agencies holding

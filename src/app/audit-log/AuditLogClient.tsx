@@ -10,6 +10,7 @@ import { manilaTimestamp, startOfManilaDay } from "@/lib/utils";
 import { ACTION_LABELS, AuditTable, ROLE_LABELS } from "@/components/audit-log/AuditTable";
 import { auditCsvRows } from "@/components/audit-log/auditCsv";
 import { Button } from "@/components/ui/Button";
+import { CategoryMultiSelect, matchesCategories } from "@/components/ui/CategoryMultiSelect";
 import { useToast } from "@/components/ui/Toast";
 import { useRecordedExport } from "@/components/ui/useRecordedExport";
 import { downloadCsv } from "@/lib/downloadCsv";
@@ -28,16 +29,27 @@ export function AuditLogClient({
   const { entries, summary, limit, loadFailed, refusal } = auditData;
   const [filter, setFilter] = useState<AuditFilterId>("all");
   const [range, setRange] = useState<AuditRange>("all");
+  // The reports' categories, several at once (agencies' request,
+  // 2026-10-14). An event with no report has no category, so any choice
+  // leaves it out.
+  const [categories, setCategories] = useState<string[]>([]);
+  const categoryOptions = useMemo(
+    () => [...new Set(entries.map((e) => e.category).filter((c): c is string => !!c))].sort(),
+    [entries]
+  );
   const { showToast } = useToast();
   const { record, busy } = useRecordedExport();
 
   const shown = useMemo(() => {
     const actions: readonly string[] = AUDIT_FILTERS[filter];
     return entries.filter(
-      (e) => (actions.length === 0 || actions.includes(e.action)) && inRange(e.at, range)
+      (e) =>
+        (actions.length === 0 || actions.includes(e.action)) &&
+        inRange(e.at, range) &&
+        matchesCategories(e.category, categories)
     );
-  }, [entries, filter, range]);
-  const narrowed = filter !== "all" || range !== "all";
+  }, [entries, filter, range, categories]);
+  const narrowed = filter !== "all" || range !== "all" || categories.some((c) => categoryOptions.includes(c));
 
   // The thesis's export of the log for data-protection requests (A.3.7). It
   // is the trail itself leaving the console, so the export is recorded in
@@ -84,6 +96,11 @@ export function AuditLogClient({
           <AuditSummaryTiles summary={summary} />
           <AuditFilters active={filter} onChange={setFilter} range={range} onRangeChange={setRange} />
           <div className="mb-3 flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
+            {categoryOptions.length > 1 && (
+              <div className="mr-auto">
+                <CategoryMultiSelect options={categoryOptions} chosen={categories} onChange={setCategories} />
+              </div>
+            )}
             <p className="text-[11px] text-ink-500">{t("export.recordedNote")}</p>
             <Button variant="secondary" size="sm" disabled={busy || loadFailed} onClick={handleExport}>
               {busy ? t("common.working") : t("history.export")}

@@ -2,6 +2,7 @@ import {
   BarChart3,
   Building2,
   Check,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   ClipboardCheck,
@@ -51,7 +52,8 @@ export type IconName =
   | "attach"
   | "play"
   | "previous"
-  | "next";
+  | "next"
+  | "chevron-down";
 
 /**
  * The console's icons, from Lucide (lucide-react, ISC licence).
@@ -86,6 +88,7 @@ const ICONS: Record<IconName, LucideIcon> = {
   play: Play, // a chat video, not yet playing
   previous: ChevronLeft, // the previous photo in the chat viewer
   next: ChevronRight, // the next one
+  "chevron-down": ChevronDown, // a button that opens a list
 };
 
 export function Icon({ name, className }: { name: IconName; className?: string }) {

@@ -13,6 +13,7 @@ import {
 import { NOT_SCORED, RESOLUTION_ORDER } from "@/components/validation-history/historyOptions";
 import { HistoryTable } from "@/components/validation-history/HistoryTable";
 import { DataUnavailableBanner } from "@/components/layout/DataUnavailableBanner";
+import { matchesCategories } from "@/components/ui/CategoryMultiSelect";
 // Type-only — validationHistory.ts is "server-only", so importing any runtime
 // value from it here would pull it into the client bundle. The row cap arrives
 // as data (historyData.limit) instead.
@@ -35,7 +36,8 @@ export function ValidationHistoryClient({
   const [validatingOfficial, setValidatingOfficial] = useState("all");
   // The thesis's other history filters (A.3.7): category, priority, and the
   // resolution outcome. Like the others, they narrow the rows already loaded.
-  const [category, setCategory] = useState("all");
+  // Categories are several at once; none ticked means all.
+  const [categories, setCategories] = useState<string[]>([]);
   const [priority, setPriority] = useState("all");
   const [resolution, setResolution] = useState<ResolutionStatus | "all">("all");
 
@@ -66,11 +68,11 @@ export function ValidationHistoryClient({
           matchesRange(r, range) &&
           matchesOutcome(r, outcome) &&
           matchesOfficial(r, validatingOfficial) &&
-          (category === "all" || r.category === category) &&
+          matchesCategories(r.category, categories) &&
           (priority === "all" || (r.priority ?? NOT_SCORED) === priority) &&
           (resolution === "all" || r.resolution === resolution)
       ),
-    [records, range, outcome, validatingOfficial, category, priority, resolution]
+    [records, range, outcome, validatingOfficial, categories, priority, resolution]
   );
 
   // Tiles describe what's actually on screen. Showing the loaded-set counts
@@ -92,9 +94,9 @@ export function ValidationHistoryClient({
         onRangeChange={setRange}
         onOutcomeChange={setOutcome}
         onOfficialChange={setValidatingOfficial}
-        category={category}
+        categories={categories}
         categoryOptions={categoryOptions}
-        onCategoryChange={setCategory}
+        onCategoriesChange={setCategories}
         priority={priority}
         priorityOptions={priorityOptions}
         onPriorityChange={setPriority}
