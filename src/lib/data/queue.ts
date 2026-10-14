@@ -322,7 +322,7 @@ export async function getBarangayQueue(
   // console's behaviour without them: who decided on the Recent validated
   // reports (report_validations), and today's barangay validations.
   const [routingExtras, positions, cdrrmoAgency, decisions, barangayToday, responders] = await Promise.all([
-    loadRouting(supabase, pending, awaiting, [...routed, ...autoOnly]),
+    loadRouting(supabase, pending, awaiting, [...routed, ...autoOnly], cdrrmoDispatch),
     loadPositions(supabase, [...pending, ...awaiting, ...routed, ...autoOnly], "queue"),
     cdrrmoDispatch ? loadCdrrmoAgency(supabase) : Promise.resolve(null),
     // Routed reports only: the decisions decide whether the desk may record
@@ -593,12 +593,19 @@ async function loadRecentlyRouted(
  * the pending queue, and its rows are what show it was returned — without
  * them the drawer would offer the very agencies that returned it as where
  * routing will send it. Every other pending report has no rows.
+ *
+ * With CDRRMO dispatch on (dispatchOn, this page load's read of the switch),
+ * pending Emergency reports also get the agency picker's list: their Validate
+ * opens the checklist (owner decision Q4). Only then, so the list isn't sent
+ * with every pending report for nothing; a page that turns the switch on
+ * later from a write's answer offers no list until it refreshes.
  */
 async function loadRouting(
   supabase: ReturnType<typeof createClient>,
   pending: RawReport[],
   awaiting: RawReport[],
-  routed: RawReport[]
+  routed: RawReport[],
+  dispatchOn: boolean
 ): Promise<Map<string, RoutingExtras>> {
   const extras = new Map<string, RoutingExtras>();
   const reportIds = [...pending, ...awaiting, ...routed].map((r) => r.id);
@@ -703,19 +710,28 @@ async function loadRouting(
     .filter((a) => Boolean(a.name?.trim()))
     .map((a) => ({ agencyId: a.id, agencyName: (a.name as string).trim() }))
     .sort((a, b) => a.agencyName.localeCompare(b.agencyName, "en"));
+  // Every named agency that doesn't hold the report yet. A failed agency
+  // list is null, never [], which would claim that no agency exists.
+  const optionsFor = (reportId: string): RoutingOption[] | null => {
+    if (agenciesRes.error) return null;
+    const held = heldBy.get(reportId);
+    return held ? namedAgencies.filter((a) => !held.has(a.agencyId)) : namedAgencies;
+  };
 
   // A pending report has agency rows only when the agencies handed it back
-  // after an automatic routing. The picker waits for validation, as for any
-  // returned report, so no options here.
+  // after an automatic routing, or the desk recalled it. Its picker waits
+  // for validation, as for any returned report, so no options here, except
+  // for an Emergency report while CDRRMO dispatch is on: its Validate is the
+  // picker (Q4). Agencies already holding a row are left out, as the
+  // database skips them too.
   for (const r of pending) {
     extras.set(r.id, {
       routing: routingByReport.get(r.id) ?? [],
       routingPlan: mappingRes.error ? null : planByCategory.get(r.category) ?? [],
-      routingOptions: null,
+      routingOptions: dispatchOn && r.entry_tier === "emergency" ? optionsFor(r.id) : null,
     });
   }
   for (const r of awaiting) {
-    const held = heldBy.get(r.id);
     extras.set(r.id, {
       routing: routingByReport.get(r.id) ?? [],
       // A category absent from a successful lookup has no mapping: []. A
@@ -725,13 +741,8 @@ async function loadRouting(
       // already hold can need another agency: routingState decides whether it
       // does (every agency sent it back). A validated report no agency holds
       // yet, Emergency or Standard intake, goes to the agencies the desk
-      // ticks, from every named agency (since 2026-10-14). A failed agency
-      // list is null, never [], which would claim that no agency exists.
-      routingOptions: agenciesRes.error
-        ? null
-        : held
-          ? namedAgencies.filter((a) => !held.has(a.agencyId))
-          : namedAgencies,
+      // ticks, from every named agency (since 2026-10-14).
+      routingOptions: optionsFor(r.id),
     });
   }
   for (const r of routed) {

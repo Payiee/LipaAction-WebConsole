@@ -20,6 +20,7 @@ import { useReportRouting } from "./useReportRouting";
 import { useEmergencyValidation } from "./useEmergencyValidation";
 import { useCdrrmoDispatch, usesDispatch } from "./CdrrmoDispatchContext";
 import { AgencyPickerModal } from "./AgencyPickerModal";
+import { EmergencyValidationDialog } from "./EmergencyValidationDialog";
 import { useBarangayResolve } from "./useBarangayResolve";
 import { ResolveNoteModal } from "./ResolveNoteModal";
 import { ReportChatSection } from "./ReportChatSection";
@@ -34,9 +35,8 @@ import { isChatOffered } from "@/lib/reportChat";
 import {
   agencyProgressLabel,
   canResolveAtBarangay,
-  dispatchDefaultSet,
+  cdrrmoAlwaysNote,
   dispatchPastReview,
-  dispatchValidateCopy,
   everyAgencyReturned,
   isAutoRouted,
   isReturnedToBarangay,
@@ -407,7 +407,7 @@ export function ReportDetailPanel({
             {t("drawer.section.routing")}
           </p>
           {viaDispatch && !everyAgencyReturned(d.routing) ? (
-            <DispatchPreview text={dispatchDefaultSet(d.routingPlan, dispatch.cdrrmoAgency, t)} />
+            <DispatchPreview plan={d.routingPlan} note={cdrrmoAlwaysNote(dispatch.cdrrmoAgency, t)} />
           ) : (
             <RoutingPreview plan={d.routingPlan} routing={d.routing} />
           )}
@@ -551,14 +551,7 @@ export function ReportDetailPanel({
         />
       )}
 
-      {emergency.confirming && (
-        <ConfirmModal
-          {...dispatchValidateCopy(report, dispatch.cdrrmoAgency, emergency.confirming, t)}
-          busy={emergency.isPending}
-          onCancel={emergency.cancelConfirm}
-          onConfirm={emergency.validate}
-        />
-      )}
+      <EmergencyValidationDialog report={report} emergency={emergency} />
 
       {routing.isConfirming && routeState.kind === "incomplete" && (
         <ConfirmModal
@@ -753,18 +746,17 @@ function RoutingSection({
 }
 
 /**
- * Where CDRRMO dispatch will send an Emergency report once validated: the
- * category's mapped agencies plus CDRRMO, read only. The database decides
- * the final list; the barangay can't change it (backend spec 3.4, owner
- * answers a-c).
+ * Where an Emergency report goes once validated while CDRRMO dispatch is on
+ * (owner decision Q4, the barangay checklist wins): the agencies the official
+ * ticks as they validate, the category's marked Recommended, plus CDRRMO,
+ * always. Read only, like RoutingPreview: nothing is sent from here.
  */
-function DispatchPreview({ text }: { text: string }) {
+function DispatchPreview({ plan, note }: { plan: RoutingPlanEntry[] | null; note: string }) {
   const t = useT();
   return (
     <div>
-      <p className="mb-1 text-xs text-ink-500">{t("cdrrmo.preview")}:</p>
-      <p className="mb-1 text-sm text-ink-900">{text}</p>
-      <p className="text-[11px] text-ink-500">{t("cdrrmo.previewNote")}</p>
+      <ChooseNote plan={plan} body={t("cdrrmo.previewChecklist")} />
+      <p className="mt-2 text-[11px] text-ink-500">{note}</p>
     </div>
   );
 }

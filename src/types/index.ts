@@ -123,9 +123,10 @@ export interface ReportDetails {
   // routed or resolved reports, where it no longer applies.
   routingPlan: RoutingPlanEntry[] | null;
   // The agencies that don't hold the report yet, sorted by name, for the
-  // agency picker. Set on a validated report that already has agency rows
-  // (the returned case) and on a validated Other-report no agency holds yet
-  // (the desk chooses where it goes); null there when the agency list
+  // agency picker. Set on every validated report (the returned case, and a
+  // report no agency holds yet, where the desk chooses where it goes), and on
+  // a pending Emergency report while CDRRMO dispatch is on, whose Validate
+  // opens the picker (owner decision Q4); null there when the agency list
   // couldn't be loaded, and null on every other report.
   routingOptions: RoutingOption[] | null;
   // Where the reporter's phone was when they filed, for the drawer's map.

@@ -14,12 +14,12 @@ import { useReportRouting } from "./useReportRouting";
 import { useEmergencyValidation } from "./useEmergencyValidation";
 import { useCdrrmoDispatch, usesDispatch } from "./CdrrmoDispatchContext";
 import { AgencyPickerModal } from "./AgencyPickerModal";
+import { EmergencyValidationDialog } from "./EmergencyValidationDialog";
 import { useBarangayResolve } from "./useBarangayResolve";
 import { ResolveNoteModal } from "./ResolveNoteModal";
 import {
   canResolveAtBarangay,
   dispatchPastReview,
-  dispatchValidateCopy,
   downstreamSummary,
   everyAgencyReturned,
   isAutoRouted,
@@ -73,8 +73,9 @@ export function ReportRow({
   const barangayResolve = useBarangayResolve(report.id);
   // CDRRMO dispatch (src/lib/cdrrmo-dispatch.ts): with the backend's switch
   // on, an Emergency report is validated or rejected through one function
-  // that also routes it, and the desk never picks its agencies. Off, this is
-  // false and the row is exactly what it was.
+  // that also routes it, to the agencies the desk ticks as it validates
+  // (owner decision Q4). Off, this is false and the row is exactly what it
+  // was.
   const dispatch = useCdrrmoDispatch();
   const viaDispatch = usesDispatch(dispatch.active, report);
   const emergency = useEmergencyValidation(report.id, onResolved);
@@ -350,8 +351,8 @@ export function ReportRow({
           {isReviewable(report.details.status) ? (
             <>
               {/* With CDRRMO dispatch on, an Emergency report's Validate opens
-                  a confirmation (it routes the report too) and both go to
-                  validate_emergency_report(). */}
+                  the agency checklist (it routes the report too) and both go
+                  to validate_emergency_report(). */}
               <Button
                 variant="secondary"
                 size="sm"
@@ -400,14 +401,7 @@ export function ReportRow({
         />
       )}
 
-      {emergency.confirming && (
-        <ConfirmModal
-          {...dispatchValidateCopy(report, dispatch.cdrrmoAgency, emergency.confirming, t)}
-          busy={emergency.isPending}
-          onCancel={emergency.cancelConfirm}
-          onConfirm={emergency.validate}
-        />
-      )}
+      <EmergencyValidationDialog report={report} emergency={emergency} />
 
       {routing.isConfirming && state.kind === "incomplete" && (
         <ConfirmModal

@@ -4,15 +4,22 @@ import { useState, useTransition } from "react";
 import { useToast } from "@/components/ui/Toast";
 import { validateEmergencyReport } from "@/app/actions/cdrrmoDispatch";
 import { callAction } from "@/lib/callAction";
-import { CLOSES_PROMPT, isEmergencyDecisionDone, type EmergencyValidationOutcome } from "@/lib/cdrrmo-dispatch";
+import {
+  checklistNotApplied,
+  CLOSES_PROMPT,
+  isEmergencyDecisionDone,
+  type EmergencyValidationOutcome,
+} from "@/lib/cdrrmo-dispatch";
 import { useT } from "@/lib/i18n";
 import { useCdrrmoDispatch } from "./CdrrmoDispatchContext";
 import type { Verdict } from "./useReportReview";
 
 /**
- * Which confirmation Validate opens: "send" routes a report no agency holds
- * yet; "record" records the barangay's validation of a report that is
- * already with its agencies (auto-routed, or routed after CDRRMO validated).
+ * Which step Validate opens: "send" routes a report no agency holds yet, to
+ * the agencies the desk ticks (owner decision Q4); "record" records the
+ * barangay's validation of a report that is already with its agencies
+ * (auto-routed, or routed after CDRRMO validated), with no list.
+ * EmergencyValidationDialog renders the one that applies.
  */
 export type DispatchConfirm = "send" | "record";
 
@@ -23,8 +30,9 @@ const NEUTRAL: EmergencyValidationOutcome[] = ["validated_no_open_agency", "over
 /**
  * The Validate / Reject flow for an Emergency report while CDRRMO dispatch
  * is on, shared by the queue row and the detail drawer like useReportReview.
- * Validate opens a confirmation (it routes, and can't be undone here);
- * Reject asks for a reason, as today. Both go to validate_emergency_report().
+ * Validate opens the agency checklist or a confirmation (it routes, and
+ * can't be undone here); Reject asks for a reason, as today. Both go to
+ * validate_emergency_report().
  *
  * The reject prompt stays open, with the reason in it, until the answer
  * arrives. It closes once the report is decided or has moved; it stays open
@@ -40,7 +48,7 @@ export function useEmergencyValidation(reportId: string, onResolved: (verdict: V
   const [confirming, setConfirming] = useState<DispatchConfirm | null>(null);
   const [isRejecting, setIsRejecting] = useState(false);
 
-  function answer(outcome: EmergencyValidationOutcome) {
+  function answer(outcome: EmergencyValidationOutcome, agencyIds: string[]) {
     const done = isEmergencyDecisionDone(outcome);
     // Done, the switch off, or the report moved (CLOSES_PROMPT): the prompt
     // has nothing left to decide, and the server action has refreshed the
@@ -49,6 +57,12 @@ export function useEmergencyValidation(reportId: string, onResolved: (verdict: V
     if (done || outcome === "disabled" || CLOSES_PROMPT.includes(outcome)) setIsRejecting(false);
     if (outcome === "disabled") dispatch.setActive(false);
     if (done && outcome !== "overridden") onResolved(outcome === "rejected" ? "rejected" : "validated");
+    // CDRRMO got there first and the ticks weren't sent: information, since
+    // the barangay's validation is on record, but not the plain 'recorded'.
+    if (checklistNotApplied(outcome, agencyIds)) {
+      showToast(t("cdrrmo.outcome.recorded-list-not-sent", { id: reportId }), "info");
+      return;
+    }
     const tone = NEUTRAL.includes(outcome)
       ? "info"
       : outcome === "rejected"
@@ -59,16 +73,17 @@ export function useEmergencyValidation(reportId: string, onResolved: (verdict: V
     showToast(t(`cdrrmo.outcome.${outcome}`, { id: reportId }), tone);
   }
 
-  function run(decision: Verdict, reason?: string) {
+  // agencyIds: the checklist's ticks in tick order; [] sends no list.
+  function run(decision: Verdict, reason?: string, agencyIds: string[] = []) {
     startTransition(async () => {
-      const result = await callAction(() => validateEmergencyReport(reportId, decision, reason));
+      const result = await callAction(() => validateEmergencyReport(reportId, decision, reason, agencyIds));
       setConfirming(null);
       if (result === null) {
         // Validating routes the report: never guess which way it went.
         showToast(t("common.noAnswer"), "danger");
         return;
       }
-      answer(result.outcome);
+      answer(result.outcome, agencyIds);
     });
   }
 
@@ -81,7 +96,13 @@ export function useEmergencyValidation(reportId: string, onResolved: (verdict: V
     cancelConfirm: () => setConfirming(null),
     openReject: () => setIsRejecting(true),
     cancelReject: () => setIsRejecting(false),
+    // No list: the record case, and the send case with no checklist to offer.
+    // Takes no argument on purpose: ConfirmModal passes its click event.
     validate: () => run("validated"),
+    // The send case's checklist (AgencyPickerModal): the ticks, in order.
+    validateWith: (agencyIds: string[]) => run("validated", undefined, agencyIds),
     reject: (reason: string) => run("rejected", reason),
   };
 }
+
+export type EmergencyValidation = ReturnType<typeof useEmergencyValidation>;

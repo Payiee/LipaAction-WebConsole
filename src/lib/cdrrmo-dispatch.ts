@@ -4,10 +4,14 @@
  *
  * With the backend's switch on, an Emergency report is no longer validated
  * and then routed by hand here. The desk validates or rejects it through one
- * function, validate_emergency_report(), and the database sends it to its
- * default agencies (the category's mapping plus CDRRMO, always). The desk
- * never picks or unticks agencies for an Emergency report; CDRRMO alone adds.
- * Other-reports are unchanged: the desk still picks their agencies.
+ * function, validate_emergency_report(), which also routes it in the same
+ * transaction. Since owner decision Q4 (2026-10-14, "the barangay checklist
+ * wins"; backend migration 20261208090000) a validation carries the agencies
+ * the desk ticked, in tick order, from the same checklist every other report
+ * uses: the first new tick leads, and CDRRMO is always added, as a supporting
+ * agency when it wasn't ticked. With no ticks the database sends it to CDRRMO
+ * alone, as the lead. A report already with its agencies is validated without
+ * a list. Other-reports are unchanged: the desk routes them itself.
  *
  * Everything the console needs to know about the switch lives in this one
  * file, and nothing here imports from the app, so scripts/check-cdrrmo-
@@ -20,9 +24,15 @@
  *   reads it once per page load and FAILS CLOSED: an error, a function not
  *   deployed yet (PGRST202) or anything but a literal true is OFF, and the
  *   console behaves exactly as before. PGRST202 means OFF for this read only.
- * - validate_emergency_report(p_report, p_decision, p_reason) RETURNS its
- *   outcome as text: 'routed', 'recorded', 'validated_no_open_agency',
- *   'rejected' or 'overridden'.
+ * - validate_emergency_report(p_report, p_decision, p_reason, p_agency_ids)
+ *   RETURNS its outcome as text: 'routed', 'recorded',
+ *   'validated_no_open_agency', 'rejected' or 'overridden'.
+ * - p_agency_ids (Q4, uuid[], default null): the desk's ticks in tick order.
+ *   A repeat collapses to its first position. NULL or empty is no ticks.
+ *   'recorded' means CDRRMO validated and routed it first: the list is not
+ *   applied. A list with a reject, from a CDRRMO caller, or naming a NULL or
+ *   unknown agency is refused with 22023 (no DETAIL) before anything is
+ *   written.
  * - Every refusal RAISES SQLSTATE 55000 with DETAIL = a token (REFUSAL_TOKENS
  *   below) and message '<function>: <token>'. The token is read from DETAIL
  *   only, exactly. The switch-off refusal is DETAIL cdrrmo_dispatch_disabled.
@@ -32,12 +42,63 @@
  *   starts "cdrrmo_dispatch_active:". 42501 also means three other things,
  *   so that one branches on the prefix, never on the code.
  *
- * NOT YET DEPLOYED: neither function exists on prod until the backend's
- * CDRRMO-DISPATCH migration (PR A, 20261129090000) is pushed.
+ * DEPLOY ORDER (Q4): p_agency_ids exists only once migration 20261208090000
+ * is pushed. Before that, a call naming it answers PGRST202 (read as
+ * "unknown" below) and nothing is written, so this console is deployed after
+ * that push. A call without ticks stays the three-argument one, which both
+ * versions answer.
  */
 
 export const CDRRMO_DISPATCH_ENABLED_RPC = "cdrrmo_dispatch_enabled";
 export const VALIDATE_EMERGENCY_RPC = "validate_emergency_report";
+
+/** validate_emergency_report()'s fourth argument (Q4): the desk's ticks. */
+export const AGENCY_IDS_ARG = "p_agency_ids";
+
+/** The most agencies one checklist may send. */
+export const MAX_CHECKLIST_AGENCIES = 30;
+
+// The same shape as isUuid in src/lib/utils.ts, kept here so this file
+// imports nothing and stays checkable under plain Node (as src/lib/recall.ts).
+const UUID_SHAPE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * The desk's ticked agencies, proven before any call (Q4). The server action
+ * is a public POST endpoint, so it takes anything:
+ * - none (undefined, null or []) is [], no ticks: the call stays the
+ *   three-argument one;
+ * - a list goes with a validation only: with a reject it is refused, never
+ *   silently dropped (the database refuses it too);
+ * - 1 to MAX_CHECKLIST_AGENCIES uuids, lowercased and de-duplicated in tick
+ *   order, so a repeat keeps its first position and the first tick still
+ *   leads;
+ * - anything else is null: the action answers "invalid" and calls nothing.
+ */
+export function checklistAgencyIds(decision: string, agencyIds: unknown): string[] | null {
+  if (agencyIds === undefined || agencyIds === null) return [];
+  if (!Array.isArray(agencyIds)) return null;
+  if (agencyIds.length === 0) return [];
+  if (decision !== "validated") return null;
+  if (agencyIds.length > MAX_CHECKLIST_AGENCIES) return null;
+  if (!agencyIds.every((id) => typeof id === "string" && UUID_SHAPE.test(id))) return null;
+  return [...new Set((agencyIds as string[]).map((id) => id.toLowerCase()))];
+}
+
+/**
+ * validate_emergency_report()'s arguments, by name. p_agency_ids is named
+ * only when there are ticks: a call without them (a reject, the record case)
+ * stays the three-argument call, the one the database before Q4 also knows.
+ */
+export function validateEmergencyArgs(
+  reportId: string,
+  decision: "validated" | "rejected",
+  reason: string | null,
+  agencyIds: readonly string[]
+): Record<string, unknown> {
+  const args: Record<string, unknown> = { p_report: reportId, p_decision: decision, p_reason: reason };
+  if (agencyIds.length > 0) args[AGENCY_IDS_ARG] = [...agencyIds];
+  return args;
+}
 
 /** The message prefix of the old path's refusal while the switch is on. */
 export const CDRRMO_DISPATCH_ACTIVE_PREFIX = "cdrrmo_dispatch_active:";
@@ -158,6 +219,8 @@ export type DeskRefusal = (typeof DESK_REFUSALS)[number];
  * - disabled: the switch is off (55000 + cdrrmo_dispatch_disabled). The
  *   desk's usual Validate and Route apply again.
  * - not-permitted: a 42501.
+ * - invalid: input refused before anything was written, by the server action
+ *   or by the database (22023: a checklist naming an agency it doesn't know).
  * - unknown: any other error. Whether anything was written isn't known, so
  *   the page refreshes and says so neutrally, never "something went wrong".
  */
@@ -183,8 +246,9 @@ function isOneOf<T extends string>(list: readonly T[], value: unknown): value is
  * database.
  *
  * Order matters. A transport failure is read before any meaning (as
- * reports.ts does); then a 55000 refusal by its exact DETAIL; then 42501.
- * Anything else, a missing function (PGRST202) included, is "unknown".
+ * reports.ts does); then a 22023 input refusal; then a 55000 refusal by its
+ * exact DETAIL; then 42501. Anything else, a missing function (PGRST202)
+ * included, is "unknown".
  */
 export function mapValidateEmergencyResult(result: {
   data: unknown;
@@ -208,6 +272,15 @@ export function mapValidateEmergencyResult(result: {
     console.error("[validate_emergency_report] function not found while the switch reads on", error.code);
     return "unknown";
   }
+  // Q4: the database refused the input before any write. The action never
+  // sends a list with a reject, and only the barangay desk calls this from
+  // the console, so in practice a ticked agency no longer exists (removed
+  // since the page loaded). Nothing was written: it reads like the action's
+  // own refusal.
+  if (error.code === "22023") {
+    console.error("[validate_emergency_report] input refused", error.code, error.message);
+    return "invalid";
+  }
 
   if (error.code === "55000") {
     const token = error.details ?? null;
@@ -224,6 +297,16 @@ export function mapValidateEmergencyResult(result: {
 /** Outcomes after which the report has left the desk's pending queue. */
 export function isEmergencyDecisionDone(outcome: EmergencyValidationOutcome): boolean {
   return isOneOf(SUCCESS_OUTCOMES, outcome);
+}
+
+/**
+ * Whether the desk's ticks were dropped (Q4): 'recorded' after a call that
+ * sent a list means CDRRMO validated and routed the report first, so the
+ * database recorded the barangay's validation and did not apply the list.
+ * The page then says so instead of the plain 'recorded' message.
+ */
+export function checklistNotApplied(outcome: EmergencyValidationOutcome, sentAgencyIds: readonly string[]): boolean {
+  return outcome === "recorded" && sentAgencyIds.length > 0;
 }
 
 /**

@@ -604,8 +604,8 @@ export async function routeReportToAgencies(reportId: string, agencyIds: string[
     return { success: false, message: ONLY_VALIDATED };
   }
   // With CDRRMO dispatch on, an Emergency report is routed by the database
-  // on validation and the desk never picks its agencies (the backend's
-  // design); the console doesn't offer the list then, and this refuses it.
+  // on validation: the desk's ticks go through validate_emergency_report()
+  // (owner decision Q4), never through this insert, which this refuses.
   if (emergencyGoesThroughDispatch(report.entry_tier, dispatchOn)) return dispatchActiveResult();
 
   const [rows, agenciesRes] = await Promise.all([

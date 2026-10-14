@@ -11,11 +11,14 @@ import type { RoutingOption } from "@/types";
 
 /**
  * Chooses the agencies a report goes to — where an official, not the category
- * mapping, decides who receives it. Opened in two cases: a validated report
+ * mapping, decides who receives it. Opened in three cases: a validated report
  * no agency holds yet, where the category's agencies carry a Recommended tag
  * and nothing is ticked (agencies asked for this, 2026-10-14: not every
- * office is on duty around the clock), and a report every agency it went to
- * sent back as out of scope, whose list already leaves those agencies out.
+ * office is on duty around the clock); the same list as an Emergency
+ * report's Validate while CDRRMO dispatch is on (owner decision Q4), where
+ * confirming also validates it and a note says CDRRMO always goes too; and a
+ * report every agency it went to sent back as out of scope, whose list
+ * already leaves those agencies out.
  *
  * The commit button is the confirmation, as in ConfirmModal: it stays
  * disabled until something is chosen, and it counts what will be sent. The
@@ -28,6 +31,8 @@ export function AgencyPickerModal({
   options,
   recommended = [],
   hint,
+  note,
+  confirmLabel,
   busy = false,
   onCancel,
   onConfirm,
@@ -40,6 +45,11 @@ export function AgencyPickerModal({
   recommended?: string[];
   // The line under the list; the returned case's wording by default.
   hint?: string;
+  // One more line under the list, before the hint: CDRRMO dispatch's
+  // [CDRRMO is always included].
+  note?: string;
+  // The commit button's words for {agencies} chosen; [Route to …] by default.
+  confirmLabel?: (agencies: string) => string;
   busy?: boolean;
   onCancel: () => void;
   onConfirm: (agencyIds: string[]) => void;
@@ -70,7 +80,7 @@ export function AgencyPickerModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="agency-picker-title"
-        aria-describedby="agency-picker-description"
+        aria-describedby={note ? "agency-picker-description agency-picker-note" : "agency-picker-description"}
         className="relative w-full max-w-sm rounded-card border border-ink-100 bg-white p-5 shadow-panel focus:outline-none"
       >
         <p id="agency-picker-title" className="mb-1 text-sm font-semibold text-ink-900">
@@ -114,6 +124,11 @@ export function AgencyPickerModal({
             })}
           </div>
         </fieldset>
+        {note && (
+          <p id="agency-picker-note" className="mb-1 text-[11px] text-ink-500">
+            {note}
+          </p>
+        )}
         <p className="mb-4 text-[11px] text-ink-500">{hint ?? t("reroute.leadHint")}</p>
 
         <div className="flex justify-end gap-2">
@@ -125,7 +140,9 @@ export function AgencyPickerModal({
               ? t("common.working")
               : chosen.length === 0
                 ? t("reroute.chooseFirst")
-                : t("routing.routeConfirm", { agencies: agencyCount(chosen.length, t) })}
+                : confirmLabel
+                  ? confirmLabel(agencyCount(chosen.length, t))
+                  : t("routing.routeConfirm", { agencies: agencyCount(chosen.length, t) })}
           </Button>
         </div>
       </div>

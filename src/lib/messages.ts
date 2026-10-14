@@ -280,17 +280,32 @@ export const MESSAGES = {
     tl: "Sa CDRRMO ng lungsod na ipinapasa sa mga ahensya ang mga Emergency na ulat. Gamitin ang I-validate; ito ang magpapasa ng ulat.",
   },
   "cdrrmo.validateTitle": { en: "Validate {id}?", tl: "I-validate ang {id}?" },
-  "cdrrmo.validateDescription": {
-    en:
-      "Validating sends it straight to its agencies through the city's CDRRMO: {names}. " +
-      "The final list may include more agencies; only CDRRMO can add them. " +
-      "This can't be undone from this console.",
-    tl:
-      "Kapag na-validate, ipapasa ito agad sa mga ahensya nito sa pamamagitan ng CDRRMO ng lungsod: {names}. " +
-      "Maaaring may madagdag pang ahensya sa huling listahan; ang CDRRMO lang ang makakapagdagdag. " +
-      "Hindi na ito mababawi mula sa console na ito.",
-  },
   "cdrrmo.validateConfirm": { en: "Validate and send", tl: "I-validate at ipasa" },
+  // Owner decision Q4 (the barangay checklist wins): Validate on an Emergency
+  // report no agency holds yet opens the same agency checklist as any report
+  // (choose.*). These are its extra line and its commit button.
+  "cdrrmo.checklistNote": {
+    en: "{cdrrmo} is always included: if you don't tick it, it's added as a supporting agency.",
+    tl: "Laging kasama ang {cdrrmo}: kung hindi mo ito i-tsek, idaragdag ito bilang katuwang na ahensya.",
+  },
+  "cdrrmo.checklistConfirm": { en: "Validate and send to {agencies}", tl: "I-validate at ipasa sa {agencies}" },
+  // The same step with no list to offer: the call sends no ticks, and the
+  // database sends the report to CDRRMO alone.
+  "cdrrmo.noChecklistDescription": {
+    en:
+      "The agency list wasn't loaded, so agencies can't be ticked right now. " +
+      "Validating sends it to {cdrrmo} alone, which can pass it on to other agencies. " +
+      "To choose the agencies, refresh the page first. This can't be undone from this console.",
+    tl:
+      "Hindi na-load ang listahan ng ahensya, kaya hindi pa makakapag-tsek ng ahensya ngayon. " +
+      "Kapag na-validate, sa {cdrrmo} lamang ito ipapasa, na maaaring magpasa nito sa ibang ahensya. " +
+      "Para makapili ng mga ahensya, i-refresh muna ang page. Hindi na ito mababawi mula sa console na ito.",
+  },
+  // The drawer, before the decision: where it goes once validated.
+  "cdrrmo.previewChecklist": {
+    en: "When you validate it, you tick the agencies it goes to.",
+    tl: "Sa pag-validate nito, ikaw ang magte-tsek ng mga ahensyang pagpapasahan nito.",
+  },
   // A routed report the city's CDRRMO validated: the desk's validation is
   // recorded and nothing about the routing changes (returns 'recorded').
   "cdrrmo.recordDescription": {
@@ -298,30 +313,16 @@ export const MESSAGES = {
     tl: "Na-validate na ito ng CDRRMO ng lungsod at nasa mga ahensya na ito. Itatala nito na na-validate rin ito ng inyong barangay; walang magbabago sa pagpasa nito.",
   },
   // A report sent to agencies automatically, before any review: validating
-  // records the review and adds any default agency still missing, CDRRMO
-  // included (returns 'routed').
+  // records the review and, since Q4 (no list goes with it), adds CDRRMO
+  // alone if it doesn't hold the report yet (returns 'routed').
   "cdrrmo.autoDescription": {
-    en: "It was sent to agencies automatically, before any review. Validating records your barangay's review and adds any default agency still missing, CDRRMO included. Agencies already sent to keep it.",
-    tl: "Awtomatiko itong naipasa sa mga ahensya bago masuri. Itatala ng pag-validate ang pagsusuri ng inyong barangay at idaragdag ang anumang default na ahensyang kulang pa, kasama ang CDRRMO. Mananatili ito sa mga ahensyang napasahan na.",
+    en: "It was sent to agencies automatically, before any review. Validating records your barangay's review and adds CDRRMO if it doesn't hold the report yet. Agencies already sent to keep it.",
+    tl: "Awtomatiko itong naipasa sa mga ahensya bago masuri. Itatala ng pag-validate ang pagsusuri ng inyong barangay at idaragdag ang CDRRMO kung hindi pa nito hawak ang ulat. Mananatili ito sa mga ahensyang napasahan na.",
   },
   "cdrrmo.recordConfirm": { en: "Record validation", tl: "Itala ang validation" },
   "cdrrmo.notValidatedHere": {
     en: "Not yet validated by your barangay",
     tl: "Hindi pa na-validate ng inyong barangay",
-  },
-  "cdrrmo.cdrrmoAlways": { en: "CDRRMO (always)", tl: "CDRRMO (palagi)" },
-  "cdrrmo.alwaysSuffix": { en: "(always)", tl: "(palagi)" },
-  "cdrrmo.mappedAndCdrrmo": {
-    en: "the agencies its category maps to, and CDRRMO",
-    tl: "ang mga ahensyang nakatalaga sa kategorya nito, at ang CDRRMO",
-  },
-  "cdrrmo.preview": {
-    en: "After validation, it goes straight to",
-    tl: "Pagkatapos ma-validate, ipapasa ito agad sa",
-  },
-  "cdrrmo.previewNote": {
-    en: "The final list may include more agencies; only CDRRMO can add them.",
-    tl: "Maaaring may madagdag pang ahensya sa huling listahan; ang CDRRMO lang ang makakapagdagdag.",
   },
   "cdrrmo.pastReview": {
     en: "Emergency reports now go to agencies through the city's CDRRMO.",
@@ -355,6 +356,12 @@ export const MESSAGES = {
   "cdrrmo.outcome.recorded": {
     en: "{id}: your barangay's validation is recorded. It was already with its agencies.",
     tl: "{id}: naitala na ang validation ng inyong barangay. Nasa mga ahensya na ito.",
+  },
+  // 'recorded' after a ticked list (checklistNotApplied): CDRRMO validated
+  // and routed it first, so the database didn't apply the desk's ticks.
+  "cdrrmo.outcome.recorded-list-not-sent": {
+    en: "{id}: the city's CDRRMO validated it first, so your barangay's validation is recorded, but it wasn't sent to the agencies you ticked. CDRRMO can share it with them.",
+    tl: "{id}: naunang na-validate ito ng CDRRMO ng lungsod, kaya naitala ang validation ng inyong barangay, pero hindi ito naipasa sa mga ahensyang na-tsek ninyo. Maaari itong ibahagi ng CDRRMO sa kanila.",
   },
   "cdrrmo.outcome.validated_no_open_agency": {
     en: "{id} validated. Every agency it maps to had already sent it back, so it is now with CDRRMO to send on.",
