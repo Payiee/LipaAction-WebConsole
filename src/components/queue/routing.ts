@@ -30,8 +30,9 @@ export type RoutingState =
   // first; [] when the category maps to none, and when the mapping couldn't
   // be loaded (plan null says which). options lists every named agency,
   // recommended ones first, and is null when that list couldn't be loaded.
-  // With CDRRMO dispatch on, an Emergency report never reaches this state's
-  // list: the database routes it on validation (dispatchPastReview).
+  // With CDRRMO dispatch on, an Emergency report's Validate opens this same
+  // list (agencyChecklist, owner decision Q4), pending or validated, and the
+  // database routes the ticks as it validates (dispatchPastReview).
   | { kind: "choose"; options: RoutingOption[] | null; recommended: string[]; plan: RoutingPlanEntry[] | null }
   // Routed or resolved: agencies own it now; the desk watches.
   | { kind: "downstream"; status: "routed" | "resolved"; routing: AgencyRouting[] }
@@ -54,13 +55,7 @@ export function routingState(report: QueueReport): RoutingState {
       }
       return { kind: "incomplete", routing, plan: routingPlan };
     }
-    const recommended = recommendedAgencies(routingPlan);
-    return {
-      kind: "choose",
-      options: routingOptions ? recommendedFirst(routingOptions, recommended) : null,
-      recommended,
-      plan: routingPlan,
-    };
+    return agencyChecklist(report);
   }
 
   if (status === "routed" || status === "resolved") {
@@ -110,6 +105,26 @@ function recommendedFirst(options: RoutingOption[], recommended: string[]): Rout
     .map((id) => options.find((o) => o.agencyId === id))
     .filter((o): o is RoutingOption => o !== undefined);
   return [...top, ...options.filter((o) => !recommended.includes(o.agencyId))];
+}
+
+/**
+ * The agency checklist for a report no agency holds yet: every named agency
+ * the loader offers, the category's mapped ones first and marked
+ * Recommended, nothing ticked. The [choose] state of a validated report, and
+ * what Validate opens on an Emergency report while CDRRMO dispatch is on
+ * (owner decision Q4), pending reports included. The loader gives a pending
+ * report its options only when the switch read on at page load; otherwise
+ * options is null, as when the agency list couldn't be loaded.
+ */
+export function agencyChecklist(report: QueueReport): Extract<RoutingState, { kind: "choose" }> {
+  const { routingPlan, routingOptions } = report.details;
+  const recommended = recommendedAgencies(routingPlan);
+  return {
+    kind: "choose",
+    options: routingOptions ? recommendedFirst(routingOptions, recommended) : null,
+    recommended,
+    plan: routingPlan,
+  };
 }
 
 /**
@@ -325,47 +340,181 @@ export function routeConfirmCopy(
 }
 
 /**
- * Copy for the Validate confirmation of an Emergency report while CDRRMO
- * dispatch is on. Names the default set the database will send it to, read
- * only (backend spec 3.4): the category's mapped agencies, lead first, plus
- * CDRRMO, which is always included. The database decides the final list;
- * this is the desk's preview of it, and the barangay can't change it.
+ * Copy for the Validate confirmation of an Emergency report already with its
+ * agencies while CDRRMO dispatch is on (dispatchPastReview's "record"). No
+ * checklist here (owner decision Q4): the call sends no list. Two cases, as
+ * validate_emergency_report() tells them apart: never reviewed (auto-routed
+ * by CARD or CRIT-ESC), where the desk's validation also adds CDRRMO if it
+ * doesn't hold the report yet (returns 'routed'); or validated by CDRRMO,
+ * whose stamp it carries, where it only records (returns 'recorded').
  */
-export function dispatchValidateCopy(
+export function dispatchRecordCopy(
   report: QueueReport,
-  cdrrmo: RoutingOption | null,
-  mode: "send" | "record",
   t: Translate
 ): { title: string; description: string; confirmLabel: string } {
-  if (mode === "record") {
-    // Already routed. Two cases, as validate_emergency_report() tells them
-    // apart: never reviewed (auto-routed by CARD or CRIT-ESC), where the
-    // desk's validation also adds any missing default agency (returns
-    // 'routed'); or validated by CDRRMO, whose stamp it carries, where it
-    // only records (returns 'recorded').
-    const autoRouted = report.details.reviewedAt === null;
-    return {
-      title: t("cdrrmo.validateTitle", { id: report.id }),
-      description: t(autoRouted ? "cdrrmo.autoDescription" : "cdrrmo.recordDescription"),
-      confirmLabel: t(autoRouted ? "review.validate" : "cdrrmo.recordConfirm"),
-    };
-  }
+  const autoRouted = report.details.reviewedAt === null;
   return {
     title: t("cdrrmo.validateTitle", { id: report.id }),
-    description: t("cdrrmo.validateDescription", { names: dispatchDefaultSet(report.details.routingPlan, cdrrmo, t) }) + discreetNote(report, t),
-    confirmLabel: t("cdrrmo.validateConfirm"),
+    description: t(autoRouted ? "cdrrmo.autoDescription" : "cdrrmo.recordDescription"),
+    confirmLabel: t(autoRouted ? "review.validate" : "cdrrmo.recordConfirm"),
   };
+}
+
+/**
+ * Copy and settings for the checklist Validate opens on an Emergency report
+ * no agency holds yet while CDRRMO dispatch is on (dispatchPastReview's
+ * "send"; owner decision Q4, the barangay checklist wins). Confirming
+ * validates and routes at once. Three wordings:
+ * - usual: a validated report's [Route to agency] list, titled as the
+ *   validation it also is;
+ * - every agency sent it back (back for review after an automatic routing):
+ *   the [Route to another agency] wording, naming who returned it (its mapped
+ *   agencies are those, and aren't offered again);
+ * - recalled by the desk: validating reopens the rows of the agencies it was
+ *   recalled from whatever is ticked, and an old lead among them keeps the
+ *   lead (the database never demotes an open lead). So the callout says who
+ *   gets it back, no tick is needed (none is the three-argument call), and
+ *   while that lead is reopened nothing says the first tick leads.
+ * The button counts every agency the validation sends it to
+ * (dispatchSendCount), CDRRMO included when it will be added.
+ */
+export function dispatchChecklistCopy(
+  report: QueueReport,
+  checklist: Extract<RoutingState, { kind: "choose" }>,
+  cdrrmo: RoutingOption | null,
+  t: Translate
+): {
+  title: string;
+  description: string;
+  hint: string;
+  callout?: string;
+  note: string;
+  allowNone: boolean;
+  markLead: boolean;
+  confirmLabel: (chosen: string[]) => string;
+} {
+  const { routing } = report.details;
+  const recalled = recalledNote(report, t);
+  const { description, hint } = recalled
+    ? { description: t("cdrrmo.recalledDescription") + discreetNote(report, t), hint: t("cdrrmo.recalledHint") }
+    : everyAgencyReturned(routing)
+      ? {
+          description: rerouteCopy(report, { kind: "returned", routing, options: checklist.options }, t).description,
+          hint: t("reroute.leadHint"),
+        }
+      : chooseCopy(report, checklist, t);
+  return {
+    title: t("cdrrmo.validateTitle", { id: report.id }),
+    description,
+    hint,
+    callout: recalled || undefined,
+    note: cdrrmoNote(report, cdrrmo, t),
+    allowNone: recalled !== "",
+    markLead: !recalledRows(report).some((r) => r.isPrimary),
+    confirmLabel: (chosen) =>
+      t("cdrrmo.checklistConfirm", { agencies: agencyCount(dispatchSendCount(report, chosen, cdrrmo), t) }),
+  };
+}
+
+/**
+ * Copy for the send case when there is no checklist to offer. Validating
+ * then sends no ticks (the three-argument call), and the database adds
+ * CDRRMO alone, unless CDRRMO already holds a row. Two reasons, worded apart:
+ * - options null: the agency list wasn't loaded (the read failed, or this
+ *   page turned CDRRMO dispatch on from a write's answer, after the loader
+ *   ran). An emergency is never held up by a secondary read.
+ * - options []: every agency already holds a row, so none is left to tick.
+ * A recalled report also goes back to the agencies it was recalled from.
+ */
+export function dispatchNoChecklistCopy(
+  report: QueueReport,
+  options: RoutingOption[] | null,
+  cdrrmo: RoutingOption | null,
+  t: Translate
+): { title: string; description: string; confirmLabel: string } {
+  const recalled = recalledNote(report, t);
+  const why =
+    options === null
+      ? t("cdrrmo.noChecklistDescription", { cdrrmo: cdrrmoName(cdrrmo) })
+      : t("cdrrmo.noOtherAgencyDescription");
+  return {
+    title: t("cdrrmo.validateTitle", { id: report.id }),
+    description: why + (recalled ? ` ${recalled}` : "") + discreetNote(report, t),
+    confirmLabel: t(options === null ? "cdrrmo.validateConfirm" : "review.validate"),
+  };
+}
+
+/**
+ * The drawer's preview of the checklist's lines, read from the rows and
+ * options the queue already loaded (no query): the CDRRMO note, and who a
+ * recalled report goes back to.
+ */
+export function dispatchChecklistNote(report: QueueReport, cdrrmo: RoutingOption | null, t: Translate): string {
+  return [cdrrmoNote(report, cdrrmo, t), recalledNote(report, t)].filter(Boolean).join(" ");
+}
+
+// The rows the desk recalled (wasRecalled's rule; recallView imports this
+// file, so it isn't imported here). Validating moves the report to routed,
+// which reopens them all whatever is ticked, each keeping its lead flag
+// (backend 20261031090000, reopen_recalled_routing_on_route).
+function recalledRows(report: QueueReport): AgencyRouting[] {
+  return report.details.routing.filter((r) => r.resolutionOutcome === "recalled");
+}
+
+// [It was recalled from BFP (lead), PNP, so it goes back to them too.], or ""
+// for a report that wasn't recalled.
+function recalledNote(report: QueueReport, t: Translate): string {
+  const rows = recalledRows(report);
+  if (rows.length === 0) return "";
+  const names = rows.map((r) => (r.isPrimary ? `${r.agencyName} ${t("routing.lead")}` : r.agencyName)).join(", ");
+  return t("cdrrmo.checklistRecalled", { names });
+}
+
+// Whether CDRRMO already holds a row on this report, as far as the loaded
+// data tells: it is then missing from the options (named agencies minus
+// those holding a row). false when that can't be told.
+function cdrrmoHoldsRow(report: QueueReport, cdrrmo: RoutingOption | null): boolean {
+  const { routing, routingOptions } = report.details;
+  return (
+    cdrrmo !== null &&
+    routing.length > 0 &&
+    routingOptions !== null &&
+    !routingOptions.some((o) => o.agencyId === cdrrmo.agencyId)
+  );
+}
+
+// [CDRRMO is always included ...], or "" when CDRRMO already holds a row: the
+// database doesn't add it again (a recalled CDRRMO is named in recalledNote).
+function cdrrmoNote(report: QueueReport, cdrrmo: RoutingOption | null, t: Translate): string {
+  return cdrrmoHoldsRow(report, cdrrmo) ? "" : t("cdrrmo.checklistNote", { cdrrmo: cdrrmoName(cdrrmo) });
+}
+
+// How many agencies a validation with these ticks sends the report to: the
+// ticks (the list never offers an agency that holds a row), the agencies it
+// was recalled from, reopened, and CDRRMO when it will be added (known, not
+// ticked, holding no row).
+function dispatchSendCount(report: QueueReport, chosen: readonly string[], cdrrmo: RoutingOption | null): number {
+  const cdrrmoAdded = cdrrmo !== null && !chosen.includes(cdrrmo.agencyId) && !cdrrmoHoldsRow(report, cdrrmo);
+  return chosen.length + recalledRows(report).length + (cdrrmoAdded ? 1 : 0);
+}
+
+// The loader names CDRRMO from agencies.code = 'cdrrmo'; null when that read
+// failed or the switch was off at load, and the acronym says it then.
+function cdrrmoName(cdrrmo: RoutingOption | null): string {
+  return cdrrmo?.agencyName ?? "CDRRMO";
 }
 
 /**
  * What the desk can do with an Emergency report past review while CDRRMO
  * dispatch is on (backend binding items 18-20 and the spec's state table):
  * - send: validated, and no agency has ever held it (a report validated the
- *   old way before the switch went on). validate_emergency_report() routes it.
- * - record: routed without this barangay's validation. Auto-routed and
- *   never reviewed: validating also adds any missing default agency,
- *   CDRRMO included ('routed'). Routed after CDRRMO validated: it only
- *   records ('recorded').
+ *   old way before the switch went on). validate_emergency_report() routes
+ *   it to the agencies the desk ticks (owner decision Q4), as for a pending
+ *   report.
+ * - record: routed without this barangay's validation, validated without a
+ *   list. Auto-routed and never reviewed: validating also adds CDRRMO if it
+ *   doesn't hold the report yet ('routed'). Routed after CDRRMO validated:
+ *   it only records ('recorded').
  * - partial: validated with some agency rows from before the switch. The
  *   function refuses it (already_validated); only CDRRMO can add agencies.
  * - handedBack: every agency sent it back. CDRRMO sends it on, not the desk.
@@ -391,20 +540,6 @@ export function dispatchPastReview(report: QueueReport, state: RoutingState): Di
 }
 
 /**
- * The default set in words: the mapped agencies, then CDRRMO unless the
- * mapping already names it. A mapping that couldn't be loaded is described
- * rather than guessed at.
- */
-export function dispatchDefaultSet(plan: RoutingPlanEntry[] | null, cdrrmo: RoutingOption | null, t: Translate): string {
-  if (plan === null) return t("cdrrmo.mappedAndCdrrmo");
-  const mapped = plan.length > 0 ? describePlan(plan, t) : "";
-  const cdrrmoMapped = cdrrmo !== null && plan.some((p) => p.agencyId === cdrrmo.agencyId);
-  if (cdrrmoMapped) return mapped;
-  const always = cdrrmo ? `${cdrrmo.agencyName} ${t("cdrrmo.alwaysSuffix")}` : t("cdrrmo.cdrrmoAlways");
-  return mapped ? `${mapped}, ${always}` : always;
-}
-
-/**
  * Copy for the agency picker a returned report opens. Names who sent it back,
  * so the official doesn't have to remember while choosing, and says routing
  * can't be undone, like the ordinary confirmation.
@@ -424,10 +559,12 @@ export function rerouteCopy(
 }
 
 /**
- * Copy for the agency list a validated report opens. Nothing is ticked: the
- * category's agencies are marked Recommended, and the description says to
- * tick the ones that are on duty. A category with no mapping says so, and a
- * mapping that couldn't be loaded says that instead of claiming none.
+ * Copy for the agency list a validated report opens, also the wording of the
+ * checklist an Emergency report's Validate opens under CDRRMO dispatch
+ * (dispatchChecklistCopy). Nothing is ticked: the category's agencies are
+ * marked Recommended, and the description says to tick the ones that are on
+ * duty. A category with no mapping says so, and a mapping that couldn't be
+ * loaded says that instead of claiming none.
  */
 export function chooseCopy(
   report: QueueReport,

@@ -1,7 +1,9 @@
 // Self-check for src/lib/cdrrmo-dispatch.ts: the CDRRMO dispatch switch
-// check (fails closed), the old-path prefix check, and the mapping of
+// check (fails closed), the old-path prefix check, the mapping of
 // validate_emergency_report()'s answers under the final contract (backend
-// PR A binding items 18-19). No database, no framework.
+// PR A binding items 18-19), and the desk's checklist (owner decision Q4,
+// migration 20261208090000: the fourth argument p_agency_ids and the list
+// rules). No database, no framework.
 //
 //   npm run check:cdrrmo
 //
@@ -25,6 +27,11 @@ const {
   REPORT_VALIDATIONS_DECISIONS_SELECT,
   REPORT_VALIDATIONS_HISTORY_SELECT,
   isReviewStampedByCdrrmo,
+  AGENCY_IDS_ARG,
+  MAX_CHECKLIST_AGENCIES,
+  checklistAgencyIds,
+  validateEmergencyArgs,
+  checklistNotApplied,
 } = mod;
 
 // The module logs unexpected answers on purpose; keep the run output clean.
@@ -111,6 +118,86 @@ check("transport: 401", mapValidateEmergencyResult({ data: null, error: { code: 
 check("transport: PGRST301", mapValidateEmergencyResult({ data: null, error: { code: "PGRST301" }, status: 401 }), "session-expired");
 check("no refresh: invalid input", refreshesQueue("invalid"), false);
 check("no refresh: session expired", refreshesQueue("session-expired"), false);
+
+// --- Q4: the desk's checklist, p_agency_ids --------------------------------
+// The fourth argument's name, and when it is sent: only with ticks, so a call
+// without them stays the three-argument call the database before Q4 knows.
+const REPORT = "11111111-1111-4111-8111-111111111111";
+const A = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+const B = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+const C = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+check("list: the fourth argument is p_agency_ids", AGENCY_IDS_ARG, "p_agency_ids");
+check("list: at most 30 agencies", MAX_CHECKLIST_AGENCIES, 30);
+check(
+  "args: validate with ticks names all four, in tick order",
+  validateEmergencyArgs(REPORT, "validated", null, [B, A]),
+  { p_report: REPORT, p_decision: "validated", p_reason: null, p_agency_ids: [B, A] }
+);
+check(
+  "args: validate without ticks is the three-argument call",
+  Object.keys(validateEmergencyArgs(REPORT, "validated", null, [])),
+  ["p_report", "p_decision", "p_reason"]
+);
+check(
+  "args: reject is the three-argument call",
+  validateEmergencyArgs(REPORT, "rejected", "[duplicate] same as 10:42", []),
+  { p_report: REPORT, p_decision: "rejected", p_reason: "[duplicate] same as 10:42" }
+);
+const ticks = [A, B];
+const sent = validateEmergencyArgs(REPORT, "validated", null, ticks);
+ticks.push(C);
+check("args: the list sent is a copy", sent.p_agency_ids, [A, B]);
+
+// The list rules (checklistAgencyIds): what the server action accepts.
+check("list: none (undefined) is no ticks", checklistAgencyIds("validated", undefined), []);
+check("list: none (null) is no ticks", checklistAgencyIds("validated", null), []);
+check("list: empty is no ticks", checklistAgencyIds("validated", []), []);
+check("list: kept in tick order", checklistAgencyIds("validated", [C, A, B]), [C, A, B]);
+check("list: a repeat keeps its first position", checklistAgencyIds("validated", [B, A, B, C, A]), [B, A, C]);
+check("list: lowercased", checklistAgencyIds("validated", [A.toUpperCase()]), [A]);
+check("list: same id in two cases is one", checklistAgencyIds("validated", [A.toUpperCase(), B, A]), [A, B]);
+const thirty = Array.from({ length: 30 }, (_, i) => `00000000-0000-4000-8000-${String(i).padStart(12, "0")}`);
+check("list: 30 agencies accepted", checklistAgencyIds("validated", thirty)?.length, 30);
+check("list: 31 agencies refused", checklistAgencyIds("validated", [...thirty, A]), null);
+check("list: 31 entries refused even if repeats", checklistAgencyIds("validated", Array(31).fill(A)), null);
+check("list: not a uuid refused", checklistAgencyIds("validated", [A, "not-a-uuid"]), null);
+check("list: a padded uuid refused", checklistAgencyIds("validated", [` ${A}`]), null);
+check("list: a number refused", checklistAgencyIds("validated", [A, 5]), null);
+check("list: a null entry refused", checklistAgencyIds("validated", [A, null]), null);
+check("list: a string, not a list, refused", checklistAgencyIds("validated", A), null);
+check("list: an object refused", checklistAgencyIds("validated", { 0: A }), null);
+// A hole in a sparse array is refused: every() and map() alone would skip it.
+check("list: a hole in a sparse array refused", checklistAgencyIds("validated", [A, , B]), null);
+check("list: an array of holes refused", checklistAgencyIds("validated", new Array(2)), null);
+check("list: never with a reject", checklistAgencyIds("rejected", [A]), null);
+check("list: a reject without ticks is fine", checklistAgencyIds("rejected", []), []);
+check("list: a reject with none is fine", checklistAgencyIds("rejected", undefined), []);
+
+// The database's 22023 (a list with a reject, from CDRRMO, or naming a NULL
+// or unknown agency): refused before any write, so "invalid", no refresh.
+const inputRefused = mapValidateEmergencyResult({
+  data: null,
+  error: { code: "22023", message: "validate_emergency_report: p_agency_ids names an unknown agency", details: null },
+  status: 400,
+});
+check("22023: invalid", inputRefused, "invalid");
+check("22023: no refresh", refreshesQueue(inputRefused), false);
+check("22023: not done", isEmergencyDecisionDone(inputRefused), false);
+// Before migration 20261208090000 is pushed, a call naming p_agency_ids
+// finds no function: PGRST202 stays "unknown", which refreshes.
+const oldDatabase = mapValidateEmergencyResult({
+  data: null,
+  error: { code: "PGRST202", message: "Could not find the function public.validate_emergency_report(p_agency_ids, p_decision, p_reason, p_report)" },
+  status: 404,
+});
+check("old database: a call naming p_agency_ids is unknown", oldDatabase, "unknown");
+check("old database: it refreshes", refreshesQueue(oldDatabase), true);
+
+// 'recorded' after ticks: CDRRMO validated first and the list wasn't applied.
+check("recorded after ticks: list not applied", checklistNotApplied("recorded", [A]), true);
+check("recorded without ticks: the plain message", checklistNotApplied("recorded", []), false);
+check("routed after ticks: applied", checklistNotApplied("routed", [A]), false);
+check("validated_no_open_agency after ticks: not this case", checklistNotApplied("validated_no_open_agency", [A]), false);
 
 // --- Which answers close the reject prompt (the report moved) -------------
 for (const token of ["already_routed", "cdrrmo_validated", "already_validated", "already_rejected", "already_resolved", "cdrrmo_rejected", "handed_back", "not_found", "not_emergency", "nothing_added"]) {

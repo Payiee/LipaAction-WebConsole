@@ -11,16 +11,21 @@ import type { RoutingOption } from "@/types";
 
 /**
  * Chooses the agencies a report goes to — where an official, not the category
- * mapping, decides who receives it. Opened in two cases: a validated report
+ * mapping, decides who receives it. Opened in three cases: a validated report
  * no agency holds yet, where the category's agencies carry a Recommended tag
  * and nothing is ticked (agencies asked for this, 2026-10-14: not every
- * office is on duty around the clock), and a report every agency it went to
- * sent back as out of scope, whose list already leaves those agencies out.
+ * office is on duty around the clock); the same list as an Emergency
+ * report's Validate while CDRRMO dispatch is on (owner decision Q4), where
+ * confirming also validates it and a note says CDRRMO always goes too; and a
+ * report every agency it went to sent back as out of scope, whose list
+ * already leaves those agencies out.
  *
  * The commit button is the confirmation, as in ConfirmModal: it stays
- * disabled until something is chosen, and it counts what will be sent. The
- * first agency chosen leads, marked beside its name as it is ticked, so the
- * order that decides is_primary is on screen rather than implied.
+ * disabled until something is chosen (unless allowNone: a recalled report
+ * goes back to its agencies with no tick), and it counts what will be sent.
+ * The first agency chosen leads, marked beside its name as it is ticked, so
+ * the order that decides is_primary is on screen rather than implied; not
+ * where the report keeps an earlier lead (markLead false).
  */
 export function AgencyPickerModal({
   title,
@@ -28,6 +33,11 @@ export function AgencyPickerModal({
   options,
   recommended = [],
   hint,
+  callout,
+  note,
+  allowNone = false,
+  markLead = true,
+  confirmLabel,
   busy = false,
   onCancel,
   onConfirm,
@@ -40,6 +50,19 @@ export function AgencyPickerModal({
   recommended?: string[];
   // The line under the list; the returned case's wording by default.
   hint?: string;
+  // A highlighted line under the description: who a recalled report goes
+  // back to whatever is ticked.
+  callout?: string;
+  // One more line under the list, before the hint: CDRRMO dispatch's
+  // [CDRRMO is always included].
+  note?: string;
+  // The commit button works with nothing ticked.
+  allowNone?: boolean;
+  // Marks the first agency ticked as the lead.
+  markLead?: boolean;
+  // The commit button's words for the agencies ticked, in order; [Route to
+  // N agencies] by default.
+  confirmLabel?: (chosen: string[]) => string;
   busy?: boolean;
   onCancel: () => void;
   onConfirm: (agencyIds: string[]) => void;
@@ -56,6 +79,11 @@ export function AgencyPickerModal({
     setChosen((list) => (list.includes(agencyId) ? list.filter((id) => id !== agencyId) : [...list, agencyId]));
   }
 
+  const waitingForChoice = chosen.length === 0 && !allowNone;
+  const describedBy = ["agency-picker-description", callout && "agency-picker-callout", note && "agency-picker-note"]
+    .filter(Boolean)
+    .join(" ");
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
       <button
@@ -70,8 +98,10 @@ export function AgencyPickerModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="agency-picker-title"
-        aria-describedby="agency-picker-description"
-        className="relative w-full max-w-sm rounded-card border border-ink-100 bg-white p-5 shadow-panel focus:outline-none"
+        aria-describedby={describedBy}
+        // Scrolls as a whole when the copy runs long (Tagalog, a recalled or
+        // discreet report), so Confirm stays reachable on a 1366x768 screen.
+        className="relative max-h-[calc(100vh-2rem)] w-full max-w-sm overflow-y-auto rounded-card border border-ink-100 bg-white p-5 shadow-panel focus:outline-none"
       >
         <p id="agency-picker-title" className="mb-1 text-sm font-semibold text-ink-900">
           {title}
@@ -79,6 +109,15 @@ export function AgencyPickerModal({
         <p id="agency-picker-description" className="mb-3 text-xs text-ink-500">
           {description}
         </p>
+        {callout && (
+          <p
+            id="agency-picker-callout"
+            role="note"
+            className="mb-3 rounded-md border border-priority-medium/30 bg-priority-mediumBg px-3 py-2 text-xs font-medium text-priority-medium"
+          >
+            {callout}
+          </p>
+        )}
 
         <fieldset className="mb-2" disabled={busy}>
           <legend className="mb-1.5 text-xs font-medium text-ink-500">{t("reroute.legend")}</legend>
@@ -108,24 +147,31 @@ export function AgencyPickerModal({
                       {t("choose.recommendedTag")}
                     </span>
                   )}
-                  {position === 0 && <span className="shrink-0 text-ink-500">{t("routing.lead")}</span>}
+                  {markLead && position === 0 && <span className="shrink-0 text-ink-500">{t("routing.lead")}</span>}
                 </label>
               );
             })}
           </div>
         </fieldset>
+        {note && (
+          <p id="agency-picker-note" className="mb-1 text-[11px] text-ink-500">
+            {note}
+          </p>
+        )}
         <p className="mb-4 text-[11px] text-ink-500">{hint ?? t("reroute.leadHint")}</p>
 
         <div className="flex justify-end gap-2">
           <Button variant="secondary" size="sm" disabled={busy} onClick={onCancel}>
             {t("common.cancel")}
           </Button>
-          <Button variant="primary" size="sm" disabled={busy || chosen.length === 0} onClick={() => onConfirm(chosen)}>
+          <Button variant="primary" size="sm" disabled={busy || waitingForChoice} onClick={() => onConfirm(chosen)}>
             {busy
               ? t("common.working")
-              : chosen.length === 0
+              : waitingForChoice
                 ? t("reroute.chooseFirst")
-                : t("routing.routeConfirm", { agencies: agencyCount(chosen.length, t) })}
+                : confirmLabel
+                  ? confirmLabel(chosen)
+                  : t("routing.routeConfirm", { agencies: agencyCount(chosen.length, t) })}
           </Button>
         </div>
       </div>

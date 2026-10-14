@@ -280,17 +280,64 @@ export const MESSAGES = {
     tl: "Sa CDRRMO ng lungsod na ipinapasa sa mga ahensya ang mga Emergency na ulat. Gamitin ang I-validate; ito ang magpapasa ng ulat.",
   },
   "cdrrmo.validateTitle": { en: "Validate {id}?", tl: "I-validate ang {id}?" },
-  "cdrrmo.validateDescription": {
+  "cdrrmo.validateConfirm": { en: "Validate and send", tl: "I-validate at ipasa" },
+  // Owner decision Q4 (the barangay checklist wins): Validate on an Emergency
+  // report no agency holds yet opens the same agency checklist as any report
+  // (choose.*). These are its extra line and its commit button.
+  "cdrrmo.checklistNote": {
+    en: "{cdrrmo} is always included: if you don't tick it, it's added as a supporting agency.",
+    tl: "Laging kasama ang {cdrrmo}: kung hindi mo ito i-tsek, idaragdag ito bilang katuwang na ahensya.",
+  },
+  // For a report the desk recalled (the checklist's callout, the drawer's
+  // preview, the no-list confirmations): the database reopens the recalled
+  // agencies' rows when the validation routes it, whatever is ticked. {names}
+  // marks the old lead with routing.lead.
+  "cdrrmo.checklistRecalled": {
+    en: "It was recalled from {names}, so it goes back to them too.",
+    tl: "Binawi ito mula sa {names}, kaya babalik din ito sa kanila.",
+  },
+  "cdrrmo.checklistConfirm": { en: "Validate and send to {agencies}", tl: "I-validate at ipasa sa {agencies}" },
+  // The same step with no list to offer: the call sends no ticks, and the
+  // database adds CDRRMO alone (a recalled report also goes back to the
+  // agencies it was recalled from: cdrrmo.checklistRecalled is appended).
+  "cdrrmo.noChecklistDescription": {
     en:
-      "Validating sends it straight to its agencies through the city's CDRRMO: {names}. " +
-      "The final list may include more agencies; only CDRRMO can add them. " +
+      "The agency list wasn't loaded, so agencies can't be ticked right now. " +
+      "Validating adds only {cdrrmo}, which can pass it on to other agencies. " +
+      "To choose the agencies, refresh the page first. This can't be undone from this console.",
+    tl:
+      "Hindi na-load ang listahan ng ahensya, kaya hindi pa makakapag-tsek ng ahensya ngayon. " +
+      "Ang {cdrrmo} lamang ang idaragdag ng pag-validate, at maaari nitong ipasa ito sa ibang ahensya. " +
+      "Para makapili ng mga ahensya, i-refresh muna ang page. Hindi na ito mababawi mula sa console na ito.",
+  },
+  // The list loaded but every agency already holds the report: nothing is
+  // left to tick, and the database adds no agency.
+  "cdrrmo.noOtherAgencyDescription": {
+    en:
+      "Every agency has already had this report, so there is no other agency to tick. " +
+      "Validating records your barangay's review; only CDRRMO can add agencies after that. " +
       "This can't be undone from this console.",
     tl:
-      "Kapag na-validate, ipapasa ito agad sa mga ahensya nito sa pamamagitan ng CDRRMO ng lungsod: {names}. " +
-      "Maaaring may madagdag pang ahensya sa huling listahan; ang CDRRMO lang ang makakapagdagdag. " +
+      "Nagkaroon na ng ulat na ito ang lahat ng ahensya, kaya wala nang ibang ahensyang mai-tsek. " +
+      "Itatala ng pag-validate ang pagsusuri ng inyong barangay; ang CDRRMO na lang ang makakapagdagdag ng ahensya pagkatapos nito. " +
       "Hindi na ito mababawi mula sa console na ito.",
   },
-  "cdrrmo.validateConfirm": { en: "Validate and send", tl: "I-validate at ipasa" },
+  // The checklist for a report the desk recalled: it goes back to the agencies
+  // it was recalled from whatever is ticked (cdrrmo.checklistRecalled, shown
+  // above the list), and the old lead keeps the lead, so ticks only add.
+  "cdrrmo.recalledDescription": {
+    en: "Tick any other agencies it should go to, or none. Routing can't be undone from this console.",
+    tl: "I-tsek ang iba pang ahensyang dapat pagpasahan nito, o huwag nang mag-tsek. Hindi na mababawi ang pagpasa mula sa console na ito.",
+  },
+  "cdrrmo.recalledHint": {
+    en: "Nothing is ticked for you; you can choose more than one.",
+    tl: "Walang naka-tsek nang kusa; maaaring pumili ng higit sa isa.",
+  },
+  // The drawer, before the decision: where it goes once validated.
+  "cdrrmo.previewChecklist": {
+    en: "When you validate it, you tick the agencies it goes to.",
+    tl: "Sa pag-validate nito, ikaw ang magte-tsek ng mga ahensyang pagpapasahan nito.",
+  },
   // A routed report the city's CDRRMO validated: the desk's validation is
   // recorded and nothing about the routing changes (returns 'recorded').
   "cdrrmo.recordDescription": {
@@ -298,34 +345,22 @@ export const MESSAGES = {
     tl: "Na-validate na ito ng CDRRMO ng lungsod at nasa mga ahensya na ito. Itatala nito na na-validate rin ito ng inyong barangay; walang magbabago sa pagpasa nito.",
   },
   // A report sent to agencies automatically, before any review: validating
-  // records the review and adds any default agency still missing, CDRRMO
-  // included (returns 'routed').
+  // records the review and, since Q4 (no list goes with it), adds CDRRMO
+  // alone if it doesn't hold the report yet (returns 'routed').
   "cdrrmo.autoDescription": {
-    en: "It was sent to agencies automatically, before any review. Validating records your barangay's review and adds any default agency still missing, CDRRMO included. Agencies already sent to keep it.",
-    tl: "Awtomatiko itong naipasa sa mga ahensya bago masuri. Itatala ng pag-validate ang pagsusuri ng inyong barangay at idaragdag ang anumang default na ahensyang kulang pa, kasama ang CDRRMO. Mananatili ito sa mga ahensyang napasahan na.",
+    en: "It was sent to agencies automatically, before any review. Validating records your barangay's review and adds CDRRMO if it doesn't hold the report yet. Agencies already sent to keep it.",
+    tl: "Awtomatiko itong naipasa sa mga ahensya bago masuri. Itatala ng pag-validate ang pagsusuri ng inyong barangay at idaragdag ang CDRRMO kung hindi pa nito hawak ang ulat. Mananatili ito sa mga ahensyang napasahan na.",
   },
   "cdrrmo.recordConfirm": { en: "Record validation", tl: "Itala ang validation" },
   "cdrrmo.notValidatedHere": {
     en: "Not yet validated by your barangay",
     tl: "Hindi pa na-validate ng inyong barangay",
   },
-  "cdrrmo.cdrrmoAlways": { en: "CDRRMO (always)", tl: "CDRRMO (palagi)" },
-  "cdrrmo.alwaysSuffix": { en: "(always)", tl: "(palagi)" },
-  "cdrrmo.mappedAndCdrrmo": {
-    en: "the agencies its category maps to, and CDRRMO",
-    tl: "ang mga ahensyang nakatalaga sa kategorya nito, at ang CDRRMO",
-  },
-  "cdrrmo.preview": {
-    en: "After validation, it goes straight to",
-    tl: "Pagkatapos ma-validate, ipapasa ito agad sa",
-  },
-  "cdrrmo.previewNote": {
-    en: "The final list may include more agencies; only CDRRMO can add them.",
-    tl: "Maaaring may madagdag pang ahensya sa huling listahan; ang CDRRMO lang ang makakapagdagdag.",
-  },
+  // A report validated before CDRRMO dispatch and never routed: its Validate
+  // and send opens the checklist (owner decision Q4).
   "cdrrmo.pastReview": {
-    en: "Emergency reports now go to agencies through the city's CDRRMO.",
-    tl: "Sa CDRRMO ng lungsod na ipinapasa sa mga ahensya ang mga Emergency na ulat.",
+    en: "Validated before the city's CDRRMO took over Emergency routing, and not with any agency yet. Validating sends it to the agencies you tick; CDRRMO is always included.",
+    tl: "Na-validate ang ulat na ito bago hawakan ng CDRRMO ng lungsod ang pagpasa ng mga Emergency, at wala pa ito sa anumang ahensya. Sa pag-validate, ipapasa ito sa mga ahensyang i-tsek mo; laging kasama ang CDRRMO.",
   },
   "cdrrmo.legacyPartial": {
     en:
@@ -356,9 +391,17 @@ export const MESSAGES = {
     en: "{id}: your barangay's validation is recorded. It was already with its agencies.",
     tl: "{id}: naitala na ang validation ng inyong barangay. Nasa mga ahensya na ito.",
   },
+  // 'recorded' after a ticked list (checklistNotApplied): CDRRMO validated
+  // and routed it first, so the database didn't apply the desk's ticks.
+  "cdrrmo.outcome.recorded-list-not-sent": {
+    en: "{id}: the city's CDRRMO validated it first, so your barangay's validation is recorded, but it wasn't sent to the agencies you ticked. CDRRMO can share it with them.",
+    tl: "{id}: naunang na-validate ito ng CDRRMO ng lungsod, kaya naitala ang validation ng inyong barangay, pero hindi ito naipasa sa mga ahensyang na-tsek ninyo. Maaari itong ibahagi ng CDRRMO sa kanila.",
+  },
+  // Q4: every agency the validation would send it to (the ticked ones and
+  // CDRRMO, or CDRRMO alone) already had it and had sent it back.
   "cdrrmo.outcome.validated_no_open_agency": {
-    en: "{id} validated. Every agency it maps to had already sent it back, so it is now with CDRRMO to send on.",
-    tl: "Na-validate ang {id}. Naibalik na ito ng lahat ng nakatalagang ahensya, kaya nasa CDRRMO na ito para ipasa.",
+    en: "{id} validated, but no agency holds it: the agencies it would go to, CDRRMO included, had already sent it back. CDRRMO can send it on.",
+    tl: "Na-validate ang {id}, pero walang ahensyang may hawak nito: naibalik na ito ng mga ahensyang pagpapasahan sana nito, kasama ang CDRRMO. Maaari itong ipasa ng CDRRMO sa ibang ahensya.",
   },
   "cdrrmo.outcome.rejected": {
     en: "{id} rejected — moved to Validation History",
@@ -670,9 +713,12 @@ export const MESSAGES = {
     en: "Routed automatically, without a review here.",
     tl: "Awtomatikong naipasa, nang walang pagsusuri dito.",
   },
+  // Both flows: validate, then Route to another agency; or, under CDRRMO
+  // dispatch, Validate opens that list itself. Either way the list leaves out
+  // the agencies that sent it back.
   "drawer.returnedPending": {
-    en: "Every agency it was routed to sent it back as out of scope, so it needs a review here. After validation, choose another agency for it.",
-    tl: "Ibinalik ito ng lahat ng ahensyang pinagpasahan bilang labas sa saklaw, kaya kailangan itong suriin dito. Pagkatapos ma-validate, pumili ng ibang ahensya para rito.",
+    en: "Every agency it was routed to sent it back as out of scope, so it needs a review here. Validating it lets you choose another agency; the ones that sent it back aren't offered again.",
+    tl: "Ibinalik ito ng lahat ng ahensyang pinagpasahan bilang labas sa saklaw, kaya kailangan itong suriin dito. Sa pag-validate nito, makakapili ka ng ibang ahensya; hindi na iaalok ang mga ahensyang nagbalik nito.",
   },
   "drawer.incomplete": {
     en: "A routing attempt stopped part-way. These agencies already have it:",
