@@ -2,7 +2,11 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { categoryLabel, displayName, parseRejectReason, reporterLabel } from "@/lib/utils";
 import { BARANGAY_RESOLVE_LIVE } from "@/lib/features";
-import { readCdrrmoDispatchEnabled, REPORT_VALIDATIONS_HISTORY_SELECT } from "@/lib/cdrrmo-dispatch";
+import {
+  isReviewStampedByCdrrmo,
+  readCdrrmoDispatchEnabled,
+  REPORT_VALIDATIONS_HISTORY_SELECT,
+} from "@/lib/cdrrmo-dispatch";
 import { YOUR_BARANGAY } from "@/components/validation-history/historyOptions";
 import type { ResolutionStatus, ValidationRecord, ValidationSummary } from "@/types";
 
@@ -58,6 +62,7 @@ interface RawPartyDecision {
   party: string;
   decision: string;
   reason: string | null;
+  created_at: string;
 }
 
 const HISTORY_LIMIT = 50;
@@ -288,18 +293,17 @@ function withPartyDecisions(
     const reason = confirmed ? null : barangay.reason ?? r.review_reason;
     const parsed = reason ? parseRejectReason(reason) : null;
     // The official comes from the report's reviewed_by, which is the
-    // barangay's own review unless CDRRMO re-stamped it: after an override
-    // (barangay rejected, CDRRMO validated) or a reject after routing
-    // (barangay validated, CDRRMO rejected). Then reviewed_by is CDRRMO's
-    // reviewer, never shown as the barangay's, and the barangay's actor
-    // isn't readable, so the column says [Your barangay].
-    const restampedByCdrrmo =
-      (barangay.decision === "rejected" && cdrrmo?.decision === "validated") ||
-      (barangay.decision === "validated" && cdrrmo?.decision === "rejected");
+    // barangay's own review unless the stamp is CDRRMO's: CDRRMO decided
+    // first, overrode the barangay, or rejected after routing
+    // (isReviewStampedByCdrrmo). Then reviewed_by is CDRRMO's reviewer,
+    // never shown as the barangay's, and the barangay's actor isn't
+    // readable, so the column says [Your barangay].
+    const stampedByCdrrmo = isReviewStampedByCdrrmo(barangay, cdrrmo);
     return {
       ...record,
       verdict: confirmed ? "Confirmed" : "Rejected",
-      validatingOfficial: restampedByCdrrmo ? YOUR_BARANGAY : record.validatingOfficial,
+      validatingOfficial: stampedByCdrrmo ? YOUR_BARANGAY : record.validatingOfficial,
+      officialIsBarangayGeneric: stampedByCdrrmo || undefined,
       reason: reason ?? undefined,
       reasonCode: parsed?.code ?? null,
       reasonNote: parsed?.note,

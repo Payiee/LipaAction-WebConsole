@@ -24,6 +24,7 @@ const {
   REPORT_VALIDATIONS_READABLE,
   REPORT_VALIDATIONS_DECISIONS_SELECT,
   REPORT_VALIDATIONS_HISTORY_SELECT,
+  isReviewStampedByCdrrmo,
 } = mod;
 
 // The module logs unexpected answers on purpose; keep the run output clean.
@@ -139,6 +140,37 @@ const folded = partyDecisionsByReport([
 check("fold: both parties", folded.get("a"), { barangay: "validated", cdrrmo: "rejected" });
 check("fold: CDRRMO only", folded.get("b"), { barangay: null, cdrrmo: "validated" });
 check("fold: unknown party ignored", folded.has("c"), false);
+
+// --- Whose review stamp History may name (isReviewStampedByCdrrmo) --------
+// true means History shows [Your barangay], not reviewed_by's name.
+const at = (minute) => `2026-10-14T10:${String(minute).padStart(2, "0")}:00Z`;
+check(
+  "stamp: CDRRMO validated first, desk records later -> Your barangay",
+  isReviewStampedByCdrrmo({ decision: "validated", created_at: at(5) }, { decision: "validated", created_at: at(1) }),
+  true
+);
+check(
+  "stamp: desk validated first, CDRRMO records later -> desk's name",
+  isReviewStampedByCdrrmo({ decision: "validated", created_at: at(1) }, { decision: "validated", created_at: at(5) }),
+  false
+);
+check(
+  "stamp: override (desk rejected, CDRRMO validated later) -> Your barangay",
+  isReviewStampedByCdrrmo({ decision: "rejected", created_at: at(1) }, { decision: "validated", created_at: at(5) }),
+  true
+);
+check(
+  "stamp: reject after route (desk validated, CDRRMO rejected later) -> Your barangay",
+  isReviewStampedByCdrrmo({ decision: "validated", created_at: at(1) }, { decision: "rejected", created_at: at(5) }),
+  true
+);
+check("stamp: desk only -> desk's name", isReviewStampedByCdrrmo({ decision: "validated", created_at: at(1) }, null), false);
+check(
+  "stamp: same instant counts as CDRRMO first",
+  isReviewStampedByCdrrmo({ decision: "validated", created_at: at(1) }, { decision: "validated", created_at: at(1) }),
+  true
+);
+check("grant: history select reads created_at", REPORT_VALIDATIONS_HISTORY_SELECT.includes("created_at"), true);
 
 // --- report_validations reads stay inside the granted columns -------------
 // PR A at 81768ff grants SELECT on (id, incident_report_id, party, decision,

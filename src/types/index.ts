@@ -239,6 +239,11 @@ export interface ValidationRecord {
   // (CDRRMO dispatch, report_validations party 'cdrrmo'). Such a record is
   // listed but never counted among the barangay's own decisions (spec 3.3).
   decidedBy?: "cdrrmo";
+  // True when the barangay decided but its official can't be named, because
+  // the report's review stamp is CDRRMO's (isReviewStampedByCdrrmo).
+  // validatingOfficial then holds the English [Your barangay] for the CSV
+  // and the filter; the table shows it translated.
+  officialIsBarangayGeneric?: boolean;
 }
 
 /**

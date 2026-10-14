@@ -6,11 +6,12 @@ import type { ResolutionStatus } from "@/types";
 export const NOT_SCORED = "not-scored";
 
 /**
- * The official column's value when the barangay decided but its official
- * can't be named: CDRRMO re-stamped the report's review (an override, or a
- * reject after routing), so reviewed_by is CDRRMO's, and report_validations
- * doesn't expose its actor. Shown translated (history.yourBarangay); the CSV
- * keeps this English text.
+ * The official column's English value when the barangay decided but its
+ * official can't be named, because the report's review stamp is CDRRMO's
+ * (CDRRMO decided first, overrode, or rejected after routing) and
+ * report_validations doesn't expose its actor. The record carries
+ * officialIsBarangayGeneric, which the table reads to show
+ * history.yourBarangay; the CSV and the official filter keep this text.
  */
 export const YOUR_BARANGAY = "Your barangay";
 

@@ -268,8 +268,27 @@ export const REPORT_VALIDATIONS_READABLE = ["id", "incident_report_id", "party",
 /** The queue's read: who decided, for the record-on-routed rule. */
 export const REPORT_VALIDATIONS_DECISIONS_SELECT = "incident_report_id, party, decision";
 
-/** Validation History's read: who decided, and the barangay's reason. */
-export const REPORT_VALIDATIONS_HISTORY_SELECT = "incident_report_id, party, decision, reason";
+/** Validation History's read: who decided, when, and the barangay's reason. */
+export const REPORT_VALIDATIONS_HISTORY_SELECT = "incident_report_id, party, decision, reason, created_at";
+
+/**
+ * Whether the report's review stamp (reviewed_by) is CDRRMO's rather than
+ * the barangay's, so Validation History must not name reviewed_by as the
+ * barangay's official (report_validations.actor isn't readable).
+ *
+ * CDRRMO stamps reviewed_by when it decides first (a route or an auto-routed
+ * validation, both stamping CDRRMO's user; the desk's later 'record' stamps
+ * nothing), and re-stamps it when it reverses the barangay (an override, or
+ * a reject after routing). So: any CDRRMO row whose decision differs from
+ * the barangay's, or that came first (same instant counted as first).
+ */
+export function isReviewStampedByCdrrmo(
+  barangay: { decision: string; created_at: string },
+  cdrrmo: { decision: string; created_at: string } | null | undefined
+): boolean {
+  if (!cdrrmo) return false;
+  return cdrrmo.decision !== barangay.decision || Date.parse(cdrrmo.created_at) <= Date.parse(barangay.created_at);
+}
 
 /** One report's report_validations rows, as far as the desk reads them. */
 export interface PartyDecisions {
