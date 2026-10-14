@@ -8,6 +8,14 @@ import {
   type PartyDecisions,
 } from "@/lib/cdrrmo-dispatch";
 import { isRejectedByCdrrmo } from "@/components/queue/routing";
+import {
+  DESK_AUTO_ROUTED_KIND,
+  ROUTING_DISPATCH_COLUMNS,
+  UNREAD_AUTO_ROUTED_LIMIT,
+  probeRecallAvailable,
+  readResponders,
+  unreadIdsFrom,
+} from "@/lib/recall";
 import { categoryLabel, distinctCategories, medianAgeMinutes, reporterLabel, startOfManilaDay, timeAgo } from "@/lib/utils";
 import type { AgencyRouting, KpiSummary, QueueReport, QueueTabId, RoutingOption, RoutingPlanEntry, SituationCluster, ReportPosition } from "@/types";
 
@@ -46,6 +54,14 @@ const RECENT_ROUTED_LIMIT = 20;
 // they go into one PostgREST in.() list.
 const RECENT_ROUTING_ROWS = 120;
 const RECENT_ROUTED_CANDIDATES = 60;
+
+// Reports routed without the desk (a responder's report, the Critical
+// escalation timer, CARD) and never reviewed here: the Recall screen's list
+// on the Emergency tab (src/lib/recall.ts). Read on their own, not out of the
+// capped routed half of Recent validated, so an automatic routing can't fall
+// off the desk's screen behind newer routings. Newest first; the cap keeps
+// the PostgREST in.() lists that follow bounded.
+const AUTO_ROUTED_LIMIT = 50;
 
 const REPORT_COLUMNS =
   "id, category, description, priority_name, status, entry_tier, identity_withheld, created_at, cluster_id, reviewed_at, severity_self_rating, safety_net_confirmation, anyone_hurt, is_ongoing, has_photo, has_video, discreet_reporting, priority_class, priority_score, confidence_band, sub_category";
@@ -87,6 +103,10 @@ interface RawRouting {
   routed_at: string | null;
   acknowledged_at: string | null;
   in_progress_at: string | null;
+  unit_assigned_at: string | null;
+  en_route_at: string | null;
+  on_scene_at: string | null;
+  escalated: boolean | null;
   resolved_at: string | null;
   resolution_outcome: AgencyRouting["resolutionOutcome"];
 }
@@ -135,12 +155,27 @@ export interface QueueData {
   // The pending list loaded but part of Recent validated didn't. That tab
   // says so instead of showing a partial list as if it were complete.
   validatedUnavailable: boolean;
+  // Routed without the desk and never reviewed here (status routed,
+  // reviewed_at null), newest first, capped at AUTO_ROUTED_LIMIT. The page
+  // keeps the ones src/lib/recall.ts reads as recallable or recorded-only.
+  autoRouted: QueueReport[];
+  // The auto-routed read failed: the Emergency tab says so rather than
+  // showing no strip as if nothing had been routed.
+  autoRoutedUnavailable: boolean;
+  // The recall functions answered the page's probe (recall_window_ends_at).
+  // false when they are not deployed, the probe failed, or there was nothing
+  // to probe: no Recall or Record recall button is shown then.
+  recallAvailable: boolean;
+  // This official's unread desk_report_auto_routed notifications, for the
+  // header badge. null when they couldn't be read: no badge.
+  unreadAutoRoutedIds: string[] | null;
 }
 
 /**
  * Fetches and shapes this barangay's incident_reports into everything the
- * Queue page needs: the 4 tabs (Emergency/Standard/Duplicates/Validated —
- * "Recall window" was dropped, no backend concept for it), KPI counts, and
+ * Queue page needs: the 4 tabs (Emergency/Standard/Duplicates/Validated; the
+ * recall window is a strip on the Emergency tab rather than a fifth tab, so
+ * QueueTabId is unchanged: RECALL-UI spec Q1), KPI counts, and
  * an "active cluster" banner when duplicate reports are grouped together.
  *
  * RLS already scopes incident_reports to the signed-in official's barangay —
@@ -159,7 +194,7 @@ export async function getBarangayQueue(
   // size is the backlog itself); recently routed is capped; today's count is
   // a HEAD request that returns no rows at all.
   const dayStart = startOfManilaDay().toISOString();
-  const [pendingRes, awaitingRes, recentRes, todayRes, cdrrmoDispatch] = await Promise.all([
+  const [pendingRes, awaitingRes, recentRes, todayRes, cdrrmoDispatch, autoRes, unreadRes] = await Promise.all([
     supabase
       .from("incident_reports")
       .select(REPORT_COLUMNS)
@@ -202,6 +237,26 @@ export async function getBarangayQueue(
       .in("status", VALIDATED_OR_LATER)
       .gte("reviewed_at", dayStart),
     readCdrrmoDispatchEnabled(supabase),
+    // Routed without a review here. Whether each one is still recallable is
+    // worked out from its routing rows (src/lib/recall.ts recallState).
+    supabase
+      .from("incident_reports")
+      .select(REPORT_COLUMNS)
+      .eq("incident_barangay_id", barangayId)
+      .eq("status", "routed")
+      .is("reviewed_at", null)
+      .order("created_at", { ascending: false })
+      .limit(AUTO_ROUTED_LIMIT),
+    // The header badge: notifications_select_own scopes these rows to the
+    // signed-in official, and the column grant covers id, kind and read_at
+    // (20261110090000_notifications_inbox.sql:85-88).
+    supabase
+      .from("notifications")
+      .select("id")
+      .eq("kind", DESK_AUTO_ROUTED_KIND)
+      .is("read_at", null)
+      .order("created_at", { ascending: false })
+      .limit(UNREAD_AUTO_ROUTED_LIMIT),
   ]);
 
   // Only the pending list takes the page down. It IS the emergency console;
@@ -216,7 +271,13 @@ export async function getBarangayQueue(
     console.error("[queue] pending load failed", pendingRes.status, pendingRes.error?.code, pendingRes.error?.message);
     return failedQueueData();
   }
-  for (const [part, res] of [["awaiting-routing", awaitingRes], ["recent-routings", recentRes], ["validated-today", todayRes]] as const) {
+  for (const [part, res] of [
+    ["awaiting-routing", awaitingRes],
+    ["recent-routings", recentRes],
+    ["validated-today", todayRes],
+    ["auto-routed", autoRes],
+    ["unread-auto-routed", unreadRes],
+  ] as const) {
     if (res.error) console.error(`[queue] ${part} failed`, res.status, res.error.code, res.error.message);
   }
 
@@ -231,18 +292,29 @@ export async function getBarangayQueue(
         cdrrmoDispatch ? DOWNSTREAM_WITH_CDRRMO_REJECTS : DOWNSTREAM_STATUSES
       );
   const validatedUnavailable = Boolean(awaitingRes.error) || routedFailed;
+  // The auto-routed reports not already loaded as part of the routed half;
+  // the routed half's copies are reused for the rest.
+  const routedIdSet = new Set(routed.map((r) => r.id));
+  const autoRaw = (autoRes.error ? [] : autoRes.data ?? []) as RawReport[];
+  const autoOnly = autoRaw.filter((r) => !routedIdSet.has(r.id));
 
   // With CDRRMO dispatch on, two more reads, each failing soft to the
   // console's behaviour without them: who decided on the Recent validated
   // reports (report_validations), and today's barangay validations.
-  const [routingExtras, positions, cdrrmoAgency, decisions, barangayToday] = await Promise.all([
-    loadRouting(supabase, pending, awaiting, routed),
-    loadPositions(supabase, [...pending, ...awaiting, ...routed], "queue"),
+  const [routingExtras, positions, cdrrmoAgency, decisions, barangayToday, responders, recallAvailable] = await Promise.all([
+    loadRouting(supabase, pending, awaiting, [...routed, ...autoOnly]),
+    loadPositions(supabase, [...pending, ...awaiting, ...routed, ...autoOnly], "queue"),
     cdrrmoDispatch ? loadCdrrmoAgency(supabase) : Promise.resolve(null),
     // Routed reports only: the decisions decide whether the desk may record
     // its validation of a routed report; an awaiting one never needs them.
     cdrrmoDispatch ? loadPartyDecisions(supabase, routed.map((r) => r.id)) : Promise.resolve(null),
     cdrrmoDispatch ? countBarangayValidationsSince(supabase, barangayId, dayStart) : Promise.resolve(null),
+    // The responder unit on routed reports (the unit only). Fails soft to no
+    // badge; see readResponders.
+    readResponders(supabase, [...routed, ...autoOnly].map((r) => r.id)),
+    // One read-only call proves the recall functions are deployed. Without an
+    // auto-routed report there is nothing to recall, so no call.
+    autoRaw.length > 0 ? probeRecallAvailable(supabase, autoRaw[0].id) : Promise.resolve(false),
   ]);
   const positionOf = (r: RawReport) => positions.get(r.id) ?? UNKNOWN_POSITION;
   // Only routed reports had their decisions read; an awaiting one carries
@@ -250,6 +322,10 @@ export async function getBarangayQueue(
   const routedIds = new Set(routed.map((r) => r.id));
   const decisionsOf = (r: RawReport) =>
     decisions && routedIds.has(r.id) ? decisions.get(r.id) ?? { barangay: null, cdrrmo: null } : null;
+  const withResponder = (report: QueueReport): QueueReport =>
+    responders?.has(report.id)
+      ? { ...report, details: { ...report.details, responderUnit: responders.get(report.id) ?? null } }
+      : report;
 
   const emergency = pending
     .filter((r) => r.entry_tier === "emergency")
@@ -260,7 +336,7 @@ export async function getBarangayQueue(
   // Awaiting routing first: those still need someone to act. Routed ones
   // are there to show what the agencies have done since.
   const validated = [...awaiting, ...routed]
-    .map((r) => toQueueReport(r, routingExtras.get(r.id), positionOf(r), decisionsOf(r)))
+    .map((r) => withResponder(toQueueReport(r, routingExtras.get(r.id), positionOf(r), decisionsOf(r))))
     // A rejected report is here only when CDRRMO rejected it after it was
     // routed. One rejected some other way (say, at the desk after a recall)
     // left the queue when it was rejected, as every rejection does.
@@ -321,6 +397,13 @@ export async function getBarangayQueue(
     validatedCount: barangayToday ?? (todayRes.error ? null : todayRes.count ?? 0),
   };
 
+  // The routed half's copy where there is one, so the strip, the row and the
+  // drawer read the same report.
+  const validatedById = new Map(validated.map((r) => [r.id, r]));
+  const autoRouted = autoRaw.map(
+    (r) => validatedById.get(r.id) ?? withResponder(toQueueReport(r, routingExtras.get(r.id), positionOf(r)))
+  );
+
   const queueByTab: Record<QueueTabId, QueueReport[]> = {
     emergency,
     standard,
@@ -345,6 +428,10 @@ export async function getBarangayQueue(
     cdrrmoAgency,
     loadFailed: false,
     validatedUnavailable,
+    autoRouted,
+    autoRoutedUnavailable: Boolean(autoRes.error),
+    recallAvailable,
+    unreadAutoRoutedIds: unreadIdsFrom(unreadRes),
   };
 }
 
@@ -509,7 +596,7 @@ async function loadRouting(
       ? supabase
           .from("agency_routing")
           .select(
-            "incident_report_id, agency_id, is_primary, auto_routed, routed_at, acknowledged_at, in_progress_at, resolved_at, resolution_outcome"
+            `incident_report_id, agency_id, is_primary, auto_routed, routed_at, acknowledged_at, resolved_at, resolution_outcome, ${ROUTING_DISPATCH_COLUMNS}`
           )
           .in("incident_report_id", reportIds)
       : Promise.resolve({ data: [] as RawRouting[], error: null }),
@@ -564,6 +651,10 @@ async function loadRouting(
       routedAt: row.routed_at,
       acknowledgedAt: row.acknowledged_at,
       inProgressAt: row.in_progress_at,
+      unitAssignedAt: row.unit_assigned_at,
+      enRouteAt: row.en_route_at,
+      onSceneAt: row.on_scene_at,
+      escalated: Boolean(row.escalated),
       resolvedAt: row.resolved_at,
       resolutionOutcome: row.resolution_outcome,
     });
@@ -702,5 +793,9 @@ function failedQueueData(): QueueData {
     loadFailed: true,
     // The whole page failed; the banner already says so.
     validatedUnavailable: false,
+    autoRouted: [],
+    autoRoutedUnavailable: false,
+    recallAvailable: false,
+    unreadAutoRoutedIds: null,
   };
 }

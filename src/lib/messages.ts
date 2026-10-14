@@ -943,8 +943,8 @@ export const MESSAGES = {
   },
   "reports.catalogue.18.title": { en: "Monthly Override-Recall Usage", tl: "Buwanang Paggamit ng Recall" },
   "reports.catalogue.18.status": {
-    en: "Not available: recall isn't offered in this console yet, so there is nothing to count. The Critical escalation timer is on, and can route an untouched Critical emergency to its agencies automatically.",
-    tl: "Hindi available: wala pang recall sa console na ito, kaya walang mabibilang. Naka-on ang Critical escalation timer, at maaari nitong awtomatikong ipasa sa mga ahensya ang Critical na emergency na hindi pa nagagalaw.",
+    en: "Not available: the queue now offers Recall on reports routed automatically, but the desk's audit log doesn't include recalls yet, so there is nothing to count here.",
+    tl: "Hindi available: may Recall na sa pila para sa mga ulat na awtomatikong naipasa, pero wala pang pagbawi sa audit log ng desk, kaya walang mabibilang dito.",
   },
 
   // --- Cluster Explorer (empty state only; see ClusterExplorerClient) -------
@@ -2399,6 +2399,146 @@ export const MESSAGES = {
   "popup.tab.details": {
     en: "Details",
     tl: "Detalye",
+  },
+  // RECALL-UI (LipaAction docs/specs/2026-10-14-barangay-recall-screen-design.md).
+  // The Tagalog in this block is the spec's SUGGESTED wording, or drafted in
+  // its style where the spec has none: a DRAFT for the owner's review (spec
+  // Q7), not yet reviewed like the rest of this file.
+  "recall.strip.title": { en: "Routed without a review here", tl: "Naipasa nang hindi nasuri dito" },
+  "recall.strip.body": {
+    en: "These reports went to their agencies automatically: a responder filed them, or the Critical escalation timer sent them. While the recall window is open you can take one back for review.",
+    tl: "Awtomatikong naipasa sa mga ahensya ang mga ulat na ito: responder ang nag-ulat, o ipinasa ng Critical escalation timer. Habang bukas ang recall window, maaari ninyong bawiin ang isa para suriin.",
+  },
+  "recall.strip.unavailable": {
+    en: "Couldn't load the reports routed automatically. Check Recent validated, or refresh to try again.",
+    tl: "Hindi ma-load ang mga ulat na awtomatikong naipasa. Tingnan ang Kamakailang Na-validate, o i-refresh para subukang muli.",
+  },
+  "recall.strip.recallUnavailable": {
+    en: "Recall isn't available right now. These reports are listed so you know where they went.",
+    tl: "Hindi magagamit ang Recall ngayon. Nakalista ang mga ulat na ito para malaman ninyo kung saan sila napunta.",
+  },
+  "recall.strip.closedSummary": {
+    en: "{count} more routed automatically: recall window closed or a unit already sent",
+    tl: "{count} pang awtomatikong naipasa: sarado na ang recall window o may naipadalang unit na",
+  },
+  "recall.details": { en: "Details", tl: "Detalye" },
+  "recall.routedTo": { en: "Routed automatically to {agencies}", tl: "Awtomatikong naipasa sa {agencies}" },
+  "recall.escalatedTo": { en: "Escalated to {agencies}", tl: "Na-escalate sa {agencies}" },
+  "recall.responder": { en: "Responder: {unit}", tl: "Responder: {unit}" },
+  "recall.timeLeft": { en: "{time} left to recall", tl: "{time} na lang para bawiin" },
+  "recall.timeLeftUnderMinute": {
+    en: "{time} left to recall, less than a minute",
+    tl: "{time} na lang para bawiin, wala nang isang minuto",
+  },
+  "recall.windowClosed": { en: "Recall window closed", tl: "Sarado na ang recall window" },
+  "recall.noWindow": { en: "No recall window for this priority", tl: "Walang recall window ang priority na ito" },
+  "recall.dispatchedNote": {
+    en: "{agency} has sent a unit or started work",
+    tl: "Nakapagpadala na ng unit o nagsimula na ang {agency}",
+  },
+  "recall.anAgency": { en: "An agency", tl: "Isang ahensya" },
+  "recall.button": { en: "Recall", tl: "Bawiin" },
+  "recall.buttonFor": { en: "Recall {id}", tl: "Bawiin ang {id}" },
+  "recall.record": { en: "Record recall", tl: "Itala ang pagbawi" },
+  "recall.recordFor": { en: "Record recall for {id}", tl: "Itala ang pagbawi sa {id}" },
+  "recall.live.oneMinute": { en: "1 minute left to recall {id}.", tl: "1 minuto na lang para bawiin ang {id}." },
+  "recall.live.closed": { en: "Recall window closed for {id}.", tl: "Sarado na ang recall window ng {id}." },
+  "row.escalated": { en: "Escalated", tl: "Na-escalate" },
+  "row.recallOpen": { en: "Recall window open", tl: "Bukas ang recall window" },
+  "row.recalledChip": { en: "Recalled by your barangay", tl: "Binawi ng inyong barangay" },
+  "drawer.escalated": {
+    en: "Routed automatically because no one here acted on this Critical report in time.",
+    tl: "Awtomatikong naipasa dahil walang kumilos dito sa Critical na ulat na ito sa takdang oras.",
+  },
+  "recall.title": { en: "Recall {id} from the agencies?", tl: "Bawiin ang {id} mula sa mga ahensya?" },
+  "recall.desc.open": {
+    en: "The report comes back to your Emergency queue for review, and {agencies} are told it was recalled. If any agency has already sent a unit, nothing is recalled from any agency; your recall is only recorded.",
+    tl: "Babalik ang ulat sa inyong Emergency queue para suriin, at sasabihan ang {agencies} na binawi ito. Kung nakapagpadala na ng unit ang alinmang ahensya, walang babawiin sa alinmang ahensya; itatala lang ang inyong pagbawi.",
+  },
+  "recall.desc.escalated": {
+    en: "The automatic escalation will not send it again; your desk must route it.",
+    tl: "Hindi na ito muling ipapasa ng awtomatikong escalation; ang inyong desk ang dapat magpasa nito.",
+  },
+  "recall.desc.dispatched": {
+    en: "{agency} has already sent a unit or started work, so nothing is recalled from any agency. A recall now is only recorded in the audit log; the agencies keep the report.",
+    tl: "Nakapagpadala na ng unit o nagsimula na ang {agency}, kaya walang babawiin sa alinmang ahensya. Itatala lang sa audit log ang pagbawi ngayon; mananatili ang ulat sa mga ahensya.",
+  },
+  "recall.desc.closed": {
+    en: "The recall window closed {minutes} min ago. A recall now is only recorded in the audit log; the agencies keep the report.",
+    tl: "Nagsara ang recall window {minutes} minuto na ang nakalipas. Itatala lang sa audit log ang pagbawi ngayon; mananatili ang ulat sa mga ahensya.",
+  },
+  "recall.desc.noWindow": {
+    en: "This priority has no recall window. A recall now is only recorded in the audit log; the agencies keep the report.",
+    tl: "Walang recall window ang priority na ito. Itatala lang sa audit log ang pagbawi ngayon; mananatili ang ulat sa mga ahensya.",
+  },
+  "recall.desc.none": {
+    en: "This report can no longer be recalled. Refresh to see where it stands.",
+    tl: "Hindi na mababawi ang ulat na ito. I-refresh para makita ang kalagayan nito.",
+  },
+  "recall.severityLegend": { en: "What went wrong? (required)", tl: "Ano ang naging mali? (kailangan)" },
+  "recall.severity.none": { en: "None — recalling as a precaution", tl: "Wala — pag-iingat lang" },
+  "recall.severity.safety_net_trip": {
+    en: "Safety-net trip — the reporter's answers were wrong",
+    tl: "Safety-net — mali ang mga sagot ng nag-ulat",
+  },
+  "recall.severity.classifier_wrong": {
+    en: "Classifier wrong — the priority is wrong",
+    tl: "Mali ang classifier — mali ang priority",
+  },
+  "recall.severity.agency_mismatch": { en: "Agency mismatch — wrong agency", tl: "Maling ahensya" },
+  "recall.reasonLabel": {
+    en: "Reason, required (the agencies see this)",
+    tl: "Dahilan, kailangan (makikita ito ng mga ahensya)",
+  },
+  "recall.reasonCount": { en: "{n}/500 characters", tl: "{n}/500 character" },
+  "recall.result.recalled": {
+    en: "Recalled. {id} is back in your Emergency queue for review; the agencies were told.",
+    tl: "Nabawi. Bumalik ang {id} sa inyong Emergency queue para suriin; sinabihan ang mga ahensya.",
+  },
+  "recall.result.after_window": {
+    en: "The recall window had closed. Your recall is on record; the agencies keep the report.",
+    tl: "Sarado na ang recall window. Naitala ang inyong pagbawi; mananatili ang ulat sa mga ahensya.",
+  },
+  "recall.result.after_window_no_window": {
+    en: "This priority has no recall window. Your recall is on record; the agencies keep the report.",
+    tl: "Walang recall window ang priority na ito. Naitala ang inyong pagbawi; mananatili ang ulat sa mga ahensya.",
+  },
+  "recall.result.after_dispatch": {
+    en: "An agency has already sent a unit or started work, so nothing was recalled from any agency. Your recall is on record; the agencies keep the report.",
+    tl: "May naipadalang unit na o nagsimula na ang isang ahensya, kaya walang nabawi sa alinmang ahensya. Naitala ang inyong pagbawi; mananatili ang ulat sa mga ahensya.",
+  },
+  "recall.result.not-permitted": {
+    en: "Not permitted: wrong barangay, or the report no longer exists.",
+    tl: "Hindi pinapayagan: ibang barangay, o wala na ang ulat.",
+  },
+  "recall.result.invalid": {
+    en: "Choose what went wrong and type a reason (up to 500 characters).",
+    tl: "Piliin kung ano ang naging mali at mag-type ng dahilan (hanggang 500 character).",
+  },
+  "recall.result.stale": {
+    en: "This report can no longer be recalled: someone already recalled or reviewed it, or every agency has closed it. Refresh to see where it stands.",
+    tl: "Hindi na mababawi ang ulat na ito: may nakabawi o nakasuri na, o isinara na ito ng lahat ng ahensya. I-refresh para makita ang kalagayan nito.",
+  },
+  "recall.result.unavailable": {
+    en: "Recall isn't available on the server yet. Nothing was recalled.",
+    tl: "Wala pang Recall sa server. Walang nabawi.",
+  },
+  "recall.result.unreachable": {
+    en: "Couldn't reach the server. Check your connection, then try again.",
+    tl: "Hindi maabot ang server. Tingnan ang inyong koneksyon, saka subukang muli.",
+  },
+  "recall.result.session-expired": {
+    en: "Your session expired. Sign in again.",
+    tl: "Nag-expire ang inyong session. Mag-sign in muli.",
+  },
+  "recall.result.unknown": {
+    en: "Something went wrong. The report wasn't recalled — try again.",
+    tl: "May nangyaring mali. Hindi nabawi ang ulat — subukang muli.",
+  },
+  "recall.badge": { en: "{count} routed without you", tl: "{count} naipasa nang wala kayo" },
+  "recall.badgeLabel": {
+    en: "{count} new reports routed without a review here. Show them.",
+    tl: "{count} bagong ulat na naipasa nang hindi nasuri dito. Ipakita.",
   },
 } satisfies Record<string, Entry>;
 

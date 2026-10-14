@@ -21,12 +21,19 @@ import { ReportRow } from "@/components/queue/ReportRow";
 import { ReportDetailPanel } from "@/components/queue/ReportDetailPanel";
 import { isReviewable, type Verdict } from "@/components/queue/useReportReview";
 import { everyAgencyReturned } from "@/components/queue/routing";
+import { RecallStrip } from "@/components/queue/RecallStrip";
+import { RecallModal } from "@/components/queue/RecallModal";
+import { useRecall } from "@/components/queue/RecallContext";
+import { wasRecalled } from "@/components/queue/recallView";
+import { markAutoRoutedSeen } from "@/app/actions/recall";
+import { callAction } from "@/lib/callAction";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { QUEUE_SORTS, isQueueSort, sortReports, type QueueSort } from "@/lib/queue/sortReports";
 import type { QueueReport, QueueTabId } from "@/types";
 import type { OfficialProfile } from "@/lib/auth";
 import type { QueueData } from "@/lib/data/queue";
+import { UNREAD_AUTO_ROUTED_LIMIT } from "@/lib/recall";
 import type { RecentActivityData } from "@/lib/data/auditLog";
 import type { SanctionCounts } from "@/lib/data/sanctions";
 
@@ -67,7 +74,8 @@ function seenReports(data: QueueData): SeenReports {
 // What arrived since the last fetch: a report new to the page, or one back in
 // a working queue from Recent validated. Statuses only move forward, apart
 // from the backend's handback of a report every agency returned after an
-// automatic routing, so nothing else moves into the pending tabs. Without the
+// automatic routing, and a recall (RECALL-UI), so nothing else moves into the
+// pending tabs. Without the
 // second half, a returned report was marked only when it had fallen off the
 // capped routed list first.
 function arrivalsSince(previous: SeenReports, current: SeenReports): string[] {
@@ -77,17 +85,18 @@ function arrivalsSince(previous: SeenReports, current: SeenReports): string[] {
 }
 
 // The arrived emergencies that still get the chime: not already announced by
-// their Realtime INSERT, and not a returned report. The alert means a new
-// emergency, as Settings describes it; a report the agencies sent back is
-// marked on its row instead, and the SLA alert, when switched on, fires for
-// it at once, since it is long past its five minutes.
+// their Realtime INSERT, and not a returned or recalled report. The alert
+// means a new emergency, as Settings describes it; a report the agencies sent
+// back, or one this barangay recalled (RECALL-UI), is marked on its row
+// instead, and the SLA alert, when switched on, fires for it at once, since it
+// is long past its five minutes.
 function unannouncedEmergencies(
   emergencies: QueueReport[],
   arrived: readonly string[],
   chimed: ReadonlySet<string>
 ): QueueReport[] {
   return emergencies.filter(
-    (r) => arrived.includes(r.id) && !chimed.has(r.id) && !everyAgencyReturned(r.details.routing)
+    (r) => arrived.includes(r.id) && !chimed.has(r.id) && !everyAgencyReturned(r.details.routing) && !wasRecalled(r)
   );
 }
 
@@ -242,14 +251,29 @@ export function QueueClient({
   // rows; handing the drawer the stale snapshot would leave it offering
   // [Route to agency] on a report that has just been routed. Falls back to
   // the snapshot when the report has left every tab (e.g. rejected).
-  const selectedReport = useMemo(() => {
-    if (!selected) return null;
-    for (const list of Object.values(queueData.queueByTab)) {
-      const fresh = list.find((r) => r.id === selected.id);
-      if (fresh) return fresh;
-    }
-    return selected;
-  }, [selected, queueData.queueByTab]);
+  // The freshest copy of a report anywhere on the page: every tab, then the
+  // auto-routed list the Recall strip shows (RECALL-UI).
+  const findReport = useCallback(
+    (id: string): QueueReport | null => {
+      for (const list of [...Object.values(queueData.queueByTab), queueData.autoRouted]) {
+        const fresh = list.find((r) => r.id === id);
+        if (fresh) return fresh;
+      }
+      return null;
+    },
+    [queueData.queueByTab, queueData.autoRouted]
+  );
+  const selectedReport = useMemo(
+    () => (selected ? findReport(selected.id) ?? selected : null),
+    [selected, findReport]
+  );
+
+  // RECALL-UI: the one Recall dialog (RecallContext), and the header badge
+  // for unread [routed without you] notifications. Ids marked read this page
+  // load are hidden at once; the next load agrees.
+  const recall = useRecall();
+  const [seenNotifications, setSeenNotifications] = useState<ReadonlySet<string>>(new Set());
+  const unreadAutoRouted = (queueData.unreadAutoRoutedIds ?? []).filter((id) => !seenNotifications.has(id));
 
   const router = useRouter();
   const { prefs } = usePreferences(official.role);
@@ -755,6 +779,21 @@ export function QueueClient({
     });
   }, []);
 
+  function showAutoRouted() {
+    setActiveTab("emergency");
+    // After the tab renders its strip.
+    window.setTimeout(() => {
+      const strip = document.getElementById("recall-strip");
+      strip?.scrollIntoView({ behavior: "smooth", block: "start" });
+      strip?.focus();
+    }, 0);
+    const ids = unreadAutoRouted;
+    if (ids.length === 0) return;
+    void callAction(() => markAutoRoutedSeen(ids)).then((answer) => {
+      if (answer?.ok) setSeenNotifications((prev) => new Set([...prev, ...ids]));
+    });
+  }
+
   function renderRow(report: QueueReport) {
     return (
       <ReportRow
@@ -787,9 +826,26 @@ export function QueueClient({
          opened; no form existed, and none could work without a backend
          change. */
       actions={
-        <Button variant="primary" size="sm" onClick={handleValidateNext}>
-          {t("queue.validateNext")}
-        </Button>
+        <>
+          {unreadAutoRouted.length > 0 && (
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={showAutoRouted}
+              aria-label={t("recall.badgeLabel", { count: unreadAutoRouted.length })}
+            >
+              {t("recall.badge", {
+                count:
+                  unreadAutoRouted.length >= UNREAD_AUTO_ROUTED_LIMIT
+                    ? `${UNREAD_AUTO_ROUTED_LIMIT}+`
+                    : unreadAutoRouted.length,
+              })}
+            </Button>
+          )}
+          <Button variant="primary" size="sm" onClick={handleValidateNext}>
+            {t("queue.validateNext")}
+          </Button>
+        </>
       }
       search={{
         value: query,
@@ -820,6 +876,20 @@ export function QueueClient({
               }
         }
       />
+
+      {/* RECALL-UI: reports routed without a review here, at the top of the
+          Emergency tab, where an official coming back to the desk looks
+          first (spec Q1: a strip, not a fifth tab). */}
+      {activeTab === "emergency" && !queueData.loadFailed && (
+        <RecallStrip
+          reports={queueData.autoRouted}
+          unavailable={queueData.autoRoutedUnavailable}
+          onOpenDetails={(report) => {
+            setChatFocus(false);
+            setSelected(report);
+          }}
+        />
+      )}
 
       {activeTab === "emergency" && queueData.activeCluster && (
         // Keyed on the cluster: its local [resolved] flag must not carry over
@@ -966,6 +1036,20 @@ export function QueueClient({
           onResolved={(verdict) =>
             setResolved((prev) => ({ ...prev, [selected.id]: verdict }))
           }
+        />
+      )}
+
+      {/* Above the strip, the table and the drawer; keyed by report, so it
+          keeps its text while the report's state changes under it. */}
+      {recall.openFor && (
+        <RecallModal
+          key={recall.openFor}
+          reportId={recall.openFor}
+          report={findReport(recall.openFor)}
+          mark={recall.marks[recall.openFor] ?? null}
+          busy={recall.isPending}
+          onCancel={recall.cancel}
+          onConfirm={recall.recall}
         />
       )}
     </AppShell>

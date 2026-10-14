@@ -25,6 +25,11 @@ import { ResolveNoteModal } from "./ResolveNoteModal";
 import { ReportChatSection } from "./ReportChatSection";
 import { ReportChatThreads } from "./ReportChatThreads";
 import { REPORT_CHAT_LIVE, REPORT_CHAT_V2 } from "@/lib/features";
+import { useNow } from "@/lib/useNow";
+import { mayOfferRecall, type RecallState } from "@/lib/recall";
+import { useRecall } from "./RecallContext";
+import { RecallCountdown } from "./RecallCountdown";
+import { isEscalated, recallStateOf } from "./recallView";
 import { isChatOffered } from "@/lib/reportChat";
 import {
   agencyProgressLabel,
@@ -124,6 +129,18 @@ export function ReportDetailPanel({
   const { showToast } = useToast();
   const t = useT();
 
+  // RECALL-UI: the countdown and the Recall / Record recall button for a
+  // report routed without a review here (src/lib/recall.ts). The dialog is
+  // the queue page's (RecallContext); this only opens it. A clock once a
+  // second only while the report is auto-routed.
+  const recall = useRecall();
+  const autoRouted = isAutoRouted(routeState);
+  const recallTick = useNow(autoRouted ? 1000 : 60_000);
+  const recallNow = recallTick ?? 0;
+  const recallAt = recallTick === null ? ({ kind: "none" } as const) : recallStateOf(report, recallNow, recall.marks[report.id] ?? null);
+  const recallOffer = mayOfferRecall(recallAt, recall.available);
+  const recallOpenHere = recall.openFor === report.id;
+
   // Disabled while a prompt is stacked on top — the reject reason or the
   // routing confirmation — so Escape backs out one layer at a time, and
   // while a write is in flight.
@@ -138,8 +155,14 @@ export function ReportDetailPanel({
     emergency.confirming !== null ||
     emergency.isRejecting ||
     mapExpanded ||
-    chatViewerOpen;
-  const writing = isPending || routing.isPending || barangayResolve.isPending || emergency.isPending;
+    chatViewerOpen ||
+    recallOpenHere;
+  const writing =
+    isPending ||
+    routing.isPending ||
+    barangayResolve.isPending ||
+    emergency.isPending ||
+    (recallOpenHere && recall.isPending);
   useDismissOnEscape(onClose, !stacked && !writing);
 
   // The scrim and the close button honour the same rule as Escape: not while
@@ -386,7 +409,24 @@ export function ReportDetailPanel({
           <p className="mb-1.5 mt-5 text-[11px] font-semibold uppercase tracking-wide text-ink-500">
             {t("drawer.section.routing")}
           </p>
-          <RoutingSection state={routeState} chooses={d.entryTier === "other_reports"} viaDispatch={viaDispatch} />
+          <RoutingSection
+            state={routeState}
+            chooses={d.entryTier === "other_reports"}
+            viaDispatch={viaDispatch}
+            escalated={isEscalated(report)}
+            responderUnit={d.responderUnit ?? null}
+            recallAt={recallAt}
+            now={recallNow}
+          />
+          {/* Announces the one-minute mark and the close only: the text
+              changes at those two moments and stays put in between. */}
+          <p aria-live="polite" className="sr-only">
+            {recallAt.kind === "open" && recallAt.endsAt - recallNow < 60_000
+              ? t("recall.live.oneMinute", { id: report.id })
+              : recallAt.kind === "closed" && recallAt.endsAt !== null
+                ? t("recall.live.closed", { id: report.id })
+                : ""}
+          </p>
         </>
       )}
     </>
@@ -418,6 +458,17 @@ export function ReportDetailPanel({
             <p className="truncate font-mono text-xs text-ink-500">{report.id}</p>
           </div>
           <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+            {recallOffer && (
+              <Button
+                variant={recallOffer === "recall" ? "danger" : "secondary"}
+                size="sm"
+                disabled={writing || recall.isPending}
+                onClick={() => recall.open(report.id)}
+                aria-label={t(recallOffer === "recall" ? "recall.buttonFor" : "recall.recordFor", { id: report.id })}
+              >
+                {t(recallOffer === "recall" ? "recall.button" : "recall.record")}
+              </Button>
+            )}
             {actions}
             <Button variant="ghost" size="sm" className="min-w-11" onClick={closeUnlessWriting} aria-label={t("common.close")}>
               <Icon name="close" />
@@ -597,12 +648,22 @@ function RoutingSection({
   state,
   chooses,
   viaDispatch,
+  escalated = false,
+  responderUnit = null,
+  recallAt = { kind: "none" },
+  now = 0,
 }: {
   state: ReturnType<typeof routingState>;
   chooses: boolean;
   // An Emergency report while CDRRMO dispatch is on: CDRRMO dispatch routes
   // it, so nothing here says where finishing or routing would send it.
   viaDispatch: boolean;
+  // RECALL-UI: the timer sent it; the responder unit behind it (the unit
+  // only); where its recall window stands, and the clock that reads it.
+  escalated?: boolean;
+  responderUnit?: string | null;
+  recallAt?: RecallState;
+  now?: number;
 }) {
   const t = useT();
   if (viaDispatch) {
@@ -682,7 +743,21 @@ function RoutingSection({
       const { current, earlier } = splitRouting(state.routing);
       return (
         <div>
-          {isAutoRouted(state) && <p className="mb-2 text-xs text-ink-500">{t("drawer.autoRouted")}</p>}
+          {isAutoRouted(state) && (
+            <p className="mb-2 text-xs text-ink-500">{t(escalated ? "drawer.escalated" : "drawer.autoRouted")}</p>
+          )}
+          {responderUnit && <p className="mb-2 text-xs text-ink-700">{t("recall.responder", { unit: responderUnit })}</p>}
+          {recallAt.kind === "open" ? (
+            <RecallCountdown endsAt={recallAt.endsAt} now={now} className="mb-2 block" />
+          ) : recallAt.kind === "dispatched" ? (
+            <p className="mb-2 text-xs text-ink-700">
+              {t("recall.dispatchedNote", { agency: recallAt.agency ?? t("recall.anAgency") })}
+            </p>
+          ) : recallAt.kind === "closed" ? (
+            <p className="mb-2 text-xs text-ink-700">
+              {t(recallAt.endsAt === null ? "recall.noWindow" : "recall.windowClosed")}
+            </p>
+          ) : null}
           <AgencyList rows={current} />
           <EarlierList rows={earlier} />
         </div>

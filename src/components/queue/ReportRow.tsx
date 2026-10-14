@@ -29,6 +29,8 @@ import {
   routeConfirmCopy,
   routingState,
 } from "./routing";
+import { useRecall } from "./RecallContext";
+import { isEscalated, recallStateOf, wasRecalled } from "./recallView";
 import type { QueueReport } from "@/types";
 
 export function ReportRow({
@@ -63,6 +65,11 @@ export function ReportRow({
   );
   const routing = useReportRouting(report.id);
   const state = routingState(report);
+  // RECALL-UI chips, read on the page's 30-second clock (null before mount:
+  // no chip until then, so the server's HTML matches).
+  const recall = useRecall();
+  const escalated = isAutoRouted(state) && isEscalated(report);
+  const recallOpen = now !== null && recallStateOf(report, now, recall.marks[report.id] ?? null).kind === "open";
   const barangayResolve = useBarangayResolve(report.id);
   // CDRRMO dispatch (src/lib/cdrrmo-dispatch.ts): with the backend's switch
   // on, an Emergency report is validated or rejected through one function
@@ -287,15 +294,35 @@ export function ReportRow({
                 {t("row.returnedChip")}
               </span>
             )}
+            {/* Back in the queue because this barangay recalled it from the
+                agencies (RECALL-UI). */}
+            {isReviewable(report.details.status) && wasRecalled(report) && (
+              <span className="rounded-full bg-priority-mediumBg px-2 py-0.5 text-[11px] font-semibold text-priority-medium">
+                {t("row.recalledChip")}
+              </span>
+            )}
             {/* Routed with no review at the desk. Without the mark it would
                 sit among the desk's own routings as if someone here had
-                validated it. */}
+                validated it. [Escalated] when the Critical escalation timer
+                sent it. */}
             {isAutoRouted(state) && (
               <span
-                title={t("drawer.autoRouted")}
+                title={t(escalated ? "drawer.escalated" : "drawer.autoRouted")}
                 className="rounded-full bg-ink-100 px-2 py-0.5 text-[11px] font-semibold text-ink-700"
               >
-                {t("row.autoRouted")}
+                {t(escalated ? "row.escalated" : "row.autoRouted")}
+              </span>
+            )}
+            {/* The countdown and the button live in the strip and the
+                drawer; the row only says the window is open. */}
+            {recallOpen && (
+              <span className="rounded-full bg-priority-mediumBg px-2 py-0.5 text-[11px] font-semibold text-priority-medium">
+                {t("row.recallOpen")}
+              </span>
+            )}
+            {report.details.responderUnit && (
+              <span className="rounded-full bg-ink-100 px-2 py-0.5 text-[11px] font-semibold text-ink-700">
+                {t("recall.responder", { unit: report.details.responderUnit })}
               </span>
             )}
             {/* Visible before the decision, not only inside the drawer. */}

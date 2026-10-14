@@ -44,6 +44,14 @@ export interface AgencyRouting {
   // stage, on prod since the October push). In progress means this is set
   // and resolvedAt isn't.
   inProgressAt: string | null;
+  // The other dispatch stamps (20261019090000_agency_dispatch_stamps.sql) and
+  // the Critical escalation timer's flag (20261127090000). Read by the queue
+  // only, for the Recall screen (src/lib/recall.ts): an open row with any
+  // dispatch stamp makes a recall info-only. Absent where not loaded.
+  unitAssignedAt?: string | null;
+  enRouteAt?: string | null;
+  onSceneAt?: string | null;
+  escalated?: boolean;
   resolvedAt: string | null;
   // 'recalled' is written only by the backend's recall_auto_routed_report()
   // (20261031090000_recall_window): the desk took an auto-routed report back.
@@ -129,6 +137,10 @@ export interface ReportDetails {
   // while the switch is on and only for Recent validated. null when not read
   // or when the read failed.
   partyDecisions: PartyDecisions | null;
+  // The responder unit behind the report (responders_for_reports: the unit
+  // only, never a name or phone). null for an ordinary report, and when the
+  // read failed or was not made. Queue only.
+  responderUnit?: string | null;
 }
 
 /**
