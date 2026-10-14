@@ -11,6 +11,10 @@ export interface ConsolePreferences {
   bilingualEmphasis: BilingualEmphasis;
   audibleAlertNewEmergency: boolean;
   slaBreachBrowserNotification: boolean;
+  // The city dashboard's sound alerts (CityAlerts): a new emergency anywhere
+  // in the city, and a report newly scored Critical.
+  cityAlertNewEmergency: boolean;
+  cityAlertCritical: boolean;
 }
 
 /**
@@ -43,6 +47,9 @@ export function defaultPreferences(role: ConsoleRole): ConsolePreferences {
     // browser for permission, and a default of [on] with permission never
     // granted would be a toggle that silently does nothing.
     slaBreachBrowserNotification: false,
+    // On, like the queue's audible alert: a sound needs no browser permission.
+    cityAlertNewEmergency: true,
+    cityAlertCritical: true,
   };
 }
 
@@ -74,6 +81,8 @@ function validStored(parsed: unknown): Partial<ConsolePreferences> | null {
   }
   if (typeof raw.audibleAlertNewEmergency === "boolean") out.audibleAlertNewEmergency = raw.audibleAlertNewEmergency;
   if (typeof raw.slaBreachBrowserNotification === "boolean") out.slaBreachBrowserNotification = raw.slaBreachBrowserNotification;
+  if (typeof raw.cityAlertNewEmergency === "boolean") out.cityAlertNewEmergency = raw.cityAlertNewEmergency;
+  if (typeof raw.cityAlertCritical === "boolean") out.cityAlertCritical = raw.cityAlertCritical;
   return out;
 }
 

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Sidebar } from "./Sidebar";
 import { TopBar, type TopBarSearch } from "./TopBar";
+import { CityAlerts } from "@/components/city/CityAlerts";
 import { useT } from "@/lib/i18n";
 import type { ConsoleUser } from "@/lib/auth";
 
@@ -29,6 +30,8 @@ export function AppShell({
     // being a fixed-height scroll box, so a printed report isn't cut off at
     // the screen's height.
     <div className="flex h-screen w-full overflow-hidden bg-ink-50 print:block print:h-auto print:overflow-visible print:bg-white">
+      {/* The city dashboard's sound alerts play on every city page. */}
+      {!("barangayName" in official) && <CityAlerts role={official.role} />}
       {/* Desktop sidebar */}
       <div className="hidden lg:block print:hidden">
         <Sidebar official={official} />

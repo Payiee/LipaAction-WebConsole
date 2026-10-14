@@ -1264,6 +1264,25 @@ export const MESSAGES = {
     en: "Plays a short chime when a new fast-triage report arrives while the Queue is open.",
     tl: "Tumutunog nang maikli kapag may dumating na bagong ulat sa mabilisang triage habang bukas ang Pila.",
   },
+  "city.alerts.title": { en: "Sound alerts", tl: "Mga alertong tunog" },
+  "city.alerts.body": {
+    en:
+      "Saved on this device. They play on any city page that is open. Browsers allow sound only after you've clicked " +
+      "or pressed a key on the page since it opened, so the first alert after a reload may be silent.",
+    tl:
+      "Naka-save sa device na ito. Tumutunog ang mga ito sa anumang bukas na pahina ng lungsod. Pinapayagan lamang ng browser " +
+      "ang tunog kapag nakapag-click o nakapindot ka na sa pahina mula nang buksan ito, kaya maaaring tahimik ang unang alerto pagkatapos mag-reload.",
+  },
+  "city.alerts.emergency": { en: "New emergency in any barangay", tl: "Bagong emergency sa alinmang barangay" },
+  "city.alerts.emergencyBody": {
+    en: "A chime when any barangay receives a new emergency report.",
+    tl: "May tunog kapag nakatanggap ang alinmang barangay ng bagong ulat na emergency.",
+  },
+  "city.alerts.critical": { en: "Report scored Critical", tl: "Ulat na na-score na Critical" },
+  "city.alerts.criticalBody": {
+    en: "A chime when a report anywhere in the city is scored Critical.",
+    tl: "May tunog kapag ang isang ulat saanman sa lungsod ay na-score na Critical.",
+  },
   "notifications.testSound": { en: "Play test sound", tl: "Patugtugin ang pansubok na tunog" },
   "notifications.sla": { en: "SLA breach browser notification", tl: "Abiso sa browser kapag lumampas sa SLA" },
   "notifications.slaBody": {

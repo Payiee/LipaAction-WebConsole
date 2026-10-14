@@ -12,7 +12,7 @@ import type { BarangayRole } from "@/lib/auth";
 // answered or is plainly on screen.
 const QUIET_PROMPT_HINT_MS = 3000;
 
-function Toggle({
+export function Toggle({
   label,
   checked,
   disabled,
