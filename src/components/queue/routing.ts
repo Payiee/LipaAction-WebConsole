@@ -365,7 +365,7 @@ export function dispatchRecordCopy(
  * holds yet while CDRRMO dispatch is on (dispatchPastReview's "send"; owner
  * decision Q4, the barangay checklist wins). The same wording as a validated
  * report's [Route to agency] list, titled as the validation it also is, plus
- * one line: CDRRMO always goes too. Confirming validates and routes at once.
+ * dispatchChecklistNote's line. Confirming validates and routes at once.
  * A report every agency sent back (back for review after an automatic
  * routing) gets the [Route to another agency] wording instead, naming who
  * returned it: its mapped agencies are those, and aren't offered again.
@@ -387,7 +387,7 @@ export function dispatchChecklistCopy(
     title: t("cdrrmo.validateTitle", { id: report.id }),
     description,
     hint,
-    note: cdrrmoAlwaysNote(cdrrmo, t),
+    note: dispatchChecklistNote(report, cdrrmo, t),
     confirmLabel: (agencies) => t("cdrrmo.checklistConfirm", { agencies }),
   };
 }
@@ -411,9 +411,29 @@ export function dispatchNoChecklistCopy(
   };
 }
 
-/** [CDRRMO is always included ...], with CDRRMO's own name where known. */
-export function cdrrmoAlwaysNote(cdrrmo: RoutingOption | null, t: Translate): string {
-  return t("cdrrmo.checklistNote", { cdrrmo: cdrrmoName(cdrrmo) });
+/**
+ * The checklist's extra line, in the picker and in the drawer's preview, read
+ * from the rows and options the queue already loaded (no query):
+ * - [CDRRMO is always included ...], unless CDRRMO already holds a row on
+ *   this report: it is then missing from the options (named agencies minus
+ *   those holding a row), and the database doesn't add it again, so the
+ *   line would be false. A recalled CDRRMO is named by the next sentence.
+ * - for a report the desk recalled (wasRecalled's rule; recallView imports
+ *   this file, so it isn't imported here), who it was recalled from: the
+ *   validation's move to routed reopens their rows whatever is ticked
+ *   (backend 20261031090000, reopen_recalled_routing_on_route).
+ */
+export function dispatchChecklistNote(report: QueueReport, cdrrmo: RoutingOption | null, t: Translate): string {
+  const { routing, routingOptions } = report.details;
+  const cdrrmoHeld =
+    cdrrmo !== null &&
+    routing.length > 0 &&
+    routingOptions !== null &&
+    !routingOptions.some((o) => o.agencyId === cdrrmo.agencyId);
+  const lines = cdrrmoHeld ? [] : [t("cdrrmo.checklistNote", { cdrrmo: cdrrmoName(cdrrmo) })];
+  const recalledFrom = routing.filter((r) => r.resolutionOutcome === "recalled").map((r) => r.agencyName);
+  if (recalledFrom.length > 0) lines.push(t("cdrrmo.checklistRecalled", { names: recalledFrom.join(", ") }));
+  return lines.join(" ");
 }
 
 // The loader names CDRRMO from agencies.code = 'cdrrmo'; null when that read

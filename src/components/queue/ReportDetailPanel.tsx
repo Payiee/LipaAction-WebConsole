@@ -35,7 +35,7 @@ import { isChatOffered } from "@/lib/reportChat";
 import {
   agencyProgressLabel,
   canResolveAtBarangay,
-  cdrrmoAlwaysNote,
+  dispatchChecklistNote,
   dispatchPastReview,
   everyAgencyReturned,
   isAutoRouted,
@@ -407,7 +407,7 @@ export function ReportDetailPanel({
             {t("drawer.section.routing")}
           </p>
           {viaDispatch && !everyAgencyReturned(d.routing) ? (
-            <DispatchPreview plan={d.routingPlan} note={cdrrmoAlwaysNote(dispatch.cdrrmoAgency, t)} />
+            <DispatchPreview plan={d.routingPlan} note={dispatchChecklistNote(report, dispatch.cdrrmoAgency, t)} />
           ) : (
             <RoutingPreview plan={d.routingPlan} routing={d.routing} />
           )}
@@ -748,15 +748,17 @@ function RoutingSection({
 /**
  * Where an Emergency report goes once validated while CDRRMO dispatch is on
  * (owner decision Q4, the barangay checklist wins): the agencies the official
- * ticks as they validate, the category's marked Recommended, plus CDRRMO,
- * always. Read only, like RoutingPreview: nothing is sent from here.
+ * ticks as they validate, the category's marked Recommended, plus the
+ * checklist's own note (dispatchChecklistNote: CDRRMO, and the agencies a
+ * recalled report goes back to). Read only, like RoutingPreview: nothing is
+ * sent from here.
  */
 function DispatchPreview({ plan, note }: { plan: RoutingPlanEntry[] | null; note: string }) {
   const t = useT();
   return (
     <div>
       <ChooseNote plan={plan} body={t("cdrrmo.previewChecklist")} />
-      <p className="mt-2 text-[11px] text-ink-500">{note}</p>
+      {note && <p className="mt-2 text-[11px] text-ink-500">{note}</p>}
     </div>
   );
 }
