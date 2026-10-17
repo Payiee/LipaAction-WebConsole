@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PriorityBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { FilterBar, FilterGroup } from "@/components/ui/FilterGroup";
 import { CategoryMultiSelect, matchesCategories } from "@/components/ui/CategoryMultiSelect";
 import { useToast } from "@/components/ui/Toast";
 import { useRecordedExport } from "@/components/ui/useRecordedExport";
@@ -99,10 +100,10 @@ export function CityReportList({ data }: { data: CityReportsData }) {
         <p className="text-xs text-ink-500">{t("city.reports.intro", { days: data.windowDays })}</p>
       </div>
 
-      <div className="mb-4 flex flex-wrap items-end gap-3">
-        <label className="flex flex-col gap-1 text-xs font-medium text-ink-700">
-          {t("city.col.barangay")}
+      <FilterBar>
+        <FilterGroup label={t("city.col.barangay")}>
           <select
+            aria-label={t("city.col.barangay")}
             value={data.barangay ?? ""}
             onChange={(e) => navigate({ barangay: e.target.value || null })}
             className="min-h-11 rounded-md border border-ink-100 bg-white px-4 text-sm text-ink-900 focus:border-brand-500 focus:outline-none"
@@ -114,8 +115,8 @@ export function CityReportList({ data }: { data: CityReportsData }) {
               </option>
             ))}
           </select>
-        </label>
-        <div role="group" aria-label={t("city.filter.stage")} className="flex flex-wrap gap-2">
+        </FilterGroup>
+        <FilterGroup label={t("city.filter.stage")} className="flex-1">
           {STAGES.map((s) => (
             <button
               key={s.value}
@@ -132,17 +133,17 @@ export function CityReportList({ data }: { data: CityReportsData }) {
               {t(s.label)}
             </button>
           ))}
-        </div>
-        {categoryOptions.length > 1 && (
-          <CategoryMultiSelect options={categoryOptions} chosen={categories} onChange={setCategories} />
-        )}
-        <div className="ml-auto flex flex-col items-end gap-1">
-          <Button variant="secondary" size="sm" disabled={busy || data.loadFailed} onClick={handleExport}>
+          {categoryOptions.length > 1 && (
+            <CategoryMultiSelect options={categoryOptions} chosen={categories} onChange={setCategories} />
+          )}
+        </FilterGroup>
+        <FilterGroup label={t("filters.export")} className="max-w-xs">
+          <Button variant="secondary" disabled={busy || data.loadFailed} onClick={handleExport}>
             {busy ? t("common.working") : t("city.reports.export")}
           </Button>
-          <p className="text-xs text-ink-500">{t("export.recordedNote")}</p>
-        </div>
-      </div>
+          <p className="basis-full text-xs text-ink-500">{t("export.recordedNote")}</p>
+        </FilterGroup>
+      </FilterBar>
 
       {openMissing && (
         <p role="note" className="mb-3 text-xs text-ink-700">

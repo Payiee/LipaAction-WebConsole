@@ -5,6 +5,7 @@ import { downloadCsv } from "@/lib/downloadCsv";
 import { Button } from "@/components/ui/Button";
 import { CategoryMultiSelect } from "@/components/ui/CategoryMultiSelect";
 import { PrintButton } from "@/components/ui/PrintButton";
+import { FilterBar, FilterGroup } from "@/components/ui/FilterGroup";
 import { useRecordedExport } from "@/components/ui/useRecordedExport";
 import { useToast } from "@/components/ui/Toast";
 import { useT, type MessageKey } from "@/lib/i18n";
@@ -90,10 +91,11 @@ export function HistoryFilters({
     showToast(t("history.exported", { count: records.length }), "success");
   }
 
-  // print:hidden: a printed history shows the rows and tiles, not the controls.
+  // Three groups: the date range, the other filters, and the export. Hidden
+  // in print: a printed history shows the rows and tiles, not the controls.
   return (
-    <div className="mb-3 flex flex-col gap-2 print:hidden sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-      <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
+    <FilterBar>
+      <FilterGroup label={t("filters.date")}>
         {rangeOptions.map((opt) => (
           <button
             key={opt.id}
@@ -109,12 +111,14 @@ export function HistoryFilters({
             {t(opt.label)}
           </button>
         ))}
+      </FilterGroup>
 
+      <FilterGroup label={t("filters.refine")} className="flex-1">
         <select
           aria-label={t("history.filterOutcome")}
           value={outcome}
           onChange={(e) => onOutcomeChange(e.target.value as OutcomeFilter)}
-          className="min-h-11 rounded-full border border-ink-100 bg-white px-4 text-sm font-medium text-ink-700"
+          className={SELECT}
         >
           {outcomeOptions.map((opt) => (
             <option key={opt.id} value={opt.id}>
@@ -130,7 +134,7 @@ export function HistoryFilters({
             aria-label={t("history.filterOfficial")}
             value={official}
             onChange={(e) => onOfficialChange(e.target.value)}
-            className="min-h-11 shrink-0 rounded-full border border-ink-100 bg-white px-4 text-sm font-medium text-ink-700"
+            className={SELECT}
           >
             <option value="all">{t("history.allOfficials")}</option>
             {officialOptions.map((name) => (
@@ -150,7 +154,7 @@ export function HistoryFilters({
             aria-label={t("history.filterPriority")}
             value={priority}
             onChange={(e) => onPriorityChange(e.target.value)}
-            className="min-h-11 shrink-0 rounded-full border border-ink-100 bg-white px-4 text-sm font-medium text-ink-700"
+            className={SELECT}
           >
             <option value="all">{t("history.allPriorities")}</option>
             {priorityOptions.map((p) => (
@@ -166,7 +170,7 @@ export function HistoryFilters({
             aria-label={t("history.filterResolution")}
             value={resolution}
             onChange={(e) => onResolutionChange(e.target.value as ResolutionStatus | "all")}
-            className="min-h-11 shrink-0 rounded-full border border-ink-100 bg-white px-4 text-sm font-medium text-ink-700"
+            className={SELECT}
           >
             <option value="all">{t("history.allResolutions")}</option>
             {resolutionOptions.map((s) => (
@@ -176,18 +180,20 @@ export function HistoryFilters({
             ))}
           </select>
         )}
-      </div>
+      </FilterGroup>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <Button variant="secondary" size="sm" disabled={busy} onClick={handleExport}>
+      <FilterGroup label={t("filters.export")} className="max-w-xs">
+        <Button variant="secondary" disabled={busy} onClick={handleExport}>
           {busy ? t("common.working") : t("history.export")}
         </Button>
         <PrintButton section="history" record={{ what: "validation_history_print", rows: records.length }} />
-        <p className="basis-full text-right text-xs text-ink-500">{t("export.recordedNote")}</p>
-      </div>
-    </div>
+        <p className="basis-full text-xs text-ink-500">{t("export.recordedNote")}</p>
+      </FilterGroup>
+    </FilterBar>
   );
 }
+
+const SELECT = "min-h-11 shrink-0 rounded-full border border-ink-100 bg-white px-4 text-sm font-medium text-ink-700";
 
 // Exports exactly what's on screen (current filters included), not a fresh
 // server query — so the file always matches what the official was looking at

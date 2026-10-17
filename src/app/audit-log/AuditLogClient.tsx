@@ -10,6 +10,7 @@ import { manilaTimestamp, startOfManilaDay } from "@/lib/utils";
 import { ACTION_LABELS, AuditTable, ROLE_LABELS } from "@/components/audit-log/AuditTable";
 import { auditCsvRows } from "@/components/audit-log/auditCsv";
 import { Button } from "@/components/ui/Button";
+import { FilterBar, FilterGroup } from "@/components/ui/FilterGroup";
 import { CategoryMultiSelect, matchesCategories } from "@/components/ui/CategoryMultiSelect";
 import { useToast } from "@/components/ui/Toast";
 import { useRecordedExport } from "@/components/ui/useRecordedExport";
@@ -95,18 +96,25 @@ export function AuditLogClient({
           </div>
 
           <AuditSummaryTiles summary={summary} />
-          <AuditFilters active={filter} onChange={setFilter} range={range} onRangeChange={setRange} />
-          <div className="mb-3 flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
-            {categoryOptions.length > 1 && (
-              <div className="mr-auto">
-                <CategoryMultiSelect options={categoryOptions} chosen={categories} onChange={setCategories} />
-              </div>
-            )}
-            <p className="text-xs text-ink-500">{t("export.recordedNote")}</p>
-            <Button variant="secondary" size="sm" disabled={busy || loadFailed} onClick={handleExport}>
-              {busy ? t("common.working") : t("history.export")}
-            </Button>
-          </div>
+          <FilterBar>
+            <AuditFilters
+              active={filter}
+              onChange={setFilter}
+              range={range}
+              onRangeChange={setRange}
+              extra={
+                categoryOptions.length > 1 && (
+                  <CategoryMultiSelect options={categoryOptions} chosen={categories} onChange={setCategories} />
+                )
+              }
+            />
+            <FilterGroup label={t("filters.export")} className="max-w-xs">
+              <Button variant="secondary" disabled={busy || loadFailed} onClick={handleExport}>
+                {busy ? t("common.working") : t("history.export")}
+              </Button>
+              <p className="basis-full text-xs text-ink-500">{t("export.recordedNote")}</p>
+            </FilterGroup>
+          </FilterBar>
           <AuditTable entries={shown} filtered={narrowed} />
 
           {/* Never [the audit trail]: the function returns at most `limit`

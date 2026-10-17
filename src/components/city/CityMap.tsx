@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Map as LeafletMap } from "leaflet";
 import { PriorityBadge } from "@/components/ui/Badge";
+import { FilterBar, FilterGroup } from "@/components/ui/FilterGroup";
 import { Tile } from "@/components/ui/Tile";
 import { buttonClassName } from "@/components/ui/Button";
 import { statusLabel } from "@/components/queue/useReportReview";
@@ -94,7 +95,8 @@ export function CityMap({ data }: { data: CityMapData }) {
       )}
 
       {points.length > 0 && (
-        <div className="mb-3 flex flex-wrap items-center gap-2">
+        <FilterBar>
+        <FilterGroup label={t("filters.refine")} className="flex-1">
           <select
             aria-label={t("history.filterPriority")}
             value={priority}
@@ -129,7 +131,8 @@ export function CityMap({ data }: { data: CityMapData }) {
               {t("city.map.filteredNote", { shown: shown.length, total: points.length })}
             </p>
           )}
-        </div>
+        </FilterGroup>
+        </FilterBar>
       )}
 
       {!loadFailed && totals.open === 0 && (

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { PrintButton } from "@/components/ui/PrintButton";
+import { FilterBar, FilterGroup } from "@/components/ui/FilterGroup";
 import { Tile } from "@/components/ui/Tile";
 import { useToast } from "@/components/ui/Toast";
 import { useRecordedExport } from "@/components/ui/useRecordedExport";
@@ -176,13 +177,6 @@ export function AccessLogView({ data }: { data: AccessLogData }) {
           </h2>
           <p className="text-xs text-ink-500">{t("city.access.intro")}</p>
         </div>
-        <div className="flex flex-wrap items-center justify-end gap-2 print:hidden">
-          <Button variant="secondary" size="sm" disabled={busy || data.loadFailed} onClick={handleExport}>
-            {busy ? t("common.working") : t("history.export")}
-          </Button>
-          <PrintButton section="access-log" record={{ what: "access_log_print", rows: data.entries.length }} />
-          <p className="basis-full text-right text-xs text-ink-500">{t("export.recordedNote")}</p>
-        </div>
       </div>
 
       <div className="mb-6 flex flex-wrap gap-4">
@@ -194,7 +188,9 @@ export function AccessLogView({ data }: { data: AccessLogData }) {
 
       {/* Two days and an explicit button: a date box fires on every keystroke
           of a typed year, and each load of this page writes a record. */}
-      <form onSubmit={applyRange} className="mb-3 flex flex-wrap items-end gap-2 print:hidden">
+      <FilterBar>
+      <FilterGroup label={t("filters.date")}>
+      <form onSubmit={applyRange} className="flex flex-wrap items-end gap-2">
         <label className="text-xs font-medium text-ink-500">
           <span className="mb-1 block">{t("city.access.range.from")}</span>
           <input
@@ -224,8 +220,9 @@ export function AccessLogView({ data }: { data: AccessLogData }) {
           </Button>
         )}
       </form>
+      </FilterGroup>
 
-      <div role="group" aria-label={t("city.access.filter")} className="mb-4 flex flex-wrap gap-2 print:hidden">
+      <FilterGroup label={t("city.access.filter")} className="flex-1">
         {ACCESS_LOG_KINDS.map((kind) => (
           <button
             key={kind}
@@ -242,7 +239,16 @@ export function AccessLogView({ data }: { data: AccessLogData }) {
             {t(KIND_LABELS[kind])}
           </button>
         ))}
-      </div>
+      </FilterGroup>
+
+      <FilterGroup label={t("filters.export")} className="max-w-xs">
+        <Button variant="secondary" disabled={busy || data.loadFailed} onClick={handleExport}>
+          {busy ? t("common.working") : t("history.export")}
+        </Button>
+        <PrintButton section="access-log" record={{ what: "access_log_print", rows: data.entries.length }} />
+        <p className="basis-full text-xs text-ink-500">{t("export.recordedNote")}</p>
+      </FilterGroup>
+      </FilterBar>
 
       {data.entries.length === 0 ? (
         !data.loadFailed && (

@@ -2,6 +2,7 @@
 
 import { cx } from "@/lib/utils";
 import { useT, type MessageKey } from "@/lib/i18n";
+import { FilterGroup } from "@/components/ui/FilterGroup";
 
 /**
  * Which actions a chip keeps. Empty means every action. An automatic routing
@@ -50,39 +51,23 @@ export function AuditFilters({
   onChange,
   range,
   onRangeChange,
+  extra,
 }: {
   active: AuditFilterId;
   onChange: (id: AuditFilterId) => void;
   range: AuditRange;
   onRangeChange: (range: AuditRange) => void;
+  // More filters for the same group (the categories).
+  extra?: React.ReactNode;
 }) {
   const t = useT();
 
+  // Two of the page's three groups: the date range, and what kind of event.
+  // AuditLogClient adds the categories to the second and the export as the
+  // third, inside the same FilterBar.
   return (
-    <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3 sm:gap-y-2">
-      <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
-        {(Object.keys(AUDIT_FILTERS) as AuditFilterId[]).map((id) => (
-          <button
-            key={id}
-            type="button"
-            aria-pressed={active === id}
-            onClick={() => onChange(id)}
-            className={cx(
-              "inline-flex min-h-11 shrink-0 items-center rounded-full px-4 text-sm font-medium transition-colors",
-              active === id
-                ? "bg-brand-500 text-white"
-                : "bg-white text-ink-700 border border-ink-100 hover:bg-ink-50"
-            )}
-          >
-            {t(LABELS[id])}
-          </button>
-        ))}
-      </div>
-      <div
-        role="group"
-        aria-label={t("audit.filterRange")}
-        className="flex flex-nowrap items-center gap-1.5 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0"
-      >
+    <>
+      <FilterGroup label={t("filters.date")}>
         {RANGES.map((r) => (
           <button
             key={r.id}
@@ -99,8 +84,27 @@ export function AuditFilters({
             {t(r.label)}
           </button>
         ))}
-      </div>
-      <p className="text-xs text-ink-500">{t("audit.filterNote")}</p>
-    </div>
+      </FilterGroup>
+      <FilterGroup label={t("filters.refine")} className="flex-1">
+        {(Object.keys(AUDIT_FILTERS) as AuditFilterId[]).map((id) => (
+          <button
+            key={id}
+            type="button"
+            aria-pressed={active === id}
+            onClick={() => onChange(id)}
+            className={cx(
+              "inline-flex min-h-11 shrink-0 items-center rounded-full px-4 text-sm font-medium transition-colors",
+              active === id
+                ? "bg-brand-500 text-white"
+                : "bg-white text-ink-700 border border-ink-100 hover:bg-ink-50"
+            )}
+          >
+            {t(LABELS[id])}
+          </button>
+        ))}
+        {extra}
+        <p className="basis-full text-xs text-ink-500">{t("audit.filterNote")}</p>
+      </FilterGroup>
+    </>
   );
 }

@@ -804,6 +804,9 @@ export const MESSAGES = {
   "history.allOfficials": { en: "All officials", tl: "Lahat ng opisyal" },
   "history.filterCategory": { en: "Filter by category", tl: "Salain ayon sa kategorya" },
   "history.allCategories": { en: "All categories", tl: "Lahat ng kategorya" },
+  "filters.date": { en: "Date", tl: "Petsa" },
+  "filters.refine": { en: "Filters", tl: "Mga filter" },
+  "filters.export": { en: "Export", tl: "I-export" },
   "categories.count": { en: "{count} categories", tl: "{count} kategorya" },
   "categories.clear": { en: "Show all categories", tl: "Ipakita ang lahat ng kategorya" },
   "reports.categoriesShown": {
@@ -1161,7 +1164,6 @@ export const MESSAGES = {
     en: "No events match these filters among the ones loaded.",
     tl: "Walang pangyayaring tugma sa mga filter na ito sa mga naka-load.",
   },
-  "audit.filterRange": { en: "Date range", tl: "Saklaw ng petsa" },
   "audit.refusal.noRole": {
     en: "This account has no barangay role, so there is no trail to show for it.",
     tl: "Walang tungkulin sa barangay ang account na ito, kaya walang talaang maipapakita.",
