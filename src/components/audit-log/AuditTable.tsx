@@ -1,7 +1,8 @@
 "use client";
 
 import { Badge } from "@/components/ui/Badge";
-import { useT, type MessageKey } from "@/lib/i18n";
+import { useT, type MessageKey, type Translate } from "@/lib/i18n";
+import { manilaTimestamp } from "@/lib/utils";
 import { Icon } from "@/components/ui/Icon";
 import type { AuditLogEntry } from "@/types";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -104,8 +105,25 @@ export function AuditTable({
               <th scope="col" className="px-4 py-2.5 font-semibold">{t("audit.col.report")}</th>
             </tr>
           </thead>
-          <tbody>
-            {entries.map((entry) => {
+          {/* One body per Manila day, under a header naming the day, so an
+              official can see at a glance which date an event belongs to
+              (reviewer feedback, October 2026). The rows keep the
+              function's order, newest first. */}
+          {byDay(entries).map((day) => (
+          <tbody key={day.key}>
+            <tr>
+              <th
+                scope="colgroup"
+                colSpan={4}
+                className="border-b border-ink-100 bg-brand-50 px-4 py-2.5 text-left text-sm font-semibold text-brand-800"
+              >
+                {dayHeading(day.key, t)}
+                <span className="ml-2 font-normal text-brand-700">
+                  · {t(day.entries.length === 1 ? "audit.day.countOne" : "audit.day.count", { count: day.entries.length })}
+                </span>
+              </th>
+            </tr>
+            {day.entries.map((entry) => {
               const actionKey = ACTION_LABELS[entry.action];
               const roleKey = ROLE_LABELS[entry.actorRole];
               return (
@@ -137,8 +155,48 @@ export function AuditTable({
               );
             })}
           </tbody>
+          ))}
         </table>
       </div>
     </div>
   );
+}
+
+// The Manila day of each event, as YYYY-MM-DD. An event with no usable time
+// goes under its own heading rather than being guessed into a day.
+const NO_DAY = "unknown";
+
+function dayKey(at: string | undefined): string {
+  if (!at || Number.isNaN(Date.parse(at))) return NO_DAY;
+  return manilaTimestamp(at).slice(0, 10);
+}
+
+/** Runs of events on the same day, in the order given (newest first). */
+function byDay(entries: AuditLogEntry[]): { key: string; entries: AuditLogEntry[] }[] {
+  const days: { key: string; entries: AuditLogEntry[] }[] = [];
+  for (const entry of entries) {
+    const key = dayKey(entry.at);
+    const last = days[days.length - 1];
+    if (last && last.key === key) last.entries.push(entry);
+    else days.push({ key, entries: [entry] });
+  }
+  return days;
+}
+
+// [Today · Friday, October 17, 2026]. The date itself stays English like the
+// console's other formatted times; Today and Yesterday follow the language.
+function dayHeading(key: string, t: Translate): string {
+  if (key === NO_DAY) return t("audit.day.unknown");
+  const date = new Date(`${key}T12:00:00+08:00`).toLocaleDateString("en-US", {
+    timeZone: "Asia/Manila",
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+  const today = manilaTimestamp(new Date().toISOString()).slice(0, 10);
+  const yesterday = manilaTimestamp(new Date(Date.now() - 86_400_000).toISOString()).slice(0, 10);
+  if (key === today) return `${t("audit.day.today")} · ${date}`;
+  if (key === yesterday) return `${t("audit.day.yesterday")} · ${date}`;
+  return date;
 }
