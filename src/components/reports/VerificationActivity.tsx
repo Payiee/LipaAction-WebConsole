@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { ROLE_LABELS } from "@/components/audit-log/AuditTable";
 import { Button } from "@/components/ui/Button";
+import { FilterBar, FilterGroup } from "@/components/ui/FilterGroup";
 import { PrintButton } from "@/components/ui/PrintButton";
 import { useToast } from "@/components/ui/Toast";
 import { useRecordedExport } from "@/components/ui/useRecordedExport";
@@ -128,15 +129,17 @@ export function VerificationActivity({
 
   return (
     <section aria-labelledby="verification-activity-title" data-printable="verification" className="mb-6">
-      <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+      <div className="mb-4">
         <div>
-          <h2 id="verification-activity-title" className="text-sm font-semibold text-ink-900">
+          <h2 id="verification-activity-title" className="text-base font-semibold text-ink-900">
             {t("reports.verification.title")} &middot; {range}
           </h2>
-          <p className="text-xs text-ink-500">{t("reports.verification.intro")}</p>
+          <p className="text-sm text-ink-500">{t("reports.verification.intro")}</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2 print:hidden">
-          <label className="flex items-center gap-2 text-xs font-medium text-ink-700">
+      </div>
+      <FilterBar>
+        <FilterGroup label={t("filters.date")}>
+          <label className="flex items-center gap-2 text-sm font-medium text-ink-700">
             {t("reports.verification.weekEnding")}
             <input
               type="date"
@@ -150,16 +153,19 @@ export function VerificationActivity({
             />
           </label>
           {weekEnd !== today && (
-            <Button variant="secondary" size="sm" onClick={() => showWeek(today)}>
+            <Button variant="secondary" onClick={() => showWeek(today)}>
               {t("reports.verification.thisWeek")}
             </Button>
           )}
-          <Button variant="secondary" size="sm" disabled={busy || loadFailed} onClick={handleExport}>
+        </FilterGroup>
+        <FilterGroup label={t("filters.export")} className="max-w-xs">
+          <Button variant="secondary" disabled={busy || loadFailed} onClick={handleExport}>
             {busy ? t("common.working") : t("history.export")}
           </Button>
           <PrintButton section="verification" record={{ what: "verification_activity_print", rows: officials.length }} />
-        </div>
-      </div>
+          <p className="basis-full text-xs text-ink-500">{t("export.recordedNote")}</p>
+        </FilterGroup>
+      </FilterBar>
 
       {loadFailed ? (
         <p

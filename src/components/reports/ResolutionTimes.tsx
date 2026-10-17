@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
+import { FilterBar, FilterGroup } from "@/components/ui/FilterGroup";
 import { PrintButton } from "@/components/ui/PrintButton";
 import { useToast } from "@/components/ui/Toast";
 import { downloadCsv } from "@/lib/downloadCsv";
@@ -64,15 +65,17 @@ export function ResolutionTimes({
 
   return (
     <section aria-labelledby="resolution-title" data-printable="resolution" className="mb-6">
-      <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+      <div className="mb-4">
         <div>
-          <h2 id="resolution-title" className="text-sm font-semibold text-ink-900">
+          <h2 id="resolution-title" className="text-base font-semibold text-ink-900">
             {t("reports.resolution.title")} &middot; {monthLabel}
           </h2>
-          <p className="text-xs text-ink-500">{t("reports.resolution.intro")}</p>
+          <p className="text-sm text-ink-500">{t("reports.resolution.intro")}</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2 print:hidden">
-          <label className="flex items-center gap-2 text-xs font-medium text-ink-700">
+      </div>
+      <FilterBar>
+        <FilterGroup label={t("filters.date")}>
+          <label className="flex items-center gap-2 text-sm font-medium text-ink-700">
             {t("reports.resolution.month")}
             <select
               value={month}
@@ -86,12 +89,14 @@ export function ResolutionTimes({
               ))}
             </select>
           </label>
-          <Button variant="secondary" size="sm" disabled={loadFailed} onClick={handleExport}>
+        </FilterGroup>
+        <FilterGroup label={t("filters.export")}>
+          <Button variant="secondary" disabled={loadFailed} onClick={handleExport}>
             {t("history.export")}
           </Button>
           <PrintButton section="resolution" />
-        </div>
-      </div>
+        </FilterGroup>
+      </FilterBar>
 
       {loadFailed ? (
         <p

@@ -892,6 +892,22 @@ export const MESSAGES = {
 
   // --- Reports ----------------------------------------------------------------
   "reports.dailyTitle": { en: "Daily Queue Summary", tl: "Pang-araw-araw na Buod ng Pila" },
+  "reports.tabsLabel": { en: "Reports", tl: "Mga ulat" },
+  "reports.tab.daily": { en: "Daily", tl: "Araw-araw" },
+  "reports.tab.dailyHint": {
+    en: "Reports submitted on one day, by category",
+    tl: "Mga ulat na naisumite sa isang araw, ayon sa kategorya",
+  },
+  "reports.tab.weekly": { en: "Weekly", tl: "Lingguhan" },
+  "reports.tab.weeklyHint": {
+    en: "Residents each official verified in a week",
+    tl: "Mga residenteng na-verify ng bawat opisyal sa isang linggo",
+  },
+  "reports.tab.monthly": { en: "Monthly", tl: "Buwanan" },
+  "reports.tab.monthlyHint": {
+    en: "How long agencies took to resolve reports in a month",
+    tl: "Gaano katagal nalutas ng mga ahensya ang mga ulat sa isang buwan",
+  },
   "reports.dailyIntro": {
     en: "Reports submitted on the chosen day, by category, counted by where each one stands now.",
     tl: "Mga ulat na isinumite sa napiling araw, ayon sa kategorya, binilang ayon sa kasalukuyang katayuan ng bawat isa.",

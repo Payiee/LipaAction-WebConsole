@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
+import { FilterBar, FilterGroup } from "@/components/ui/FilterGroup";
 import { CategoryMultiSelect, matchesCategories } from "@/components/ui/CategoryMultiSelect";
 import { PrintButton } from "@/components/ui/PrintButton";
 import { Tile } from "@/components/ui/Tile";
@@ -86,16 +87,19 @@ export function DailyQueueSummary({
 
   return (
     <section aria-labelledby="daily-summary-title" data-printable="daily" className="mb-6">
-      <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+      <div className="mb-4">
         <div>
-          <h2 id="daily-summary-title" className="text-sm font-semibold text-ink-900">
+          <h2 id="daily-summary-title" className="text-base font-semibold text-ink-900">
             {t("reports.dailyTitle")} &middot; {formatDay(date)}
           </h2>
-          <p className="text-xs text-ink-500">{t("reports.dailyIntro")}</p>
+          <p className="text-sm text-ink-500">{t("reports.dailyIntro")}</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2 print:hidden">
-          <label className="flex items-center gap-2 text-xs font-medium text-ink-700">
-            {t("reports.date")}
+      </div>
+      <FilterBar>
+        <FilterGroup label={t("filters.date")}>
+          <label className="flex items-center gap-2 text-sm font-medium text-ink-700">
+            {/* The group already says Date on screen. */}
+            <span className="sr-only">{t("reports.date")}</span>
             {/* Uncontrolled, and re-keyed on the day shown: a controlled
                 value would snap back to the old day while the new one loads. */}
             <input
@@ -107,20 +111,24 @@ export function DailyQueueSummary({
               className="min-h-11 rounded-md border border-ink-100 bg-white px-3 text-sm text-ink-900 focus:border-brand-500 focus:outline-none"
             />
           </label>
-          {categoryOptions.length > 1 && (
-            <CategoryMultiSelect options={categoryOptions} chosen={categories} onChange={setCategories} />
-          )}
           {date !== today && (
-            <Button variant="secondary" size="sm" onClick={() => showDay(today)}>
+            <Button variant="secondary" onClick={() => showDay(today)}>
               {t("history.range.today")}
             </Button>
           )}
-          <Button variant="secondary" size="sm" disabled={loadFailed} onClick={handleExport}>
+        </FilterGroup>
+        {categoryOptions.length > 1 && (
+          <FilterGroup label={t("filters.refine")}>
+            <CategoryMultiSelect options={categoryOptions} chosen={categories} onChange={setCategories} />
+          </FilterGroup>
+        )}
+        <FilterGroup label={t("filters.export")}>
+          <Button variant="secondary" disabled={loadFailed} onClick={handleExport}>
             {t("history.export")}
           </Button>
           <PrintButton section="daily" />
-        </div>
-      </div>
+        </FilterGroup>
+      </FilterBar>
 
       <div className="mb-6 flex flex-wrap gap-4">
         <Tile label={t("reports.tile.submitted")} value={totals.submitted} />
