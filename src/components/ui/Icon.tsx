@@ -14,6 +14,7 @@ import {
   Map as MapGlyph,
   Maximize2,
   Menu,
+  MessageSquare,
   Minimize2,
   Paperclip,
   PhoneOff,
@@ -55,7 +56,8 @@ export type IconName =
   | "previous"
   | "next"
   | "chevron-down"
-  | "copy";
+  | "copy"
+  | "chat";
 
 /**
  * The console's icons, from Lucide (lucide-react, ISC licence).
@@ -92,6 +94,7 @@ const ICONS: Record<IconName, LucideIcon> = {
   next: ChevronRight, // the next one
   "chevron-down": ChevronDown, // a button that opens a list
   copy: Copy, // copy a report id
+  chat: MessageSquare, // a report's chat thread
 };
 
 export function Icon({ name, className }: { name: IconName; className?: string }) {

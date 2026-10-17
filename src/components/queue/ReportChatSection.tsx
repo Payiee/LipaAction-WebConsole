@@ -180,6 +180,14 @@ export function ReportChatSection({
   const [lock, setLock] = useState<ChatLock>({ kind: "unknown" });
   const threadRef = useRef<HTMLUListElement>(null);
   const draftRef = useRef<HTMLTextAreaElement>(null);
+  // The draft box fits its text: back to one line when the text is
+  // short or sent, taller as it grows (max-h-48 caps it, then it scrolls).
+  useLayoutEffect(() => {
+    const el = draftRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [draft]);
   const items = useMemo(() => buildThreadItems(messages), [messages]);
 
   // Chat media: the files waiting in the composer, and the open viewer.
@@ -376,7 +384,17 @@ export function ReportChatSection({
           className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-4 py-3"
           aria-live="polite"
         >
-          {messages.length === 0 && <li className="m-auto text-sm text-ink-500">{t("chat.empty")}</li>}
+          {messages.length === 0 && (
+            // An empty thread says what it is for and how to begin, rather
+            // than a bare line that reads like a loading failure.
+            <li className="m-auto flex max-w-xs flex-col items-center px-4 py-8 text-center">
+              <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-brand-50 text-brand-700">
+                <Icon name="chat" className="h-6 w-6" />
+              </span>
+              <span className="text-sm font-medium text-ink-900">{t("chat.empty")}</span>
+              <span className="mt-1 text-sm text-ink-500">{t("chat.emptyBody")}</span>
+            </li>
+          )}
           {items.map((item) => {
             if (item.kind === "day") {
               return (
@@ -405,13 +423,15 @@ export function ReportChatSection({
                 )}
                 {/* A media message may have no text; it then has no bubble. */}
                 {!(hasMedia && m.body === "") && (
+                  // A messenger bubble: the corner nearest the sender squared
+                  // off, so each one points at who wrote it.
                   <p
-                    className={`max-w-[75%] whitespace-pre-wrap break-words rounded-2xl px-3 py-2 text-sm ${
+                    className={`max-w-[80%] whitespace-pre-wrap break-words rounded-2xl px-4 py-2.5 text-sm shadow-sm ${
                       fromDesk
-                        ? "bg-brand-500 text-white"
+                        ? "rounded-br-md bg-brand-500 text-white"
                         : m.side === "agency"
-                          ? "border border-ink-100 bg-ink-50 text-ink-900"
-                          : "bg-ink-100 text-ink-900"
+                          ? "rounded-bl-md border border-ink-100 bg-white text-ink-900"
+                          : "rounded-bl-md bg-ink-100 text-ink-900"
                     }`}
                   >
                     {m.body}
@@ -553,9 +573,11 @@ export function ReportChatSection({
                 maxLength={MAX_MESSAGE_LENGTH}
                 rows={1}
                 readOnly={isSending}
-                className="min-h-11 flex-1 resize-none rounded-2xl border border-ink-100 bg-ink-50 px-4 py-2.5 text-sm text-ink-900 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                // Grows with the message up to about eight lines, then
+                // scrolls, so the whole text can be read before it is sent.
+                className="max-h-48 min-h-11 flex-1 resize-none overflow-y-auto rounded-2xl border border-ink-100 bg-ink-50 px-4 py-2.5 text-sm text-ink-900 focus:outline-none focus:ring-2 focus:ring-brand-500"
               />
-              <Button type="submit" variant="primary" size="sm" disabled={!canSend}>
+              <Button type="submit" variant="primary" disabled={!canSend}>
                 {t("chat.send")}
               </Button>
             </div>

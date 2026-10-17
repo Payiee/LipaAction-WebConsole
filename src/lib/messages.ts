@@ -2169,6 +2169,10 @@ export const MESSAGES = {
     en: "No messages yet.",
     tl: "Wala pang mensahe.",
   },
+  "chat.emptyBody": {
+    en: "Write a message below to start the conversation. Replies appear here as they arrive.",
+    tl: "Sumulat ng mensahe sa ibaba para magsimula ng usapan. Lalabas dito ang mga sagot pagdating ng mga ito.",
+  },
   "chat.fromDesk": {
     en: "Barangay desk",
     tl: "Barangay desk",
