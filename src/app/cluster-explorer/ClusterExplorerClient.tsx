@@ -6,6 +6,7 @@ import { ClusterList } from "@/components/cluster-explorer/ClusterList";
 import { MemberPanel } from "@/components/cluster-explorer/MemberPanel";
 import { MapPanel } from "@/components/cluster-explorer/MapPanel";
 import { DataUnavailableBanner } from "@/components/layout/DataUnavailableBanner";
+import { Icon } from "@/components/ui/Icon";
 import { useLang, useT } from "@/lib/i18n";
 import { useNow } from "@/lib/useNow";
 import { DUPLICATE_WRITEBACK_LIVE } from "@/lib/features";
@@ -52,10 +53,13 @@ export function ClusterExplorerClient({
                 detect the day write-back goes live, so DUPLICATE_WRITEBACK_LIVE
                 is switched by hand, and the copy then describes the grouping. */}
             <div className="max-w-md text-center">
-              <p className="text-sm font-medium text-ink-700">
+              <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-ink-50 text-ink-500">
+                <Icon name="clusters" className="h-6 w-6" />
+              </span>
+              <p className="text-base font-medium text-ink-900">
                 {t(DUPLICATE_WRITEBACK_LIVE ? "clusters.emptyTitleLive" : "clusters.emptyTitle")}
               </p>
-              <p className="mt-1 text-xs text-ink-500">
+              <p className="mt-1 text-sm text-ink-500">
                 {t(DUPLICATE_WRITEBACK_LIVE ? "clusters.emptyBodyLive" : "clusters.emptyBody")}
               </p>
               {/* The English screen keeps the mockup Tagalog line under it,

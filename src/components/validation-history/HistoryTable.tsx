@@ -5,6 +5,7 @@ import { useT } from "@/lib/i18n";
 import { Icon } from "@/components/ui/Icon";
 import type { ValidationRecord } from "@/types";
 import { RESOLUTION_LABELS } from "./historyOptions";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 export function HistoryTable({
   records,
@@ -19,14 +20,14 @@ export function HistoryTable({
   const t = useT();
   if (records.length === 0) {
     return (
-      <div className="rounded-card border border-ink-100 bg-white px-4 py-10 text-center shadow-panel">
+      <EmptyState icon="history">
         <p className="text-sm font-medium text-ink-700">
           {t(isFiltered ? "history.empty.filteredTitle" : "history.empty.title")}
         </p>
         <p className="mt-1 text-xs text-ink-500">
           {t(isFiltered ? "history.empty.filteredBody" : "history.empty.body")}
         </p>
-      </div>
+      </EmptyState>
     );
   }
 

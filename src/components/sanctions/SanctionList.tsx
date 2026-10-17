@@ -7,6 +7,7 @@ import { useT, type MessageKey, type Translate } from "@/lib/i18n";
 import { ownValue } from "@/lib/utils";
 // Type-only import from a server-only module — erased at compile time.
 import type { SanctionHistoryEntry, SanctionRow } from "@/lib/data/sanctions";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 // The backend's values. Lookups with a raw-text fallback, never closed
 // unions: a value this console doesn't know is shown as itself.
@@ -86,12 +87,12 @@ export function SanctionList({
 
   if (rows.length === 0) {
     return (
-      <div className="rounded-card border border-ink-100 bg-white px-4 py-10 text-center shadow-panel">
+      <EmptyState icon="sanctions">
         <p className="text-sm font-medium text-ink-700">{t("sanctions.empty.title")}</p>
         <p className="mx-auto mt-1 max-w-md text-xs text-ink-500">
           {t(filtered ? "sanctions.empty.filtered" : "sanctions.empty.body")}
         </p>
-      </div>
+      </EmptyState>
     );
   }
 

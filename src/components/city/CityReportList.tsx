@@ -15,6 +15,7 @@ import { translate, useT, type MessageKey, type Translate } from "@/lib/i18n";
 import { CityReportDrawer, barangayOf, formatTimestamp } from "./CityReportDrawer";
 // Type-only imports from a server-only module — erased at compile time.
 import type { CityReport, CityReportsData, CityStatusFilter } from "@/lib/data/cityReports";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 // The loader's filter keys, listed here because a client component can't
 // import a value from a server-only module. The type keeps the two in step.
@@ -151,11 +152,11 @@ export function CityReportList({ data }: { data: CityReportsData }) {
 
       {shown.length === 0 ? (
         !data.loadFailed && (
-          <div className="rounded-card border border-ink-100 bg-white px-4 py-10 text-center shadow-panel">
+          <EmptyState icon="queue">
             <p className="text-sm text-ink-500">
               {t(filtered ? "city.reports.emptyFiltered" : "city.reports.empty", { days: data.windowDays })}
             </p>
-          </div>
+          </EmptyState>
         )
       ) : (
         <div className="overflow-x-auto rounded-card border border-ink-100 bg-white shadow-panel">

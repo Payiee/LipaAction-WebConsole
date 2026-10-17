@@ -16,6 +16,7 @@ import { accessLogCsvRows } from "./accessLogCsv";
 import { ACCESS_LOG_KINDS, ACCESS_LOG_OPENED, REPORT_ACTIONS, isAccessLogKind, type AccessLogKind } from "@/lib/accessLog";
 // Type-only imports from a server-only module — erased at compile time.
 import type { AccessLogData, AccessLogDetail, AccessLogEntry } from "@/lib/data/cityAccessLog";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 const KIND_LABELS: Record<AccessLogKind, MessageKey> = {
   all: "audit.filter.all",
@@ -245,7 +246,7 @@ export function AccessLogView({ data }: { data: AccessLogData }) {
 
       {data.entries.length === 0 ? (
         !data.loadFailed && (
-          <div className="rounded-card border border-ink-100 bg-white px-4 py-10 text-center shadow-panel">
+          <EmptyState icon="audit">
             <p className="text-sm text-ink-500">
               {/* With dates chosen, [none recorded yet] would be untrue: there
                   may be events outside them. */}
@@ -257,7 +258,7 @@ export function AccessLogView({ data }: { data: AccessLogData }) {
                     : "city.access.emptyFiltered"
               )}
             </p>
-          </div>
+          </EmptyState>
         )
       ) : (
         <div className="overflow-x-auto rounded-card border border-ink-100 bg-white shadow-panel print:overflow-visible">

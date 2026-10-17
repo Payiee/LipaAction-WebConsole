@@ -3,6 +3,7 @@
 import { useT } from "@/lib/i18n";
 // Type-only import from a server-only module — erased at compile time.
 import type { CityAgenciesData, CityAgency } from "@/lib/data/cityAgencies";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 /**
  * The agencies registry, read-only: each agency and the report categories
@@ -22,9 +23,9 @@ export function AgencyList({ data }: { data: CityAgenciesData }) {
 
       {data.agencies.length === 0 ? (
         !data.loadFailed && (
-          <div className="rounded-card border border-ink-100 bg-white px-4 py-10 text-center shadow-panel">
+          <EmptyState icon="agencies">
             <p className="text-sm text-ink-500">{t("city.agencies.empty")}</p>
-          </div>
+          </EmptyState>
         )
       ) : (
         <div className="overflow-x-auto rounded-card border border-ink-100 bg-white shadow-panel">

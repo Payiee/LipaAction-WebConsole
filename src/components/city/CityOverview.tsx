@@ -5,6 +5,7 @@ import { useT } from "@/lib/i18n";
 // Type-only import from a server-only module — erased at compile time.
 import type { BarangayActivity, CityOverviewData } from "@/lib/data/cityOverview";
 import { PrintButton } from "@/components/ui/PrintButton";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 /**
  * The city dashboard's overview: city-wide tiles, then one row per barangay
@@ -46,9 +47,9 @@ export function CityOverview({ overview }: { overview: CityOverviewData }) {
         // Under a load failure the banner already says nothing is current;
         // [no reports were filed] would be a claim.
         !loadFailed && (
-          <div className="rounded-card border border-ink-100 bg-white px-4 py-10 text-center shadow-panel">
+          <EmptyState icon="reports">
             <p className="text-sm text-ink-500">{t("city.overview.empty")}</p>
-          </div>
+          </EmptyState>
         )
       ) : (
         <div className="overflow-x-auto rounded-card border border-ink-100 bg-white shadow-panel print:overflow-visible">

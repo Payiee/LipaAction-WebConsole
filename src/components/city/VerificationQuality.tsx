@@ -10,6 +10,7 @@ import { cx, manilaTimestamp } from "@/lib/utils";
 import { useT, type Translate } from "@/lib/i18n";
 // Type-only imports from a server-only module — erased at compile time.
 import type { BarangayVerification, CityVerificationData } from "@/lib/data/cityVerification";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 /** [2 of 5 (40%)], a dash when there is nothing to take a share of. */
 function share(part: number | null, whole: number | null, t: Translate): string {
@@ -96,9 +97,9 @@ export function VerificationQuality({ data }: { data: CityVerificationData }) {
 
       {barangays.length === 0 ? (
         !loadFailed && (
-          <div className="rounded-card border border-ink-100 bg-white px-4 py-10 text-center shadow-panel">
+          <EmptyState icon="verify">
             <p className="text-sm text-ink-500">{t("city.verification.empty", { days: windowDays })}</p>
-          </div>
+          </EmptyState>
         )
       ) : (
         <div className="overflow-x-auto rounded-card border border-ink-100 bg-white shadow-panel print:overflow-visible">

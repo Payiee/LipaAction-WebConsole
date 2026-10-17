@@ -17,6 +17,7 @@ import { downloadCsv } from "@/lib/downloadCsv";
 import type { OfficialProfile } from "@/lib/auth";
 // Type-only import from a server-only module — erased at compile time.
 import type { AuditLogData } from "@/lib/data/auditLog";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 export function AuditLogClient({
   official,
@@ -75,12 +76,12 @@ export function AuditLogClient({
           account has no trail to show. Saying so beats the red banner, which
           would send an official refreshing a page that will never load. */}
       {refusal !== null ? (
-        <div className="rounded-card border border-ink-100 bg-white px-4 py-10 text-center shadow-panel">
+        <EmptyState icon="audit">
           <p className="text-sm font-medium text-ink-700">{t("audit.empty.title")}</p>
           <p className="mx-auto mt-1 max-w-md text-xs text-ink-500">
             {t(refusal === "no_barangay" ? "audit.refusal.noBarangay" : "audit.refusal.noRole")}
           </p>
-        </div>
+        </EmptyState>
       ) : (
         <>
           {/* What the page is, in the words of what the backend actually

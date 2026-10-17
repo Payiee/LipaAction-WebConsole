@@ -11,6 +11,7 @@ import { formatMonth, monthOptions, reportsHref } from "./reportsHref";
 // Type-only imports from a server-only module — erased at compile time.
 import type { DurationSummary } from "@/lib/durations";
 import type { ResolutionTimesData } from "@/lib/data/resolutionTimes";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 /**
  * The paper's Monthly Resolution-Time Distribution by Agency (#16): per
@@ -100,9 +101,9 @@ export function ResolutionTimes({
           {t("reports.resolution.failed")}
         </p>
       ) : agencies.length === 0 ? (
-        <div className="rounded-card border border-ink-100 bg-white px-4 py-10 text-center shadow-panel">
+        <EmptyState icon="timer">
           <p className="text-sm text-ink-500">{t("reports.resolution.empty", { month: monthLabel })}</p>
-        </div>
+        </EmptyState>
       ) : (
         <div className="overflow-x-auto rounded-card border border-ink-100 bg-white shadow-panel">
           <table className="w-full min-w-[620px] text-left text-sm">

@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/Badge";
 import { useT, type MessageKey } from "@/lib/i18n";
 import { Icon } from "@/components/ui/Icon";
 import type { AuditLogEntry } from "@/types";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 // The actions this function can return. Anything else renders as the raw
 // action text rather than disappearing: the column is text by contract, not
@@ -77,12 +78,12 @@ export function AuditTable({
 
   if (entries.length === 0) {
     return (
-      <div className="rounded-card border border-ink-100 bg-white px-4 py-10 text-center shadow-panel">
+      <EmptyState icon="audit">
         <p className="text-sm font-medium text-ink-700">{t("audit.empty.title")}</p>
         <p className="mt-1 text-xs text-ink-500">
           {filtered ? t("audit.empty.filtered") : t("audit.empty.body")}
         </p>
-      </div>
+      </EmptyState>
     );
   }
 

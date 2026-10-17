@@ -12,6 +12,7 @@ import { useT } from "@/lib/i18n";
 import { reportsHref } from "./reportsHref";
 // Type-only import from a server-only module — erased at compile time.
 import type { DailyCounts, DailyQueueSummaryData } from "@/lib/data/dailyQueueSummary";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 const DATE_SHAPE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -132,9 +133,9 @@ export function DailyQueueSummary({
         // Under a load failure the banner already says nothing is current;
         // [no reports were submitted] would be a claim.
         !loadFailed && (
-          <div className="rounded-card border border-ink-100 bg-white px-4 py-10 text-center shadow-panel">
+          <EmptyState icon="reports">
             <p className="text-sm text-ink-500">{t("reports.empty", { date: formatDay(date) })}</p>
-          </div>
+          </EmptyState>
         )
       ) : (
         <div className="overflow-x-auto rounded-card border border-ink-100 bg-white shadow-panel">

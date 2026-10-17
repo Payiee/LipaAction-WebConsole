@@ -27,7 +27,7 @@ import { wasRecalled } from "@/components/queue/recallView";
 import { markAutoRoutedSeen } from "@/app/actions/recall";
 import { callAction } from "@/lib/callAction";
 import { Button } from "@/components/ui/Button";
-import { Icon } from "@/components/ui/Icon";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import { QUEUE_SORTS, isQueueSort, sortReports, type QueueSort } from "@/lib/queue/sortReports";
 import type { QueueReport, QueueTabId } from "@/types";
@@ -1099,13 +1099,10 @@ function DuplicatesEmpty() {
 // state of the queue and not as a page that failed to draw.
 function QueueEmpty({ title, body }: { title: string; body: string | null }) {
   return (
-    <div className="rounded-card border border-dashed border-ink-300 bg-white px-6 py-12 text-center">
-      <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-ink-50 text-ink-500">
-        <Icon name="queue" className="h-6 w-6" />
-      </span>
+    <EmptyState icon="queue">
       <p className="text-base font-medium text-ink-900">{title}</p>
       {body && <p className="mx-auto mt-1 max-w-md text-sm text-ink-500">{body}</p>}
-    </div>
+    </EmptyState>
   );
 }
 

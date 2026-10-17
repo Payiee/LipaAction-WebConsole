@@ -13,6 +13,7 @@ import { ownValue } from "@/lib/utils";
 import { reportsHref } from "./reportsHref";
 // Type-only import from a server-only module — erased at compile time.
 import type { OfficialVerificationActivity, VerificationActivityData } from "@/lib/data/verificationActivity";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 const DATE_SHAPE = /^\d{4}-\d{2}-\d{2}$/;
 // As on the daily summary: a typed year fires a change per keystroke.
@@ -168,9 +169,9 @@ export function VerificationActivity({
           {t("reports.verification.failed")}
         </p>
       ) : officials.length === 0 ? (
-        <div className="rounded-card border border-ink-100 bg-white px-4 py-10 text-center shadow-panel">
+        <EmptyState icon="verify">
           <p className="text-sm text-ink-500">{t("reports.verification.empty", { range })}</p>
-        </div>
+        </EmptyState>
       ) : (
         <div className="overflow-x-auto rounded-card border border-ink-100 bg-white shadow-panel print:overflow-visible">
           <table className="w-full min-w-[720px] text-left text-sm print:min-w-0">

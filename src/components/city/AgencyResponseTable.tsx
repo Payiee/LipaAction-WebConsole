@@ -8,6 +8,7 @@ import { formatDuration, manilaTimestamp } from "@/lib/utils";
 import { useT, type MessageKey } from "@/lib/i18n";
 // Type-only import from a server-only module — erased at compile time.
 import type { AgencyResponse, CityResponseData, DurationSummary } from "@/lib/data/cityResponseTimes";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 /**
  * The paper's Per-Agency Response Time view (A.5.2), as a table: one row per
@@ -47,9 +48,9 @@ export function AgencyResponseTable({ response }: { response: CityResponseData }
 
       {agencies.length === 0 ? (
         !loadFailed && (
-          <div className="rounded-card border border-ink-100 bg-white px-4 py-10 text-center shadow-panel">
+          <EmptyState icon="timer">
             <p className="text-sm text-ink-500">{t("city.response.empty", { days: windowDays })}</p>
-          </div>
+          </EmptyState>
         )
       ) : (
         <div className="overflow-x-auto rounded-card border border-ink-100 bg-white shadow-panel print:overflow-visible">

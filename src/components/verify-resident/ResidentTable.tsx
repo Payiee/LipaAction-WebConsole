@@ -10,6 +10,7 @@ import type { ResidentTierFilter } from "@/lib/residents";
 // Type-only import from a server-only module — erased at compile time.
 import type { ResidentRow } from "@/lib/data/residents";
 import { residentWho } from "./who";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 // The backend's method values. A lookup with a raw-text fallback, never a
 // closed union: a value this console doesn't know is shown as itself.
@@ -54,12 +55,12 @@ export function ResidentTable({
   if (residents.length === 0) {
     if (loadFailed) return null;
     return (
-      <div className="rounded-card border border-ink-100 bg-white px-4 py-10 text-center shadow-panel">
+      <EmptyState icon="verify">
         <p className="text-sm font-medium text-ink-700">{t("verify.empty.title")}</p>
         <p className="mx-auto mt-1 max-w-md text-xs text-ink-500">
           {query.length > 0 ? t("verify.empty.search", { query }) : t(EMPTY_BODY[tier])}
         </p>
-      </div>
+      </EmptyState>
     );
   }
 

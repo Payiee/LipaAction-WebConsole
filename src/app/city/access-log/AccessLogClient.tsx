@@ -11,6 +11,7 @@ import { useT } from "@/lib/i18n";
 import type { CityProfile } from "@/lib/auth";
 // Type-only import from a server-only module — erased at compile time.
 import type { AccessLogData } from "@/lib/data/cityAccessLog";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 // Server renders this browser has already shown. Module scope, so it outlives
 // the component: Next keeps a visited page in its router cache and shows it
@@ -43,7 +44,7 @@ export function AccessLogClient({ admin, data }: { admin: CityProfile; data: Acc
       {data.logFailure !== null ? (
         // Nothing was read: the opening couldn't be recorded, and an access
         // log shown without its own record would defeat itself.
-        <div role="alert" className="rounded-card border border-ink-100 bg-white px-4 py-10 text-center shadow-panel">
+        <EmptyState icon="audit" role="alert">
           <p className="text-sm font-medium text-ink-900">{t("city.access.notRecorded.title")}</p>
           <p className="mx-auto mt-1 max-w-md text-xs text-ink-500">
             {t(data.logFailure === "session" ? "city.access.notRecorded.session" : "city.access.notRecorded.body")}
@@ -59,7 +60,7 @@ export function AccessLogClient({ admin, data }: { admin: CityProfile; data: Acc
               {t("city.access.retry")}
             </Button>
           )}
-        </div>
+        </EmptyState>
       ) : (
         <>
           {data.loadFailed && <DataUnavailableBanner what={t("banner.what.cityAccessLog")} />}
