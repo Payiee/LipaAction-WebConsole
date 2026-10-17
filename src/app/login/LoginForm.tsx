@@ -1,5 +1,6 @@
 "use client";
 
+import { LogoMark } from "@/components/ui/LogoMark";
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type { AuthError } from "@supabase/supabase-js";
@@ -193,9 +194,7 @@ export function LoginForm() {
     <div className="flex min-h-screen items-center justify-center bg-ink-50 px-4">
       <div className="w-full max-w-sm rounded-card border border-ink-100 bg-white p-6 shadow-panel">
         <div className="mb-6 flex items-center gap-2.5">
-          <span className="flex h-9 w-9 items-center justify-center rounded-md bg-brand-500 text-sm font-bold text-white">
-            L
-          </span>
+          <LogoMark size={36} />
           <div className="leading-tight">
             <p className="text-sm font-semibold text-ink-900">LipaAction</p>
             <p className="text-xs text-ink-500">Barangay console</p>

@@ -1,5 +1,6 @@
 "use client";
 
+import { LogoMark } from "@/components/ui/LogoMark";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cx, displayName, initials } from "@/lib/utils";
@@ -112,9 +113,7 @@ export function Sidebar({
   return (
     <aside className="flex h-full w-60 shrink-0 flex-col border-r border-ink-100 bg-white">
       <div className="flex items-center gap-2 border-b border-ink-100 px-4 py-4">
-        <span className="flex h-8 w-8 items-center justify-center rounded-md bg-brand-500 text-sm font-bold text-white">
-          L
-        </span>
+        <LogoMark size={32} />
         <div className="leading-tight">
           <p className="text-sm font-semibold text-ink-900">LipaAction</p>
           <p className="text-xs text-ink-500">
