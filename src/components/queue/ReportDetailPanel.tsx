@@ -452,7 +452,7 @@ export function ReportDetailPanel({
         aria-labelledby="report-detail-title"
         // A centred pop-up, not an edge drawer: the report and its thread sit
         // side by side the way a web messenger does. Full screen below md.
-        className="relative flex h-full max-h-full w-full flex-col overflow-hidden bg-white shadow-panel focus:outline-none md:h-[85vh] md:max-w-[1200px] md:rounded-card"
+        className="relative flex h-full max-h-full w-full flex-col overflow-hidden bg-white shadow-panel focus:outline-none md:h-[85vh] md:max-w-[1200px] md:rounded-card motion-safe:animate-dialogIn"
       >
         <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-ink-100 bg-white px-4 py-3 md:px-5">
           <div className="min-w-0">

@@ -50,14 +50,14 @@ export function ChatMediaViewer({
   const position = many ? t("chat.media.position", { n: index + 1, total: attachments.length }) : "";
 
   return (
-    <div className="fixed inset-0 z-[60] flex bg-ink-900/80 p-2 sm:p-6">
+    <div className="fixed inset-0 z-[60] flex bg-ink-900/80 p-2 sm:p-6 motion-safe:animate-scrimIn">
       <div
         ref={dialogRef}
         tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-labelledby="chat-media-viewer-title"
-        className="relative flex h-full w-full flex-col overflow-hidden rounded-card border border-ink-100 bg-white shadow-panel focus:outline-none"
+        className="relative flex h-full w-full flex-col overflow-hidden rounded-card border border-ink-100 bg-white shadow-panel focus:outline-none motion-safe:animate-dialogIn"
       >
         <div className="flex items-center justify-between gap-3 border-b border-ink-100 px-4 py-2">
           <p id="chat-media-viewer-title" className="truncate text-sm font-semibold text-ink-900">

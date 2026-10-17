@@ -66,7 +66,7 @@ export function ReasonTextModal({
       <button
         type="button"
         aria-label={t("common.cancel")}
-        className="absolute inset-0 bg-ink-900/40"
+        className="absolute inset-0 bg-ink-900/40 motion-safe:animate-scrimIn"
         onClick={onCancel}
         disabled={busy}
       />
@@ -77,7 +77,7 @@ export function ReasonTextModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded-card border border-ink-100 bg-white p-5 shadow-panel focus:outline-none"
+        className="relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded-card border border-ink-100 bg-white p-5 shadow-panel focus:outline-none motion-safe:animate-dialogIn"
       >
         <p id={titleId} className="mb-1 text-sm font-semibold text-ink-900">
           {title}

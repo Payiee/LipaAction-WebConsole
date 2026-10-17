@@ -45,7 +45,7 @@ export function ResolveNoteModal({
       <button
         type="button"
         aria-label={t("common.cancel")}
-        className="absolute inset-0 bg-ink-900/40"
+        className="absolute inset-0 bg-ink-900/40 motion-safe:animate-scrimIn"
         onClick={onCancel}
         disabled={busy}
       />
@@ -57,7 +57,7 @@ export function ResolveNoteModal({
         aria-modal="true"
         aria-labelledby="resolve-note-title"
         aria-describedby="resolve-note-description"
-        className="relative w-full max-w-sm rounded-card border border-ink-100 bg-white p-5 shadow-panel focus:outline-none"
+        className="relative w-full max-w-sm rounded-card border border-ink-100 bg-white p-5 shadow-panel focus:outline-none motion-safe:animate-dialogIn"
       >
         <p id="resolve-note-title" className="mb-1 text-sm font-semibold text-ink-900">
           {t("resolve.title", { id: reportId })}

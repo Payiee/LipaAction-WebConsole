@@ -73,12 +73,16 @@ const config: Config = {
       borderRadius: {
         card: "10px",
       },
-      // Three animations, each carrying meaning rather than decoration: a
-      // row that has just arrived on its own, a toast entering, and the
-      // detail drawer coming in from the edge it sits on. All are applied
-      // through Tailwind's `motion-safe:` variant, so a viewer who asks for
-      // reduced motion gets the same information without movement — the
-      // arrived row keeps a static tint and a New chip instead.
+      // Each animation carries meaning rather than decoration: a row that
+      // has just arrived on its own, a toast entering, a drawer coming in
+      // from its edge, a dialog or a tab's content appearing, and a decided
+      // card settling into its one-line [done] form. All are applied through
+      // Tailwind's `motion-safe:` variant, so a viewer who asks for reduced
+      // motion gets the same information without movement — the arrived row
+      // keeps a static tint and a New chip instead. None of them moves
+      // anything under the pointer: on the live queue a list that shifts as
+      // it is clicked can turn a Validate meant for one report into a
+      // decision on another, and that cannot be undone.
       keyframes: {
         arrival: {
           // Holds the tint long enough to be noticed if the official looked
@@ -99,12 +103,30 @@ const config: Config = {
           "0%": { opacity: "0" },
           "100%": { opacity: "1" },
         },
+        dialogIn: {
+          "0%": { opacity: "0", transform: "scale(0.98)" },
+          "100%": { opacity: "1", transform: "scale(1)" },
+        },
+        // Opacity only: a tab's content must not slide under the pointer.
+        fadeIn: {
+          "0%": { opacity: "0" },
+          "100%": { opacity: "1" },
+        },
+        // The decided card's [done] line slides in from the side it was
+        // decided on. Sideways only, so nothing above or below it moves.
+        settle: {
+          "0%": { opacity: "0", transform: "translateX(16px)" },
+          "100%": { opacity: "1", transform: "translateX(0)" },
+        },
       },
       animation: {
         arrival: "arrival 4s ease-out forwards",
         toastIn: "toastIn 150ms ease-out",
         drawerIn: "drawerIn 200ms ease-out",
         scrimIn: "scrimIn 200ms ease-out",
+        dialogIn: "dialogIn 150ms ease-out",
+        fadeIn: "fadeIn 150ms ease-out",
+        settle: "settle 250ms ease-out",
       },
     },
   },

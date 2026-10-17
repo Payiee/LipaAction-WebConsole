@@ -103,7 +103,7 @@ export function RecallModal({
       <button
         type="button"
         aria-label={t("common.cancel")}
-        className="absolute inset-0 bg-ink-900/40"
+        className="absolute inset-0 bg-ink-900/40 motion-safe:animate-scrimIn"
         onClick={onCancel}
         disabled={busy}
       />
@@ -115,7 +115,7 @@ export function RecallModal({
         aria-modal="true"
         aria-labelledby="recall-title"
         aria-describedby="recall-description"
-        className="relative max-h-full w-full max-w-md overflow-y-auto rounded-card border border-ink-100 bg-white p-5 shadow-panel focus:outline-none"
+        className="relative max-h-full w-full max-w-md overflow-y-auto rounded-card border border-ink-100 bg-white p-5 shadow-panel focus:outline-none motion-safe:animate-dialogIn"
       >
         <p id="recall-title" className="mb-1 text-sm font-semibold text-ink-900">
           {t("recall.title", { id: reportId })}

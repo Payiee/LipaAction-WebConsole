@@ -53,7 +53,7 @@ export function TextPromptModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
       <button
         aria-label={t("common.cancel")}
-        className="absolute inset-0 bg-ink-900/40"
+        className="absolute inset-0 bg-ink-900/40 motion-safe:animate-scrimIn"
         onClick={onCancel}
         disabled={busy}
       />
@@ -64,7 +64,7 @@ export function TextPromptModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="text-prompt-title"
-        className="relative w-full max-w-sm rounded-card border border-ink-100 bg-white p-5 shadow-panel focus:outline-none"
+        className="relative w-full max-w-sm rounded-card border border-ink-100 bg-white p-5 shadow-panel focus:outline-none motion-safe:animate-dialogIn"
       >
         <p id="text-prompt-title" className="mb-1 text-sm font-semibold text-ink-900">
           {title}

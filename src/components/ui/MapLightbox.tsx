@@ -34,14 +34,14 @@ export function MapLightbox({
   const dialogRef = useFocusTrap<HTMLDivElement>();
 
   return (
-    <div className="fixed inset-0 z-[60] flex bg-ink-900/60 p-2 sm:p-6">
+    <div className="fixed inset-0 z-[60] flex bg-ink-900/60 p-2 sm:p-6 motion-safe:animate-scrimIn">
       <div
         ref={dialogRef}
         tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-labelledby="map-lightbox-title"
-        className="relative flex h-full w-full flex-col overflow-hidden rounded-card border border-ink-100 bg-white shadow-panel focus:outline-none"
+        className="relative flex h-full w-full flex-col overflow-hidden rounded-card border border-ink-100 bg-white shadow-panel focus:outline-none motion-safe:animate-dialogIn"
       >
         <div className="flex items-center justify-between gap-3 border-b border-ink-100 px-4 py-2">
           <p id="map-lightbox-title" className="truncate text-sm font-semibold text-ink-900">

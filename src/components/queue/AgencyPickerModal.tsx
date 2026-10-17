@@ -88,7 +88,7 @@ export function AgencyPickerModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
       <button
         aria-label={t("common.cancel")}
-        className="absolute inset-0 bg-ink-900/40"
+        className="absolute inset-0 bg-ink-900/40 motion-safe:animate-scrimIn"
         onClick={onCancel}
         disabled={busy}
       />
@@ -101,7 +101,7 @@ export function AgencyPickerModal({
         aria-describedby={describedBy}
         // Scrolls as a whole when the copy runs long (Tagalog, a recalled or
         // discreet report), so Confirm stays reachable on a 1366x768 screen.
-        className="relative max-h-[calc(100vh-2rem)] w-full max-w-sm overflow-y-auto rounded-card border border-ink-100 bg-white p-5 shadow-panel focus:outline-none"
+        className="relative max-h-[calc(100vh-2rem)] w-full max-w-sm overflow-y-auto rounded-card border border-ink-100 bg-white p-5 shadow-panel focus:outline-none motion-safe:animate-dialogIn"
       >
         <p id="agency-picker-title" className="mb-1 text-sm font-semibold text-ink-900">
           {title}

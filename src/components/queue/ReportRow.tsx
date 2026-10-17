@@ -98,7 +98,7 @@ export function ReportRow({
     return (
       <div
         className={cx(
-          "flex items-center justify-between gap-4 rounded-card border border-l-4 border-ink-100 bg-ink-50 px-5 py-3 text-sm text-ink-500",
+          "flex items-center justify-between gap-4 rounded-card border border-l-4 border-ink-100 bg-ink-50 px-5 py-3 text-sm text-ink-500 motion-safe:animate-settle",
           priorityBar(report.priority)
         )}
       >

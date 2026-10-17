@@ -950,6 +950,9 @@ export function QueueClient({
 
       <div
         ref={listRef}
+        // Re-keyed per tab so its content fades in on a switch (opacity only,
+        // see the fadeIn keyframe).
+        key={activeTab}
         // Holds refreshes while the pointer is over the rows — see tryRefresh.
         onPointerEnter={() => {
           pointerOverList.current = true;
@@ -963,7 +966,7 @@ export function QueueClient({
         aria-labelledby={queueTabDomId(activeTab)}
         // Separate cards with room between them, not one panel of rows
         // touching each other (reviewer feedback, October 2026).
-        className="space-y-3"
+        className="space-y-3 motion-safe:animate-fadeIn"
       >
         {rows.length === 0 ? (
           activeTab === "duplicates" && !isFiltered && !queueData.loadFailed ? (
