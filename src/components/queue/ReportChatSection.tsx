@@ -323,25 +323,23 @@ export function ReportChatSection({
     showToast(t(OUTCOME_KEY[outcome]), "danger");
   };
 
+  const hasHeader =
+    (thread && state === "ready") ||
+    (thread === "group" && agencyConsentPending) ||
+    lock.kind === "locks" ||
+    (state === "ready" && (!live || capped));
+
   return (
     <section aria-labelledby="report-chat-title" className="flex min-h-0 flex-1 flex-col">
+      {hasHeader && (
       <div className="border-b border-ink-100 px-4 py-2">
-        <p id="report-chat-title" className="text-xs font-semibold uppercase tracking-wide text-ink-500">
-          {t(thread === "desk" ? "chat.v2.title.desk" : thread === "group" ? "chat.v2.title.group" : "chat.title")}
-        </p>
-        {thread && (
-          <p className={`text-xs ${thread === "desk" ? "font-medium text-ink-700" : "text-ink-500"}`}>
-            {t(thread === "desk" ? "chat.v2.deskNote" : "chat.v2.groupNote")}
-          </p>
-        )}
         {thread === "group" && agencyConsentPending && (
-          <p role="note" className="mt-1 text-xs font-medium text-ink-700">
+          <p role="note" className="text-xs font-medium text-ink-700">
             {t("chat.v2.agencyConsentPending")}
           </p>
         )}
-        <p className="text-xs text-ink-500">{t(mediaOn ? "chat.media.closeWarning" : "chat.closeWarning")}</p>
         {thread && state === "ready" && (
-          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+          <div className="flex flex-wrap items-center gap-1.5">
             <span className="text-xs font-medium text-ink-500">{t("chat.v2.openedBy")}</span>
             {openers.length === 0 && <span className="text-xs text-ink-500">{t("chat.v2.openedByNone")}</span>}
             {openers.map((o) => {
@@ -375,6 +373,7 @@ export function ReportChatSection({
         {state === "ready" && !live && <p className="mt-1 text-xs text-ink-500">{t("chat.notLive")}</p>}
         {state === "ready" && capped && <p className="mt-1 text-xs text-ink-500">{t("chat.capped")}</p>}
       </div>
+      )}
 
       {state === "loading" && <p className="flex-1 px-4 py-3 text-sm text-ink-500">{t("chat.loading")}</p>}
       {state === "failed" && <p className="flex-1 px-4 py-3 text-sm text-priority-medium">{t("chat.loadFailed")}</p>}
@@ -384,6 +383,19 @@ export function ReportChatSection({
           className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-4 py-3"
           aria-live="polite"
         >
+          {/* The title and standing notes scroll with the thread rather than
+              staying pinned above it. */}
+          <li className="mb-3 border-b border-ink-100 pb-3">
+            <p id="report-chat-title" className="text-xs font-semibold uppercase tracking-wide text-ink-500">
+              {t(thread === "desk" ? "chat.v2.title.desk" : thread === "group" ? "chat.v2.title.group" : "chat.title")}
+            </p>
+            {thread && (
+              <p className={`text-xs ${thread === "desk" ? "font-medium text-ink-700" : "text-ink-500"}`}>
+                {t(thread === "desk" ? "chat.v2.deskNote" : "chat.v2.groupNote")}
+              </p>
+            )}
+            <p className="text-xs text-ink-500">{t(mediaOn ? "chat.media.closeWarning" : "chat.closeWarning")}</p>
+          </li>
           {messages.length === 0 && (
             // An empty thread says what it is for and how to begin, rather
             // than a bare line that reads like a loading failure.
