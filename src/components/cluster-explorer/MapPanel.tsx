@@ -72,14 +72,11 @@ export function MapPanel({
           <p className="text-xs text-ink-500">{shownLine}</p>
         </div>
         {points.length > 0 && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="min-w-11 shrink-0"
-            onClick={() => setExpanded(true)}
-            aria-label={t("map.expand")}
-          >
+          // The words beside the icon say what the button does: an icon
+          // alone read as decoration (reviewer feedback, October 2026).
+          <Button variant="secondary" size="sm" className="shrink-0" onClick={() => setExpanded(true)}>
             <Icon name="expand" />
+            {t("map.expand")}
           </Button>
         )}
       </div>

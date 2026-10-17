@@ -1075,7 +1075,7 @@ export const MESSAGES = {
     en: "Validate or reject this report from the Queue; the resident's description is shown there.",
     tl: "I-validate o tanggihan ang ulat na ito mula sa Pila ng Ulat; doon ipinapakita ang paglalarawan ng residente.",
   },
-  "map.expand": { en: "Expand map", tl: "Palakihin ang mapa" },
+  "map.expand": { en: "Open larger map", tl: "Buksan ang mas malaking mapa" },
   "map.collapse": { en: "Close the expanded map", tl: "Isara ang pinalaking mapa" },
   "cluster.map.loading": { en: "Loading map…", tl: "Nilo-load ang mapa…" },
   "cluster.map.failed": { en: "Couldn't load the map.", tl: "Hindi na-load ang mapa." },

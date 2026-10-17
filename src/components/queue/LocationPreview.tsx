@@ -54,11 +54,11 @@ export function LocationPreview({
         <Button
           variant="secondary"
           size="sm"
-          className="absolute right-2 top-2 z-10 min-w-11 shadow-panel"
+          className="absolute right-2 top-2 z-10 shadow-panel"
           onClick={() => setOpen(true)}
-          aria-label={t("map.expand")}
         >
           <Icon name="expand" />
+          {t("map.expand")}
         </Button>
       </div>
       <p className="mt-1.5 text-xs text-ink-500">{caption}</p>
