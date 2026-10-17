@@ -231,6 +231,22 @@ export const MESSAGES = {
 
   // --- Report row, review, routing ------------------------------------------
   "row.new": { en: "New", tl: "Bago" },
+  "row.reportId": { en: "Report ID", tl: "Report ID" },
+  "queue.empty.body": {
+    en: "New reports appear here on their own; there is no need to reload.",
+    tl: "Kusang lumilitaw dito ang mga bagong ulat; hindi na kailangang i-reload.",
+  },
+  "queue.empty.filteredBody": {
+    en: "Clear the search box to see every report in this tab.",
+    tl: "Burahin ang hinahanap para makita ang lahat ng ulat sa tab na ito.",
+  },
+  "common.copyId": { en: "Copy report ID {id}", tl: "Kopyahin ang report ID {id}" },
+  "common.copyIdShort": { en: "Copy report ID", tl: "Kopyahin ang report ID" },
+  "common.copied": { en: "Report ID copied", tl: "Nakopya ang report ID" },
+  "common.copyFailed": {
+    en: "Couldn't copy. Select the ID and copy it by hand.",
+    tl: "Hindi nakopya. Piliin ang ID at kopyahin nang mano-mano.",
+  },
   "row.discreet": { en: "Discreet", tl: "Discreet" },
   "row.viewDetails": { en: "View details for {id}", tl: "Tingnan ang detalye ng {id}" },
   "row.resolvedValidated": {

@@ -1,11 +1,12 @@
 "use client";
 
-import { PriorityBadge } from "@/components/ui/Badge";
+import { PriorityBadge, priorityBar } from "@/components/ui/Badge";
 import { ReporterChip } from "@/components/ui/ReporterChip";
 import { Button } from "@/components/ui/Button";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { ReasonPromptModal } from "@/components/ui/ReasonPromptModal";
-import { cx, reportsAlreadyResolved, timeAgo } from "@/lib/utils";
+import { CopyIdButton } from "@/components/ui/CopyIdButton";
+import { cx, manilaDateTime, reportsAlreadyResolved, timeAgo } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { REPORT_CHAT_LIVE } from "@/lib/features";
 import { isChatOffered } from "@/lib/reportChat";
@@ -88,14 +89,19 @@ export function ReportRow({
   // can take instead.
   const resolveButton = (variant: "primary" | "secondary") =>
     canResolveAtBarangay(report, state) && (
-      <Button variant={variant} size="sm" disabled={busy} onClick={barangayResolve.openPrompt}>
+      <Button variant={variant} disabled={busy} onClick={barangayResolve.openPrompt}>
         {t("resolve.button")}
       </Button>
     );
 
   if (resolvedAs) {
     return (
-      <div className="flex items-center justify-between gap-4 border-b border-ink-100 bg-ink-50/60 px-4 py-3 text-sm text-ink-500 last:border-0">
+      <div
+        className={cx(
+          "flex items-center justify-between gap-4 rounded-card border border-l-4 border-ink-100 bg-ink-50 px-5 py-3 text-sm text-ink-500",
+          priorityBar(report.priority)
+        )}
+      >
         <span className="font-mono text-xs">{report.id}</span>
         <span>
           {resolvedAs === "validated" ? t("row.resolvedValidated") : t("status.rejected")}
@@ -116,7 +122,7 @@ export function ReportRow({
         return (
           <>
             <span className="max-w-[14rem] text-right text-xs text-ink-500">{t("cdrrmo.pastReview")}</span>
-            <Button variant="primary" size="sm" disabled={busy} onClick={emergency.openSend}>
+            <Button variant="primary" disabled={busy} onClick={emergency.openSend}>
               {t("cdrrmo.validateConfirm")}
             </Button>
           </>
@@ -129,7 +135,7 @@ export function ReportRow({
               {downstreamSummary(state, t)}
               <span className="block text-priority-medium">{t("cdrrmo.notValidatedHere")}</span>
             </span>
-            <Button variant="primary" size="sm" disabled={busy} onClick={emergency.openRecord}>
+            <Button variant="primary" disabled={busy} onClick={emergency.openRecord}>
               {t("review.validate")}
             </Button>
           </>
@@ -150,7 +156,7 @@ export function ReportRow({
             <span className="text-xs font-medium text-priority-medium">{t("row.routingIncomplete")}</span>
             <Button
               variant="primary"
-              size="sm"
+
               disabled={routing.isPending}
               onClick={routing.openConfirm}
             >
@@ -172,7 +178,7 @@ export function ReportRow({
               state.options.length > 0 && (
                 <Button
                   variant="primary"
-                  size="sm"
+
                   disabled={routing.isPending}
                   onClick={routing.openConfirm}
                 >
@@ -196,7 +202,7 @@ export function ReportRow({
           <>
             {resolveButton("secondary")}
             {state.options.length > 0 && (
-              <Button variant="primary" size="sm" disabled={busy} onClick={routing.openConfirm}>
+              <Button variant="primary" disabled={busy} onClick={routing.openConfirm}>
                 {t("routing.routeToAgency")}
               </Button>
             )}
@@ -226,9 +232,14 @@ export function ReportRow({
 
   return (
     <>
+      {/* One card per report, in the order the reviewer feedback of October
+          2026 asked for: priority and category first, then where the report
+          stands, what it says, when it came in and who sent it, and the id
+          last, where it no longer outshouts the rest. */}
       <div
         className={cx(
-          "flex items-start justify-between gap-4 border-b border-ink-100 px-4 py-3 last:border-0 hover:bg-ink-50/60",
+          "rounded-card border border-l-4 border-ink-100 bg-white shadow-panel",
+          priorityBar(report.priority),
           // The tint fades out on its own; with reduced motion it simply
           // holds until QueueClient drops the flag. Either way the New chip
           // below carries the same fact in words, so nothing is said by
@@ -236,6 +247,7 @@ export function ReportRow({
           justArrived && "motion-safe:animate-arrival motion-reduce:bg-brand-100"
         )}
       >
+        <div className="flex flex-col gap-4 px-4 pb-3 pt-4 sm:px-5 lg:flex-row lg:items-start lg:justify-between">
         {/* The whole summary block opens the detail drawer. A report is
             reviewed on the strength of what it says, and the row only shows a
             truncated line of it. */}
@@ -245,14 +257,22 @@ export function ReportRow({
           className="min-w-0 flex-1 text-left"
           aria-label={t("row.viewDetails", { id: report.id })}
         >
-          <div className="mb-1 flex flex-wrap items-center gap-2">
-            <span className="font-mono text-xs text-ink-500">{report.id}</span>
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <PriorityBadge priority={report.priority} score={report.details.priorityScore} />
+            <span className="text-base font-semibold text-ink-900">{report.category}</span>
+            <span
+              className={cx(
+                "rounded-full px-2 py-0.5 text-xs font-semibold",
+                report.details.status === "resolved" ? "bg-brand-100 text-brand-700" : "bg-ink-100 text-ink-700"
+              )}
+            >
+              {statusLabel(report.details.status, t)}
+            </span>
             {justArrived && (
               <span className="rounded-full bg-brand-500 px-2 py-0.5 text-xs font-semibold text-white">
                 {t("row.new")}
               </span>
             )}
-            <PriorityBadge priority={report.priority} score={report.details.priorityScore} />
             {/* The reporter said it already resolved (the paper's FR-04). It
                 keeps its score and is never routed automatically, so without
                 the mark it reads as an ordinary open emergency. */}
@@ -312,10 +332,9 @@ export function ReportRow({
                 {t("row.discreet")}
               </span>
             )}
-            <span className="text-xs font-medium text-ink-700">{report.category}</span>
           </div>
-          <p className="mb-1.5 truncate text-sm text-ink-900">{report.summary}</p>
-          <div className="flex flex-wrap items-center gap-3 text-xs text-ink-500">
+          <p className="mb-2 line-clamp-2 text-sm text-ink-900">{report.summary}</p>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-500">
             {report.location && (
               <>
                 <span>{report.location}</span>
@@ -324,15 +343,33 @@ export function ReportRow({
             )}
             <span>{now === null ? report.timestamp : timeAgo(report.details.submittedAt, now)}</span>
             <span aria-hidden>·</span>
+            <time dateTime={report.details.submittedAt}>{manilaDateTime(report.details.submittedAt)}</time>
+            <span aria-hidden>·</span>
             <ReporterChip reporter={report.reporter} />
           </div>
         </button>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center gap-2 lg:justify-end">
           {/* The Recent validated tab renders this same row. A report already
               past review shows its routing state instead of review buttons
               that would only fail — and leaving no [data-validate-button]
               behind is also what keeps [Validate next] from landing on a
               decided report. */}
+          {isReviewable(report.details.status) && (
+            <>
+              {/* Reject stands apart from Chat and Validate, after a divider:
+                  it is the negative choice, and a hand reaching for Validate
+                  should not find it next door. With CDRRMO dispatch on, an
+                  Emergency report's Reject goes to validate_emergency_report(). */}
+              <Button
+                variant="danger"
+                disabled={isPending || emergency.isPending}
+                onClick={viaDispatch ? emergency.openReject : openReject}
+              >
+                {t("review.reject")}
+              </Button>
+              <span aria-hidden className="mx-2 hidden h-8 w-px bg-ink-100 sm:block" />
+            </>
+          )}
           {/* Chat stays on the row after validation: the conversation with
               the reporter goes on while agencies handle the report, and the
               staff-only Desk thread exists only once it has been routed.
@@ -340,7 +377,6 @@ export function ReportRow({
           {isChatOffered(REPORT_CHAT_LIVE, report.details.discreetReporting) && (
             <Button
               variant="secondary"
-              size="sm"
               disabled={isPending || busy}
               onClick={onOpenChat}
               aria-label={t("row.chatLabel", { id: report.id })}
@@ -349,34 +385,28 @@ export function ReportRow({
             </Button>
           )}
           {isReviewable(report.details.status) ? (
-            <>
-              {/* With CDRRMO dispatch on, an Emergency report's Validate opens
-                  the agency checklist (it routes the report too) and both go
-                  to validate_emergency_report(). */}
-              <Button
-                variant="secondary"
-                size="sm"
-                disabled={isPending || emergency.isPending}
-                onClick={viaDispatch ? emergency.openReject : openReject}
-              >
-                {t("review.reject")}
-              </Button>
-              {/* data-validate-button: QueueClient's [Validate next] finds the
-                  first one of these to scroll to and focus. */}
-              <Button
-                variant="primary"
-                size="sm"
-                data-validate-button
-                data-report-id={report.id}
-                disabled={isPending || emergency.isPending}
-                onClick={viaDispatch ? emergency.openSend : validate}
-              >
-                {t("review.validate")}
-              </Button>
-            </>
+            // data-validate-button: QueueClient's [Validate next] finds the
+            // first one of these to scroll to and focus. With CDRRMO dispatch
+            // on, an Emergency report's Validate opens the agency checklist
+            // (it routes the report too).
+            <Button
+              variant="primary"
+              data-validate-button
+              data-report-id={report.id}
+              disabled={isPending || emergency.isPending}
+              onClick={viaDispatch ? emergency.openSend : validate}
+            >
+              {t("review.validate")}
+            </Button>
           ) : (
             renderPastReview()
           )}
+        </div>
+        </div>
+        <div className="flex items-center gap-1 border-t border-ink-100 pl-4 pr-2 sm:pl-5">
+          <span className="shrink-0 text-xs text-ink-500">{t("row.reportId")}</span>
+          <span className="min-w-0 truncate font-mono text-xs text-ink-500">{report.id}</span>
+          <CopyIdButton id={report.id} />
         </div>
       </div>
 

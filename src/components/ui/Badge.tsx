@@ -94,3 +94,17 @@ export function Badge({
     </span>
   );
 }
+
+// The coloured bar down a card's left edge, matching its priority badge.
+// Never the only sign of priority: the badge beside the category says it in
+// words. Literal class names, so Tailwind keeps them.
+const PRIORITY_BAR: Record<PriorityTier, string> = {
+  Critical: "border-l-priority-critical",
+  High: "border-l-priority-high",
+  Medium: "border-l-priority-medium",
+  Low: "border-l-priority-low",
+};
+
+export function priorityBar(priority: ReportPriority): string {
+  return priority ? PRIORITY_BAR[priority] : "border-l-ink-300";
+}

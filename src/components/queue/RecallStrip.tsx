@@ -140,9 +140,9 @@ function StripItem({
     <li className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-3 py-2">
       <div className="min-w-0">
         <div className="mb-0.5 flex flex-wrap items-center gap-2">
-          <span className="font-mono text-xs text-ink-500">{report.id}</span>
           <PriorityBadge priority={report.priority} />
-          <span className="text-sm text-ink-900">{report.category}</span>
+          <span className="text-sm font-semibold text-ink-900">{report.category}</span>
+          <span className="font-mono text-xs text-ink-500">{report.id}</span>
           {report.details.responderUnit && (
             <span className="rounded-full bg-ink-100 px-2 py-0.5 text-xs font-semibold text-ink-700">
               {t("recall.responder", { unit: report.details.responderUnit })}

@@ -27,6 +27,7 @@ import { wasRecalled } from "@/components/queue/recallView";
 import { markAutoRoutedSeen } from "@/app/actions/recall";
 import { callAction } from "@/lib/callAction";
 import { Button } from "@/components/ui/Button";
+import { Icon } from "@/components/ui/Icon";
 import { useToast } from "@/components/ui/Toast";
 import { QUEUE_SORTS, isQueueSort, sortReports, type QueueSort } from "@/lib/queue/sortReports";
 import type { QueueReport, QueueTabId } from "@/types";
@@ -960,19 +961,24 @@ export function QueueClient({
         role="tabpanel"
         id={queuePanelDomId(activeTab)}
         aria-labelledby={queueTabDomId(activeTab)}
-        className="overflow-hidden rounded-card border border-ink-100 bg-white shadow-panel"
+        // Separate cards with room between them, not one panel of rows
+        // touching each other (reviewer feedback, October 2026).
+        className="space-y-3"
       >
         {rows.length === 0 ? (
           activeTab === "duplicates" && !isFiltered && !queueData.loadFailed ? (
             <DuplicatesEmpty />
           ) : (
-            <p className="px-4 py-10 text-center text-sm text-ink-500">
-              {isFiltered
-                ? t("queue.noMatch", { query: query.trim() })
-                : queueData.loadFailed
-                  ? t("queue.loadFailedEmpty")
-                  : t("queue.empty")}
-            </p>
+            <QueueEmpty
+              title={
+                isFiltered
+                  ? t("queue.noMatch", { query: query.trim() })
+                  : queueData.loadFailed
+                    ? t("queue.loadFailedEmpty")
+                    : t("queue.empty")
+              }
+              body={isFiltered ? t("queue.empty.filteredBody") : queueData.loadFailed ? null : t("queue.empty.body")}
+            />
           )
         ) : activeTab === "validated" ? (
           // Two groups, because they ask different things of the official:
@@ -1082,11 +1088,23 @@ function DuplicatesEmpty() {
   const t = useT();
   const live = DUPLICATE_WRITEBACK_LIVE;
   return (
-    <div className="px-4 py-10 text-center">
-      <p className="text-sm font-medium text-ink-700">{t(live ? "queue.dup.titleLive" : "queue.dup.title")}</p>
-      <p className="mx-auto mt-1 max-w-md text-xs text-ink-500">
-        {t(live ? "queue.dup.bodyLive" : "queue.dup.body")}
-      </p>
+    <QueueEmpty
+      title={t(live ? "queue.dup.titleLive" : "queue.dup.title")}
+      body={t(live ? "queue.dup.bodyLive" : "queue.dup.body")}
+    />
+  );
+}
+
+// An empty tab, said in a card of its own with an icon, so it reads as a
+// state of the queue and not as a page that failed to draw.
+function QueueEmpty({ title, body }: { title: string; body: string | null }) {
+  return (
+    <div className="rounded-card border border-dashed border-ink-300 bg-white px-6 py-12 text-center">
+      <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-ink-50 text-ink-500">
+        <Icon name="queue" className="h-6 w-6" />
+      </span>
+      <p className="text-base font-medium text-ink-900">{title}</p>
+      {body && <p className="mx-auto mt-1 max-w-md text-sm text-ink-500">{body}</p>}
     </div>
   );
 }
@@ -1102,8 +1120,8 @@ function RowGroup({
 }) {
   if (rows.length === 0) return null;
   return (
-    <section>
-      <h3 className="border-b border-ink-100 bg-ink-50 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-ink-500">
+    <section className="space-y-3 pb-3">
+      <h3 className="pt-2 text-xs font-semibold uppercase tracking-wide text-ink-500">
         {title} &middot; {rows.length}
       </h3>
       {rows.map(renderRow)}

@@ -6,6 +6,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ClipboardCheck,
+  Copy,
   FileText,
   Inbox,
   Layers,
@@ -53,7 +54,8 @@ export type IconName =
   | "play"
   | "previous"
   | "next"
-  | "chevron-down";
+  | "chevron-down"
+  | "copy";
 
 /**
  * The console's icons, from Lucide (lucide-react, ISC licence).
@@ -89,6 +91,7 @@ const ICONS: Record<IconName, LucideIcon> = {
   previous: ChevronLeft, // the previous photo in the chat viewer
   next: ChevronRight, // the next one
   "chevron-down": ChevronDown, // a button that opens a list
+  copy: Copy, // copy a report id
 };
 
 export function Icon({ name, className }: { name: IconName; className?: string }) {

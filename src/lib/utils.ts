@@ -307,6 +307,26 @@ export function manilaDate(isoString: string): string {
 }
 
 /**
+ * A date and time for the screen, in Manila: [Oct 17, 2026, 14:05]. Pinned to
+ * Manila even in the browser: Validation History formats the same instants
+ * on the server in Asia/Manila, and an official whose laptop is set to
+ * another zone would otherwise see the two disagree.
+ */
+export function manilaDateTime(isoString: string): string {
+  const parsed = new Date(isoString);
+  if (Number.isNaN(parsed.getTime())) return isoString;
+  return parsed.toLocaleString("en-US", {
+    timeZone: "Asia/Manila",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
+/**
  * An exact timestamp in Manila, keeping its offset: `2026-09-16T15:54:43+08:00`.
  *
  * For files that leave the console. Everything on screen is Manila (see

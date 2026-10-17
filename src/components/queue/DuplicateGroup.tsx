@@ -32,8 +32,8 @@ export function DuplicateGroup({
 
   const headingId = `duplicate-group-${cluster.id}`;
   return (
-    <section aria-labelledby={headingId} className="border-b border-ink-100 last:border-0">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-ink-100 bg-ink-50 px-4 py-2.5">
+    <section aria-labelledby={headingId} className="space-y-3 pb-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-ink-100 bg-ink-50 px-4 py-3">
         <div className="min-w-0">
           <h3 id={headingId} className="text-xs font-semibold uppercase tracking-wide text-ink-500">
             {t("queue.dupGroup.title", { count: cluster.memberCount })}

@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { ReporterChip } from "@/components/ui/ReporterChip";
-import { PriorityBadge } from "@/components/ui/Badge";
+import { PriorityBadge, priorityBar } from "@/components/ui/Badge";
 import { useLang, useT } from "@/lib/i18n";
-import { timeAgo } from "@/lib/utils";
+import { cx, timeAgo } from "@/lib/utils";
 import { ValidateClusterButton } from "./ValidateClusterButton";
 import type { SituationCluster } from "@/types";
 
@@ -80,16 +80,23 @@ export function ClusterCard({
           actions this card doesn't have; validating is the only one. */}
       {lang === "en" && <p className="px-4 pt-2 text-xs text-ink-500">Mga aksyon &middot; pag-verify</p>}
 
-      <div className="divide-y divide-priority-critical/10">
+      {/* Members in the same order as a queue card: priority and category,
+          what it says, when and who, then the id. */}
+      <div className="space-y-2 p-3">
         {cluster.members.map((member) => (
-          <div key={member.id} className="flex items-start justify-between gap-4 px-4 py-2.5">
+          <div
+            key={member.id}
+            className={cx(
+              "flex items-start justify-between gap-4 rounded-card border border-l-4 border-ink-100 bg-white px-4 py-3",
+              priorityBar(member.priority)
+            )}
+          >
             <div className="min-w-0 flex-1">
               <div className="mb-1 flex flex-wrap items-center gap-2">
-                <span className="font-mono text-xs text-ink-500">{member.id}</span>
                 <PriorityBadge priority={member.priority} />
-                <span className="text-xs font-medium text-ink-700">{member.category}</span>
+                <span className="text-sm font-semibold text-ink-900">{member.category}</span>
               </div>
-              <p className="mb-1.5 truncate text-sm text-ink-900">{member.summary}</p>
+              <p className="mb-1.5 line-clamp-2 text-sm text-ink-900">{member.summary}</p>
               <div className="flex flex-wrap items-center gap-3 text-xs text-ink-500">
                 {member.location && (
                   <>
@@ -100,6 +107,8 @@ export function ClusterCard({
                 <span>{now === null ? member.timestamp : timeAgo(member.details.submittedAt, now)}</span>
                 <span aria-hidden>·</span>
                 <ReporterChip reporter={member.reporter} />
+                <span aria-hidden>·</span>
+                <span className="font-mono">{member.id}</span>
               </div>
             </div>
           </div>

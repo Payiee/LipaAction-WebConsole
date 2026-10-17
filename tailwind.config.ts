@@ -84,7 +84,8 @@ const config: Config = {
           // Holds the tint long enough to be noticed if the official looked
           // away, then clears itself.
           "0%, 55%": { backgroundColor: "#dbeee0" },
-          "100%": { backgroundColor: "transparent" },
+          // White, not transparent: each report is a white card now.
+          "100%": { backgroundColor: "#ffffff" },
         },
         toastIn: {
           "0%": { opacity: "0", transform: "translateY(6px)" },
