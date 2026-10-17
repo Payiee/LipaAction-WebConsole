@@ -242,6 +242,7 @@ export const MESSAGES = {
   },
   "common.copyId": { en: "Copy report ID {id}", tl: "Kopyahin ang report ID {id}" },
   "common.copyIdShort": { en: "Copy report ID", tl: "Kopyahin ang report ID" },
+  "common.copy": { en: "Copy", tl: "Kopyahin" },
   "common.copied": { en: "Report ID copied", tl: "Nakopya ang report ID" },
   "common.copyFailed": {
     en: "Couldn't copy. Select the ID and copy it by hand.",

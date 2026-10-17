@@ -459,7 +459,7 @@ export function ReportDetailPanel({
             <p id="report-detail-title" className="text-base font-semibold text-ink-900">
               {report.category}
             </p>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2">
               <p className="truncate font-mono text-xs text-ink-500">{report.id}</p>
               <CopyIdButton id={report.id} />
             </div>

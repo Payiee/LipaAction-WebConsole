@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ReporterChip } from "@/components/ui/ReporterChip";
+import { CopyIdButton } from "@/components/ui/CopyIdButton";
 import { PriorityBadge, priorityBar } from "@/components/ui/Badge";
 import { useLang, useT } from "@/lib/i18n";
 import { cx, timeAgo } from "@/lib/utils";
@@ -86,12 +87,9 @@ export function ClusterCard({
         {cluster.members.map((member) => (
           <div
             key={member.id}
-            className={cx(
-              "flex items-start justify-between gap-4 rounded-card border border-l-4 border-ink-100 bg-white px-4 py-3",
-              priorityBar(member.priority)
-            )}
+            className={cx("rounded-card border border-l-4 border-ink-100 bg-white", priorityBar(member.priority))}
           >
-            <div className="min-w-0 flex-1">
+            <div className="min-w-0 px-4 pb-2 pt-3">
               <div className="mb-1 flex flex-wrap items-center gap-2">
                 <PriorityBadge priority={member.priority} />
                 <span className="text-sm font-semibold text-ink-900">{member.category}</span>
@@ -107,9 +105,12 @@ export function ClusterCard({
                 <span>{now === null ? member.timestamp : timeAgo(member.details.submittedAt, now)}</span>
                 <span aria-hidden>·</span>
                 <ReporterChip reporter={member.reporter} />
-                <span aria-hidden>·</span>
-                <span className="font-mono">{member.id}</span>
               </div>
+            </div>
+            <div className="flex items-center gap-2 border-t border-ink-100 pl-4 pr-2">
+              <span className="shrink-0 text-xs text-ink-500">{t("row.reportId")}</span>
+              <span className="min-w-0 truncate font-mono text-xs text-ink-500">{member.id}</span>
+              <CopyIdButton id={member.id} />
             </div>
           </div>
         ))}

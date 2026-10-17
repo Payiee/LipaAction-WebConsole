@@ -6,8 +6,8 @@ import { Icon } from "./Icon";
 
 /**
  * Copies a report id, for an official who needs to quote it to an agency or
- * look it up later. A 44 px icon button; its label names the id, so a screen
- * reader says which report it copies.
+ * look it up later. The word Copy beside the icon says what it does; its
+ * label names the id, so a screen reader says which report it copies.
  */
 export function CopyIdButton({ id }: { id: string }) {
   const t = useT();
@@ -30,9 +30,10 @@ export function CopyIdButton({ id }: { id: string }) {
       onClick={() => void copy()}
       aria-label={t("common.copyId", { id })}
       title={t("common.copyIdShort")}
-      className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-ink-500 hover:bg-ink-100 hover:text-ink-900"
+      className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-md px-3 text-xs font-medium text-ink-700 hover:bg-ink-100 hover:text-ink-900"
     >
       <Icon name="copy" />
+      <span aria-hidden>{t("common.copy")}</span>
     </button>
   );
 }

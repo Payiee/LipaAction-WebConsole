@@ -403,7 +403,7 @@ export function ReportRow({
           )}
         </div>
         </div>
-        <div className="flex items-center gap-1 border-t border-ink-100 pl-4 pr-2 sm:pl-5">
+        <div className="flex items-center gap-2 border-t border-ink-100 pl-4 pr-2 sm:pl-5">
           <span className="shrink-0 text-xs text-ink-500">{t("row.reportId")}</span>
           <span className="min-w-0 truncate font-mono text-xs text-ink-500">{report.id}</span>
           <CopyIdButton id={report.id} />
