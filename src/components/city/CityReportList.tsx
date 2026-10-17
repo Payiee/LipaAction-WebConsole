@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { PriorityBadge } from "@/components/ui/Badge";
+import { PriorityBadge, priorityBar } from "@/components/ui/Badge";
+import { CopyIdButton } from "@/components/ui/CopyIdButton";
 import { Button } from "@/components/ui/Button";
 import { FilterBar, FilterGroup } from "@/components/ui/FilterGroup";
 import { CategoryMultiSelect, matchesCategories } from "@/components/ui/CategoryMultiSelect";
@@ -160,58 +161,68 @@ export function CityReportList({ data }: { data: CityReportsData }) {
           </EmptyState>
         )
       ) : (
-        <div className="overflow-x-auto rounded-card border border-ink-100 bg-white shadow-panel">
-          <table className="w-full min-w-[860px] text-left text-sm">
-            <caption className="sr-only">{t("city.reports.caption")}</caption>
-            <thead>
-              <tr className="border-b border-ink-100 bg-ink-50 text-xs uppercase tracking-wide text-ink-500">
-                <th scope="col" className="px-4 py-2.5 font-semibold">{t("city.reports.col.submitted")}</th>
-                <th scope="col" className="px-4 py-2.5 font-semibold">{t("city.col.barangay")}</th>
-                <th scope="col" className="px-4 py-2.5 font-semibold">{t("reports.col.category")}</th>
-                <th scope="col" className="px-4 py-2.5 font-semibold">{t("drawer.priority")}</th>
-                <th scope="col" className="px-4 py-2.5 font-semibold">{t("drawer.status")}</th>
-                <th scope="col" className="px-4 py-2.5 font-semibold">{t("city.reports.col.agencies")}</th>
-                <th scope="col" className="px-4 py-2.5 font-semibold">
-                  <span className="sr-only">{t("city.reports.col.open")}</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {shown.map((r) => (
-                <tr key={r.id} className="border-b border-ink-100 last:border-0">
-                  <td className="whitespace-nowrap px-4 py-2.5 text-xs text-ink-700">{formatTimestamp(r.submittedAt)}</td>
-                  <td className="px-4 py-2.5 text-xs text-ink-900">{barangayOf(r, t)}</td>
-                  <th scope="row" className="px-4 py-2.5 text-xs font-medium text-ink-900">
-                    {r.category}
+        // One card per report, as on the barangay queue: a priority bar down
+        // the left, priority and category first, where it stands, which
+        // barangay and when, the agencies holding it, and the id last with a
+        // copy button. Still no description: the resident's own words are
+        // only in the drawer, whose opening is logged.
+        <ul aria-label={t("city.reports.caption")} className="space-y-3">
+          {shown.map((r) => (
+            <li
+              key={r.id}
+              className={cx("rounded-card border border-l-4 border-ink-100 bg-white shadow-panel", priorityBar(r.priority))}
+            >
+              <div className="flex flex-col gap-3 px-4 pb-3 pt-4 sm:flex-row sm:items-start sm:justify-between sm:px-5">
+                <div className="min-w-0 flex-1">
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <PriorityBadge priority={r.priority} score={r.priorityScore} />
+                    <span className="text-base font-semibold text-ink-900">{r.category}</span>
+                    <span
+                      className={cx(
+                        "rounded-full px-2 py-0.5 text-xs font-semibold",
+                        r.status === "resolved" ? "bg-brand-100 text-brand-700" : "bg-ink-100 text-ink-700"
+                      )}
+                    >
+                      {statusLabel(r.status, t)}
+                    </span>
                     {r.discreetReporting && (
                       <span
                         title={t("drawer.discreetBanner")}
-                        className="ml-2 rounded-full bg-priority-mediumBg px-2 py-0.5 text-xs font-semibold text-priority-medium"
+                        className="rounded-full bg-priority-mediumBg px-2 py-0.5 text-xs font-semibold text-priority-medium"
                       >
                         {t("row.discreet")}
                       </span>
                     )}
-                  </th>
-                  <td className="px-4 py-2.5">
-                    <PriorityBadge priority={r.priority} score={r.priorityScore} />
-                  </td>
-                  <td className="px-4 py-2.5 text-xs text-ink-700">{statusLabel(r.status, t)}</td>
-                  <td className="px-4 py-2.5 text-xs text-ink-700">{agencySummary(r, t)}</td>
-                  <td className="px-4 py-2.5 text-right">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => setOpenId(r.id)}
-                      aria-label={t("row.viewDetails", { id: r.id })}
-                    >
-                      {t("city.reports.open")}
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ink-700">
+                    <span>{barangayOf(r, t)}</span>
+                    <span aria-hidden className="text-ink-300">·</span>
+                    <time dateTime={r.submittedAt} className="text-ink-500">
+                      {formatTimestamp(r.submittedAt)}
+                    </time>
+                  </div>
+                  <p className="mt-1 text-sm text-ink-700">
+                    <span className="text-ink-500">{t("city.reports.col.agencies")}: </span>
+                    {agencySummary(r, t)}
+                  </p>
+                </div>
+                <Button
+                  variant="secondary"
+                  className="shrink-0"
+                  onClick={() => setOpenId(r.id)}
+                  aria-label={t("row.viewDetails", { id: r.id })}
+                >
+                  {t("city.reports.open")}
+                </Button>
+              </div>
+              <div className="flex items-center gap-2 border-t border-ink-100 pl-4 pr-2 sm:pl-5">
+                <span className="shrink-0 text-xs text-ink-500">{t("row.reportId")}</span>
+                <span className="min-w-0 truncate font-mono text-xs text-ink-500">{r.id}</span>
+                <CopyIdButton id={r.id} />
+              </div>
+            </li>
+          ))}
+        </ul>
       )}
 
       <p className="mt-3 text-xs text-ink-500">
