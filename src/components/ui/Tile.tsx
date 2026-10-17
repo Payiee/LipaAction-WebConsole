@@ -15,11 +15,11 @@ export function Tile({
       : "text-ink-900";
 
   return (
-    <div className="flex min-w-[120px] flex-col gap-0.5 rounded-card border border-ink-100 bg-white px-4 py-2.5 shadow-panel">
-      <span className="text-[11px] font-medium uppercase tracking-wide text-ink-500">
+    <div className="flex min-w-[140px] flex-col gap-1 rounded-card border border-ink-100 bg-white px-5 py-3.5 shadow-panel">
+      <span className="text-xs font-medium uppercase tracking-wide text-ink-500">
         {label}
       </span>
-      <span className={`text-xl font-semibold ${accentText}`}>{value}</span>
+      <span className={`text-2xl font-semibold tabular-nums ${accentText}`}>{value}</span>
     </div>
   );
 }

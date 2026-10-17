@@ -101,7 +101,7 @@ export function AuditLogClient({
                 <CategoryMultiSelect options={categoryOptions} chosen={categories} onChange={setCategories} />
               </div>
             )}
-            <p className="text-[11px] text-ink-500">{t("export.recordedNote")}</p>
+            <p className="text-xs text-ink-500">{t("export.recordedNote")}</p>
             <Button variant="secondary" size="sm" disabled={busy || loadFailed} onClick={handleExport}>
               {busy ? t("common.working") : t("history.export")}
             </Button>

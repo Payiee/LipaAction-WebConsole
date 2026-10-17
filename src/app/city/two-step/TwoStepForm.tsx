@@ -101,7 +101,7 @@ export function TwoStepForm({ email, hasAuthenticator }: { email: string | null;
           </span>
           <div className="leading-tight">
             <p className="text-sm font-semibold text-ink-900">LipaAction</p>
-            <p className="text-[11px] text-ink-500">City console</p>
+            <p className="text-xs text-ink-500">City console</p>
           </div>
         </div>
 
@@ -141,7 +141,7 @@ export function TwoStepForm({ email, hasAuthenticator }: { email: string | null;
                   <span className="mt-2 block text-ink-500">
                     {setup.qr ? "Can't scan it? Type this key into the app instead:" : "Type this key into the app:"}
                   </span>
-                  <code className="mt-1 block select-all break-all rounded-md bg-ink-50 px-2 py-1.5 font-mono text-[11px] text-ink-900">
+                  <code className="mt-1 block select-all break-all rounded-md bg-ink-50 px-2 py-1.5 font-mono text-xs text-ink-900">
                     {grouped(setup.secret)}
                   </code>
                   <span className="mt-2 block text-ink-500">
@@ -184,7 +184,7 @@ export function TwoStepForm({ email, hasAuthenticator }: { email: string | null;
               {busy ? "Checking…" : setup ? "Finish set-up" : "Continue"}
             </Button>
             {!setup && (
-              <p className="mt-3 text-[11px] text-ink-500">
+              <p className="mt-3 text-xs text-ink-500">
                 Lost the phone with your authenticator app? Ask the system&apos;s administrator to reset two-step
                 sign-in for your account.
               </p>
@@ -198,7 +198,7 @@ export function TwoStepForm({ email, hasAuthenticator }: { email: string | null;
         </p>
 
         <div className="mt-2 border-t border-ink-100 pt-3 text-center">
-          {email && <p className="text-[11px] text-ink-500">Signed in as {email}</p>}
+          {email && <p className="text-xs text-ink-500">Signed in as {email}</p>}
           <form action={signOut}>
             <button
               type="submit"

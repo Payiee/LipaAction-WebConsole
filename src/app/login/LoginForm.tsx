@@ -198,7 +198,7 @@ export function LoginForm() {
           </span>
           <div className="leading-tight">
             <p className="text-sm font-semibold text-ink-900">LipaAction</p>
-            <p className="text-[11px] text-ink-500">Barangay console</p>
+            <p className="text-xs text-ink-500">Barangay console</p>
           </div>
         </div>
 
@@ -249,7 +249,7 @@ export function LoginForm() {
               I already have a code
             </button>
 
-            <p className="mt-4 text-center text-[11px] text-ink-500">
+            <p className="mt-4 text-center text-xs text-ink-500">
               For barangay officials and city administrators only. Agency staff use the agency
               console, and residents use the LipaAction mobile app.
             </p>

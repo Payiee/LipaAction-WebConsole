@@ -143,7 +143,7 @@ export function AgencyPickerModal({
                   />
                   <span className="min-w-0 flex-1">{option.agencyName}</span>
                   {recommended.includes(option.agencyId) && (
-                    <span className="shrink-0 rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-semibold text-brand-700">
+                    <span className="shrink-0 rounded-full bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-700">
                       {t("choose.recommendedTag")}
                     </span>
                   )}
@@ -154,11 +154,11 @@ export function AgencyPickerModal({
           </div>
         </fieldset>
         {note && (
-          <p id="agency-picker-note" className="mb-1 text-[11px] text-ink-500">
+          <p id="agency-picker-note" className="mb-1 text-xs text-ink-500">
             {note}
           </p>
         )}
-        <p className="mb-4 text-[11px] text-ink-500">{hint ?? t("reroute.leadHint")}</p>
+        <p className="mb-4 text-xs text-ink-500">{hint ?? t("reroute.leadHint")}</p>
 
         <div className="flex justify-end gap-2">
           <Button variant="secondary" size="sm" disabled={busy} onClick={onCancel}>

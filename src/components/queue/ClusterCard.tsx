@@ -50,7 +50,7 @@ export function ClusterCard({
         <div className="flex items-center gap-2">
           {/* One category names the group; several are said as mixed, and each
               member row below names its own. */}
-          <span className="rounded-full bg-priority-critical px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white">
+          <span className="rounded-full bg-priority-critical px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-white">
             {cluster.categories.length === 1 ? cluster.categories[0] : t("cluster.mixedCategories")}
           </span>
           <span className="text-sm font-medium text-ink-900">{summary}</span>

@@ -100,7 +100,7 @@ export function MapPanel({
         </MapLightbox>
       )}
 
-      <div className="border-t border-ink-100 px-3 py-2.5 text-[11px] text-ink-500">
+      <div className="border-t border-ink-100 px-3 py-2.5 text-xs text-ink-500">
         <p>{t("cluster.map.area", { name: cluster.centroidLabel })}</p>
         {points.length > 0 && <p className="mt-1">{t("cluster.map.tapHint")}</p>}
         {hiddenCount > 0 && <p className="mt-1">{t("cluster.map.hiddenNote", { count: hiddenCount })}</p>}

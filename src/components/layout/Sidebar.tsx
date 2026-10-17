@@ -117,7 +117,7 @@ export function Sidebar({
         </span>
         <div className="leading-tight">
           <p className="text-sm font-semibold text-ink-900">LipaAction</p>
-          <p className="text-[11px] text-ink-500">
+          <p className="text-xs text-ink-500">
             {t(isBarangay ? "shell.consoleName" : "shell.cityConsoleName")}
           </p>
         </div>
@@ -127,7 +127,7 @@ export function Sidebar({
         {groups.map((group, i) => (
           <div key={group.heading ?? i}>
             {group.heading && (
-              <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-ink-500">
+              <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-ink-500">
                 {t(group.heading)}
               </p>
             )}
@@ -151,7 +151,7 @@ export function Sidebar({
         </span>
         <div className="min-w-0 leading-tight">
           <p className="truncate text-xs font-semibold text-ink-900">{name}</p>
-          <p className="truncate text-[11px] text-ink-500">
+          <p className="truncate text-xs text-ink-500">
             {t(`role.${official.role}`)} · {isBarangay ? official.barangayName : t("city.scope")}
           </p>
         </div>

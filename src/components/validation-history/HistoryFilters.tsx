@@ -183,7 +183,7 @@ export function HistoryFilters({
           {busy ? t("common.working") : t("history.export")}
         </Button>
         <PrintButton section="history" record={{ what: "validation_history_print", rows: records.length }} />
-        <p className="basis-full text-right text-[11px] text-ink-500">{t("export.recordedNote")}</p>
+        <p className="basis-full text-right text-xs text-ink-500">{t("export.recordedNote")}</p>
       </div>
     </div>
   );

@@ -96,7 +96,7 @@ export function AuditTable({
         <table className="w-full min-w-[640px] text-left text-sm">
           <caption className="sr-only">{t("audit.caption")}</caption>
           <thead>
-            <tr className="border-b border-ink-100 bg-ink-50 text-[11px] uppercase tracking-wide text-ink-500">
+            <tr className="border-b border-ink-100 bg-ink-50 text-xs uppercase tracking-wide text-ink-500">
               <th scope="col" className="px-4 py-2.5 font-semibold">{t("field.timestamp")}</th>
               <th scope="col" className="px-4 py-2.5 font-semibold">{t("audit.col.action")}</th>
               <th scope="col" className="px-4 py-2.5 font-semibold">{t("audit.col.role")}</th>
@@ -125,11 +125,11 @@ export function AuditTable({
                       <div className="leading-tight">
                         <p className="font-mono text-xs text-ink-700">{entry.reportId}</p>
                         {entry.category && (
-                          <p className="text-[11px] text-ink-500">{entry.category}</p>
+                          <p className="text-xs text-ink-500">{entry.category}</p>
                         )}
                       </div>
                     ) : (
-                      <span className="text-[11px] text-ink-500">{t("audit.reportGone")}</span>
+                      <span className="text-xs text-ink-500">{t("audit.reportGone")}</span>
                     )}
                   </td>
                 </tr>

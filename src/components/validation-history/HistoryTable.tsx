@@ -35,7 +35,7 @@ export function HistoryTable({
       <table className="w-full min-w-[800px] text-left text-sm print:min-w-0">
         <caption className="sr-only">{t("history.caption")}</caption>
         <thead>
-          <tr className="border-b border-ink-100 bg-ink-50 text-[11px] uppercase tracking-wide text-ink-500">
+          <tr className="border-b border-ink-100 bg-ink-50 text-xs uppercase tracking-wide text-ink-500">
             <th scope="col" className="px-4 py-2.5 font-semibold">{t("history.col.report")}</th>
             <th scope="col" className="px-4 py-2.5 font-semibold">{t("reports.col.category")}</th>
             <th scope="col" className="px-4 py-2.5 font-semibold">{t("drawer.priority")}</th>
@@ -59,7 +59,7 @@ export function HistoryTable({
                 <span className="text-xs text-ink-700">{record.category}</span>
                 {/* Intake tier, kept as plain text so it can't be mistaken for
                     a second priority reading. */}
-                <p className="mt-0.5 text-[11px] text-ink-500">
+                <p className="mt-0.5 text-xs text-ink-500">
                   {t(`history.tier.${record.entryTier}`)}
                 </p>
               </td>
@@ -82,7 +82,7 @@ export function HistoryTable({
                     agency, resolved, sent back. Absent on a rejection, and
                     when the agency rows couldn't be read. */}
                 {record.resolution && (
-                  <p className="mt-1 text-[11px] text-ink-500">{t(RESOLUTION_LABELS[record.resolution])}</p>
+                  <p className="mt-1 text-xs text-ink-500">{t(RESOLUTION_LABELS[record.resolution])}</p>
                 )}
                 {/* What the desk wrote when it closed the report itself. */}
                 {record.resolutionNote && (

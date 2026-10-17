@@ -144,7 +144,7 @@ function StripItem({
           <PriorityBadge priority={report.priority} />
           <span className="text-sm text-ink-900">{report.category}</span>
           {report.details.responderUnit && (
-            <span className="rounded-full bg-ink-100 px-2 py-0.5 text-[11px] font-semibold text-ink-700">
+            <span className="rounded-full bg-ink-100 px-2 py-0.5 text-xs font-semibold text-ink-700">
               {t("recall.responder", { unit: report.details.responderUnit })}
             </span>
           )}

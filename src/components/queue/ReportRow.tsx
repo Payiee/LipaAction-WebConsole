@@ -248,7 +248,7 @@ export function ReportRow({
           <div className="mb-1 flex flex-wrap items-center gap-2">
             <span className="font-mono text-xs text-ink-500">{report.id}</span>
             {justArrived && (
-              <span className="rounded-full bg-brand-500 px-2 py-0.5 text-[11px] font-semibold text-white">
+              <span className="rounded-full bg-brand-500 px-2 py-0.5 text-xs font-semibold text-white">
                 {t("row.new")}
               </span>
             )}
@@ -259,7 +259,7 @@ export function ReportRow({
             {isReviewable(report.details.status) && reportsAlreadyResolved(report.details.safetyNetConfirmation) && (
               <span
                 title={t("row.alreadyResolvedTitle")}
-                className="rounded-full bg-priority-mediumBg px-2 py-0.5 text-[11px] font-semibold text-priority-medium"
+                className="rounded-full bg-priority-mediumBg px-2 py-0.5 text-xs font-semibold text-priority-medium"
               >
                 {t("row.alreadyResolved")}
               </span>
@@ -268,14 +268,14 @@ export function ReportRow({
                 sent back: its age and score would otherwise make it look like
                 any other report waiting for a first look. */}
             {isReviewable(report.details.status) && everyAgencyReturned(report.details.routing) && (
-              <span className="rounded-full bg-priority-mediumBg px-2 py-0.5 text-[11px] font-semibold text-priority-medium">
+              <span className="rounded-full bg-priority-mediumBg px-2 py-0.5 text-xs font-semibold text-priority-medium">
                 {t("row.returnedChip")}
               </span>
             )}
             {/* Back in the queue because this barangay recalled it from the
                 agencies (RECALL-UI). */}
             {isReviewable(report.details.status) && wasRecalled(report) && (
-              <span className="rounded-full bg-priority-mediumBg px-2 py-0.5 text-[11px] font-semibold text-priority-medium">
+              <span className="rounded-full bg-priority-mediumBg px-2 py-0.5 text-xs font-semibold text-priority-medium">
                 {t("row.recalledChip")}
               </span>
             )}
@@ -286,7 +286,7 @@ export function ReportRow({
             {isAutoRouted(state) && (
               <span
                 title={t(escalated ? "drawer.escalated" : "drawer.autoRouted")}
-                className="rounded-full bg-ink-100 px-2 py-0.5 text-[11px] font-semibold text-ink-700"
+                className="rounded-full bg-ink-100 px-2 py-0.5 text-xs font-semibold text-ink-700"
               >
                 {t(escalated ? "row.escalated" : "row.autoRouted")}
               </span>
@@ -294,12 +294,12 @@ export function ReportRow({
             {/* The countdown and the button live in the strip and the
                 drawer; the row only says the window is open. */}
             {recallOpen && (
-              <span className="rounded-full bg-priority-mediumBg px-2 py-0.5 text-[11px] font-semibold text-priority-medium">
+              <span className="rounded-full bg-priority-mediumBg px-2 py-0.5 text-xs font-semibold text-priority-medium">
                 {t("row.recallOpen")}
               </span>
             )}
             {report.details.responderUnit && (
-              <span className="rounded-full bg-ink-100 px-2 py-0.5 text-[11px] font-semibold text-ink-700">
+              <span className="rounded-full bg-ink-100 px-2 py-0.5 text-xs font-semibold text-ink-700">
                 {t("recall.responder", { unit: report.details.responderUnit })}
               </span>
             )}
@@ -307,7 +307,7 @@ export function ReportRow({
             {report.details.discreetReporting && (
               <span
                 title={t("drawer.discreetBanner")}
-                className="rounded-full bg-priority-mediumBg px-2 py-0.5 text-[11px] font-semibold text-priority-medium"
+                className="rounded-full bg-priority-mediumBg px-2 py-0.5 text-xs font-semibold text-priority-medium"
               >
                 {t("row.discreet")}
               </span>

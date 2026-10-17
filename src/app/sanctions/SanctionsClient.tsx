@@ -154,7 +154,7 @@ export function SanctionsClient({
               name: the thesis's state-change checklist and role-gate banner. */}
           <div className="mb-3 rounded-md border border-ink-100 px-3 py-2">
             <p className="mb-1 text-xs font-medium text-ink-700">{t("sanctions.lift.effects")}</p>
-            <ul className="list-disc space-y-0.5 pl-4 text-[11px] text-ink-700">
+            <ul className="list-disc space-y-0.5 pl-4 text-xs text-ink-700">
               <li>{t("sanctions.lift.effect.score")}</li>
               <li>{t("sanctions.lift.effect.ends")}</li>
               <li>
@@ -164,7 +164,7 @@ export function SanctionsClient({
               <li>{t("sanctions.lift.effect.recorded")}</li>
             </ul>
           </div>
-          <p role="note" className="mb-3 rounded-md bg-ink-50 px-3 py-2 text-[11px] text-ink-700">
+          <p role="note" className="mb-3 rounded-md bg-ink-50 px-3 py-2 text-xs text-ink-700">
             {t("sanctions.gate")}{" "}
             {t("sanctions.lift.actor", { name: displayName(official.fullName), role: t(`role.${official.role}`) })}
           </p>

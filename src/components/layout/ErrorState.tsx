@@ -67,7 +67,7 @@ export function ErrorState({
         </div>
 
         {error.digest && (
-          <p className="mt-5 font-mono text-[11px] text-ink-500">Reference: {error.digest}</p>
+          <p className="mt-5 font-mono text-xs text-ink-500">Reference: {error.digest}</p>
         )}
       </div>
     </div>

@@ -5,7 +5,7 @@ import type { ValidationSummary } from "@/types";
 export function SummaryTiles({ summary }: { summary: ValidationSummary }) {
   const t = useT();
   return (
-    <div className="mb-4 flex flex-wrap gap-3">
+    <div className="mb-6 flex flex-wrap gap-4">
       <Tile label={t("history.tile.total")} value={summary.total} />
       <Tile label={t("history.tile.confirmed")} value={summary.confirmed} accent="brand" />
       <Tile label={t("history.tile.rejected")} value={summary.rejected} accent="critical" />

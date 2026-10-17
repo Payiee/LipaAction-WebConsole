@@ -176,7 +176,7 @@ export function VerificationActivity({
           <table className="w-full min-w-[720px] text-left text-sm print:min-w-0">
             <caption className="sr-only">{t("reports.verification.caption", { range })}</caption>
             <thead>
-              <tr className="border-b border-ink-100 bg-ink-50 text-[11px] uppercase tracking-wide text-ink-500">
+              <tr className="border-b border-ink-100 bg-ink-50 text-xs uppercase tracking-wide text-ink-500">
                 <th scope="col" className="px-4 py-2.5 font-semibold">{t("city.access.col.who")}</th>
                 <th scope="col" className="px-4 py-2.5 text-right font-semibold">{t("reports.verification.col.promotions")}</th>
                 <th scope="col" className="px-4 py-2.5 text-right font-semibold">{t("verify.method.in_person")}</th>
@@ -197,7 +197,7 @@ export function VerificationActivity({
                       <p className="text-xs font-medium text-ink-900">
                         {o.name ?? t(data.namesUnavailable ? "city.access.nameUnavailable" : "city.access.unnamed")}
                       </p>
-                      {o.role && <p className="text-[11px] text-ink-500">{role ? t(role) : o.role}</p>}
+                      {o.role && <p className="text-xs text-ink-500">{role ? t(role) : o.role}</p>}
                     </th>
                     <td className="px-4 py-2.5 text-right tabular-nums text-ink-900">{o.promotions}</td>
                     <td className="px-4 py-2.5 text-right tabular-nums text-ink-700">{o.inPerson}</td>

@@ -1103,7 +1103,7 @@ function RowGroup({
   if (rows.length === 0) return null;
   return (
     <section>
-      <h3 className="border-b border-ink-100 bg-ink-50 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-ink-500">
+      <h3 className="border-b border-ink-100 bg-ink-50 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-ink-500">
         {title} &middot; {rows.length}
       </h3>
       {rows.map(renderRow)}

@@ -23,7 +23,7 @@ export function KpiHeader({
 }) {
   const t = useT();
   return (
-    <div className="mb-4 flex flex-wrap gap-3">
+    <div className="mb-6 flex flex-wrap gap-4">
       <Tile label={t("queue.kpi.fastTriage")} value={summary.fastTriageCount} accent="critical" />
       <Tile label={t("queue.kpi.standard")} value={summary.standardIntakeCount} />
       {duplicateCount !== undefined && <Tile label={t("queue.kpi.duplicates")} value={duplicateCount} />}

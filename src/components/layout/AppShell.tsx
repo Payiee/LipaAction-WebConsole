@@ -64,7 +64,7 @@ export function AppShell({
             Without it, a label far down a long list was placed against the
             whole document instead, escaped this area's clipping and gave the
             page a second scrollbar onto blank space below the shell. */}
-        <main id="main-content" className="relative flex-1 overflow-y-auto px-4 py-5 sm:px-6 print:overflow-visible print:p-0">
+        <main id="main-content" className="relative flex-1 overflow-y-auto px-4 py-6 sm:px-8 sm:py-8 print:overflow-visible print:p-0">
           {children}
         </main>
       </div>

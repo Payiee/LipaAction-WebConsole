@@ -180,11 +180,11 @@ export function AccessLogView({ data }: { data: AccessLogData }) {
             {busy ? t("common.working") : t("history.export")}
           </Button>
           <PrintButton section="access-log" record={{ what: "access_log_print", rows: data.entries.length }} />
-          <p className="basis-full text-right text-[11px] text-ink-500">{t("export.recordedNote")}</p>
+          <p className="basis-full text-right text-xs text-ink-500">{t("export.recordedNote")}</p>
         </div>
       </div>
 
-      <div className="mb-3 flex flex-wrap gap-3">
+      <div className="mb-6 flex flex-wrap gap-4">
         <Tile label={t("audit.tile.total")} value={data.summary.events} />
         <Tile label={t("audit.tile.openings")} value={data.summary.openings} />
         <Tile label={t("audit.tile.decisions")} value={data.summary.decisions} accent="brand" />
@@ -264,7 +264,7 @@ export function AccessLogView({ data }: { data: AccessLogData }) {
           <table className="w-full min-w-[760px] text-left text-sm print:min-w-0">
             <caption className="sr-only">{t("city.access.caption")}</caption>
             <thead>
-              <tr className="border-b border-ink-100 bg-ink-50 text-[11px] uppercase tracking-wide text-ink-500">
+              <tr className="border-b border-ink-100 bg-ink-50 text-xs uppercase tracking-wide text-ink-500">
                 <th scope="col" className="px-4 py-2.5 font-semibold">{t("field.timestamp")}</th>
                 <th scope="col" className="px-4 py-2.5 font-semibold">{t("city.access.col.who")}</th>
                 <th scope="col" className="px-4 py-2.5 font-semibold">{t("audit.col.role")}</th>
@@ -287,7 +287,7 @@ export function AccessLogView({ data }: { data: AccessLogData }) {
                       <Badge tone={ACTION_TONES[entry.action] ?? "neutral"}>
                         {actionKey ? t(actionKey) : entry.action}
                       </Badge>
-                      {entry.detail && <p className="mt-1 text-[11px] text-ink-500">{detailLine(entry.detail, t)}</p>}
+                      {entry.detail && <p className="mt-1 text-xs text-ink-500">{detailLine(entry.detail, t)}</p>}
                     </td>
                     <td className="px-4 py-2.5">{reportCell(entry, t)}</td>
                   </tr>
@@ -322,7 +322,7 @@ function actorCell(entry: AccessLogEntry, namesUnavailable: boolean, t: Translat
   return (
     <div className="leading-tight">
       <p className="text-xs font-medium text-ink-900">{name}</p>
-      {office && <p className="text-[11px] text-ink-500">{office}</p>}
+      {office && <p className="text-xs text-ink-500">{office}</p>}
     </div>
   );
 }
@@ -348,7 +348,7 @@ function reportCell(entry: AccessLogEntry, t: Translate) {
     // A report event without a report: the report was deleted, which blanks
     // the id on its audit rows. Anything else was never about a report.
     return REPORT_ACTIONS.includes(entry.action) ? (
-      <span className="text-[11px] text-ink-500">{t("audit.reportGone")}</span>
+      <span className="text-xs text-ink-500">{t("audit.reportGone")}</span>
     ) : (
       <span className="text-xs text-ink-500">—</span>
     );
@@ -356,7 +356,7 @@ function reportCell(entry: AccessLogEntry, t: Translate) {
   return (
     <div className="leading-tight">
       <p className="font-mono text-xs text-ink-700">{entry.reportId}</p>
-      {entry.category && <p className="text-[11px] text-ink-500">{entry.category}</p>}
+      {entry.category && <p className="text-xs text-ink-500">{entry.category}</p>}
     </div>
   );
 }

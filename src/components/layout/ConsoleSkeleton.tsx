@@ -27,10 +27,10 @@ export function ConsoleSkeleton() {
           <div className="h-8 w-8 animate-pulse rounded-full bg-ink-100" />
         </div>
 
-        <div className="flex-1 px-4 py-5 sm:px-6">
-          <div className="mb-4 flex flex-wrap gap-3">
+        <div className="flex-1 px-4 py-6 sm:px-8 sm:py-8">
+          <div className="mb-6 flex flex-wrap gap-4">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-16 w-32 animate-pulse rounded-card bg-white" />
+              <div key={i} className="h-[84px] w-36 animate-pulse rounded-card bg-white" />
             ))}
           </div>
           <div className="h-64 w-full animate-pulse rounded-card bg-white" />

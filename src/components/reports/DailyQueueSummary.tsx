@@ -121,7 +121,7 @@ export function DailyQueueSummary({
         </div>
       </div>
 
-      <div className="mb-4 flex flex-wrap gap-3">
+      <div className="mb-6 flex flex-wrap gap-4">
         <Tile label={t("reports.tile.submitted")} value={totals.submitted} />
         <Tile label={t("reports.tile.awaiting")} value={totals.awaitingReview} accent="critical" />
         <Tile label={t("status.validated")} value={totals.validated} accent="brand" />
@@ -141,7 +141,7 @@ export function DailyQueueSummary({
           <table className="w-full min-w-[560px] text-left text-sm">
             <caption className="sr-only">{t("reports.caption", { date: formatDay(date) })}</caption>
             <thead>
-              <tr className="border-b border-ink-100 bg-ink-50 text-[11px] uppercase tracking-wide text-ink-500">
+              <tr className="border-b border-ink-100 bg-ink-50 text-xs uppercase tracking-wide text-ink-500">
                 <th scope="col" className="px-4 py-2.5 font-semibold">{t("reports.col.category")}</th>
                 <th scope="col" className="px-4 py-2.5 text-right font-semibold">{t("reports.tile.submitted")}</th>
                 <th scope="col" className="px-4 py-2.5 text-right font-semibold">{t("reports.tile.awaiting")}</th>

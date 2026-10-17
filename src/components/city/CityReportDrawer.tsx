@@ -102,7 +102,7 @@ export function CityReportDrawer({ report, onClose }: { report: CityReport; onCl
             <PriorityBadge priority={report.priority} />
             <span className="text-xs text-ink-500">{t(`drawer.tier.${report.entryTier}`)}</span>
             {reportsAlreadyResolved(report.safetyNetConfirmation) && (
-              <span className="rounded-full bg-priority-mediumBg px-2 py-0.5 text-[11px] font-semibold text-priority-medium">
+              <span className="rounded-full bg-priority-mediumBg px-2 py-0.5 text-xs font-semibold text-priority-medium">
                 {t("row.alreadyResolved")}
               </span>
             )}
@@ -112,7 +112,7 @@ export function CityReportDrawer({ report, onClose }: { report: CityReport; onCl
             {report.description ?? <span className="text-ink-500">{t("drawer.noDescription")}</span>}
           </p>
 
-          <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink-500">
+          <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-500">
             {t("drawer.section.reporterSaid")}
           </p>
           <div className="mb-5">
@@ -126,7 +126,7 @@ export function CityReportDrawer({ report, onClose }: { report: CityReport; onCl
             <Row label={t("drawer.attachments")} value={attachmentSummary(report.hasPhoto, report.hasVideo, t)} />
           </div>
 
-          <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink-500">
+          <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-500">
             {t("drawer.section.triage")}
           </p>
           <div className="mb-5">
@@ -145,7 +145,7 @@ export function CityReportDrawer({ report, onClose }: { report: CityReport; onCl
             <Row label={t("drawer.status")} value={statusLabel(report.status, t)} />
           </div>
 
-          <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink-500">
+          <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-500">
             {t("drawer.section.submission")}
           </p>
           <div className="mb-5">
@@ -157,7 +157,7 @@ export function CityReportDrawer({ report, onClose }: { report: CityReport; onCl
             {report.reviewedAt && <Row label={t("city.drawer.reviewed")} value={formatTimestamp(report.reviewedAt)} />}
           </div>
 
-          <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink-500">
+          <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-500">
             {t("drawer.section.routing")}
           </p>
           <AgencySection routing={report.routing} resolvedAtBarangay={report.resolvedAtBarangay} />
@@ -212,7 +212,7 @@ function AgencyList({ rows }: { rows: AgencyRouting[] }) {
           </p>
           <p className="shrink-0 text-right text-sm text-ink-900">
             {agencyProgressLabel(r, t)}
-            <span className="block text-[11px] text-ink-500">{stageTime(r, t)}</span>
+            <span className="block text-xs text-ink-500">{stageTime(r, t)}</span>
           </p>
         </div>
       ))}

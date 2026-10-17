@@ -58,6 +58,15 @@ const config: Config = {
         ],
         mono: ["var(--font-mono)", "JetBrains Mono", "ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
       },
+      // Larger than Tailwind's defaults (12 and 14 px): the officials at the
+      // desk are often older, and reviewer feedback in October 2026 found the
+      // console's text too small. Everything that used to be set at 11 px
+      // now uses xs, so 13 px is the smallest text on any page; the 9 and
+      // 10 px left are the initials inside fixed-size avatar circles.
+      fontSize: {
+        xs: ["0.8125rem", { lineHeight: "1.25rem" }],
+        sm: ["0.9375rem", { lineHeight: "1.375rem" }],
+      },
       boxShadow: {
         panel: "0 1px 2px 0 rgb(22 28 25 / 0.06), 0 1px 3px 0 rgb(22 28 25 / 0.08)",
       },

@@ -31,7 +31,7 @@ export function AgencyList({ data }: { data: CityAgenciesData }) {
           <table className="w-full min-w-[640px] text-left text-sm">
             <caption className="sr-only">{t("city.agencies.caption")}</caption>
             <thead>
-              <tr className="border-b border-ink-100 bg-ink-50 text-[11px] uppercase tracking-wide text-ink-500">
+              <tr className="border-b border-ink-100 bg-ink-50 text-xs uppercase tracking-wide text-ink-500">
                 <th scope="col" className="px-4 py-2.5 font-semibold">{t("city.agencies.col.agency")}</th>
                 <th scope="col" className="px-4 py-2.5 font-semibold">{t("city.agencies.col.code")}</th>
                 <th scope="col" className="px-4 py-2.5 font-semibold">{t("city.agencies.col.tier")}</th>

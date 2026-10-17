@@ -91,7 +91,7 @@ export function MemberPanel({
                   <span className="font-mono text-xs text-ink-500">{member.reportId}</span>
                   <PriorityBadge priority={member.priority} />
                   <span className="text-xs font-medium text-ink-700">{member.category}</span>
-                  <span className="rounded-full bg-ink-100 px-2 py-0.5 text-[11px] font-medium text-ink-700">
+                  <span className="rounded-full bg-ink-100 px-2 py-0.5 text-xs font-medium text-ink-700">
                     {member.relationship === "Primary" ? t("cluster.member.primary") : t("cluster.member.related")}
                   </span>
                   <span className="text-xs text-ink-500">
@@ -102,7 +102,7 @@ export function MemberPanel({
               </button>
               {selected && <MemberDetails member={member} />}
               {idx > 0 && (member.visualHash || member.temporalDeltaSeconds || member.sitio) && (
-                <div className="mx-4 mb-3 flex flex-wrap gap-3 rounded-md bg-ink-50 px-2.5 py-1.5 text-[11px] text-ink-500">
+                <div className="mx-4 mb-3 flex flex-wrap gap-3 rounded-md bg-ink-50 px-2.5 py-1.5 text-xs text-ink-500">
                   {member.visualHash !== undefined && (
                     <span>{t("cluster.signal.visualHash", { value: member.visualHash.toFixed(2) })}</span>
                   )}

@@ -61,7 +61,7 @@ export function LocationPreview({
           <Icon name="expand" />
         </Button>
       </div>
-      <p className="mt-1.5 text-[11px] text-ink-500">{caption}</p>
+      <p className="mt-1.5 text-xs text-ink-500">{caption}</p>
       {expanded && (
         <MapLightbox title={t("drawer.location.label")} caption={caption} onClose={() => setOpen(false)}>
           <PointMap lat={shown.lat} lng={shown.lng} className="h-full" />

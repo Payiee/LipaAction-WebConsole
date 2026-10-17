@@ -156,7 +156,7 @@ export function RecallModal({
           aria-describedby="recall-reason-count"
           className="w-full resize-none rounded-md border border-ink-100 bg-ink-50 px-3 py-2 text-sm text-ink-900 placeholder:text-ink-500 focus:border-brand-500 focus:outline-none"
         />
-        <p id="recall-reason-count" className="mb-4 text-right text-[11px] text-ink-500">
+        <p id="recall-reason-count" className="mb-4 text-right text-xs text-ink-500">
           {t("recall.reasonCount", { n: trimmedLength })}
         </p>
 

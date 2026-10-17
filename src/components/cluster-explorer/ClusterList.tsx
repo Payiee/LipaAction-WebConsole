@@ -52,7 +52,7 @@ export function ClusterList({
                 <span className="font-mono text-xs text-ink-500">{cluster.id}</span>
                 <span
                   className={cx(
-                    "text-[11px] font-semibold",
+                    "text-xs font-semibold",
                     cluster.status === null ? "text-ink-500" : statusStyles[cluster.status]
                   )}
                 >

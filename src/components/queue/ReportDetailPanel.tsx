@@ -332,7 +332,7 @@ export function ReportDetailPanel({
         <PriorityBadge priority={report.priority} />
         <span className="text-xs text-ink-500">{t(`drawer.tier.${d.entryTier}`)}</span>
         {isReviewable(d.status) && reportsAlreadyResolved(d.safetyNetConfirmation) && (
-          <span className="rounded-full bg-priority-mediumBg px-2 py-0.5 text-[11px] font-semibold text-priority-medium">
+          <span className="rounded-full bg-priority-mediumBg px-2 py-0.5 text-xs font-semibold text-priority-medium">
             {t("row.alreadyResolved")}
           </span>
         )}
@@ -342,7 +342,7 @@ export function ReportDetailPanel({
         {d.description ?? <span className="text-ink-500">{t("drawer.noDescription")}</span>}
       </p>
 
-      <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink-500">
+      <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-500">
         {t("drawer.section.reporterSaid")}
       </p>
       <div className="mb-5">
@@ -356,7 +356,7 @@ export function ReportDetailPanel({
         <Row label={t("drawer.attachments")} value={attachmentSummary(d.hasPhoto, d.hasVideo, t)} />
       </div>
 
-      <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink-500">
+      <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-500">
         {t("drawer.section.triage")}
       </p>
       <div className="mb-5">
@@ -383,7 +383,7 @@ export function ReportDetailPanel({
         )}
       </div>
 
-      <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink-500">
+      <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-500">
         {t("drawer.section.submission")}
       </p>
       <div>
@@ -394,7 +394,7 @@ export function ReportDetailPanel({
       {/* A map, not an address: incident_reports stores a point (geom),
           and nothing decodes it into street text. Never shown for an
           identity-withheld or discreet report. */}
-      <p className="mb-1.5 mt-5 text-[11px] font-semibold uppercase tracking-wide text-ink-500">
+      <p className="mb-1.5 mt-5 text-xs font-semibold uppercase tracking-wide text-ink-500">
         {t("drawer.section.location")}
       </p>
       <LocationPreview position={d.position} onExpandedChange={setMapExpanded} />
@@ -403,7 +403,7 @@ export function ReportDetailPanel({
           Read-only — routing stays a separate, confirmed step. */}
       {isReviewable(d.status) && (
         <>
-          <p className="mb-1.5 mt-5 text-[11px] font-semibold uppercase tracking-wide text-ink-500">
+          <p className="mb-1.5 mt-5 text-xs font-semibold uppercase tracking-wide text-ink-500">
             {t("drawer.section.routing")}
           </p>
           {viaDispatch && !everyAgencyReturned(d.routing) ? (
@@ -416,7 +416,7 @@ export function ReportDetailPanel({
 
       {routeState.kind !== "none" && (
         <>
-          <p className="mb-1.5 mt-5 text-[11px] font-semibold uppercase tracking-wide text-ink-500">
+          <p className="mb-1.5 mt-5 text-xs font-semibold uppercase tracking-wide text-ink-500">
             {t("drawer.section.routing")}
           </p>
           <RoutingSection
@@ -758,7 +758,7 @@ function DispatchPreview({ plan, note }: { plan: RoutingPlanEntry[] | null; note
   return (
     <div>
       <ChooseNote plan={plan} body={t("cdrrmo.previewChecklist")} />
-      {note && <p className="mt-2 text-[11px] text-ink-500">{note}</p>}
+      {note && <p className="mt-2 text-xs text-ink-500">{note}</p>}
     </div>
   );
 }
@@ -847,7 +847,7 @@ function AgencyList({ rows }: { rows: AgencyRouting[] }) {
           </p>
           <p className="shrink-0 text-right text-sm text-ink-900">
             {agencyProgressLabel(r, t)}
-            <span className="block text-[11px] text-ink-500">{stageTime(r, t)}</span>
+            <span className="block text-xs text-ink-500">{stageTime(r, t)}</span>
           </p>
         </div>
       ))}

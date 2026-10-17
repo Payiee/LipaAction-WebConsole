@@ -68,7 +68,7 @@ export function ResidentTable({
       <table className="w-full min-w-[720px] text-left text-sm">
         <caption className="sr-only">{t("verify.caption")}</caption>
         <thead>
-          <tr className="border-b border-ink-100 bg-ink-50 text-[11px] uppercase tracking-wide text-ink-500">
+          <tr className="border-b border-ink-100 bg-ink-50 text-xs uppercase tracking-wide text-ink-500">
             <th scope="col" className="px-4 py-2.5 font-semibold">{t("verify.col.resident")}</th>
             <th scope="col" className="px-4 py-2.5 font-semibold">{t("verify.col.tier")}</th>
             <th scope="col" className="px-4 py-2.5 font-semibold">{t("verify.col.verification")}</th>
@@ -87,12 +87,12 @@ export function ResidentTable({
                 <td className="px-4 py-3">
                   <p className="text-sm font-medium text-ink-900">{name}</p>
                   {resident.phoneEnding && (
-                    <p className="mt-0.5 text-[11px] text-ink-500">
+                    <p className="mt-0.5 text-xs text-ink-500">
                       {t("verify.phoneEnding", { digits: resident.phoneEnding })}
                     </p>
                   )}
                   {resident.registeredOn && (
-                    <p className="text-[11px] text-ink-500">{t("verify.registered", { date: resident.registeredOn })}</p>
+                    <p className="text-xs text-ink-500">{t("verify.registered", { date: resident.registeredOn })}</p>
                   )}
                 </td>
                 <td className="px-4 py-3">
@@ -116,7 +116,7 @@ export function ResidentTable({
                         {method ? t(method) : verification.method || "—"} · {verification.verifiedOn}
                       </p>
                       {(verification.attestedBy || roleText) && (
-                        <p className="mt-0.5 text-[11px] text-ink-500">
+                        <p className="mt-0.5 text-xs text-ink-500">
                           {t("verify.verifiedBy", {
                             who: [verification.attestedBy, roleText].filter(Boolean).join(" · "),
                           })}
@@ -127,7 +127,7 @@ export function ResidentTable({
                     <p className="text-ink-500">{detailsUnavailable ? "—" : t("verify.notVerified")}</p>
                   )}
                   {resident.lastRevocation && (
-                    <p className="mt-1 text-[11px] text-priority-medium">
+                    <p className="mt-1 text-xs text-priority-medium">
                       {resident.lastRevocation.reason
                         ? t("verify.lastRevokedReason", {
                             date: resident.lastRevocation.revokedOn,
@@ -158,7 +158,7 @@ export function ResidentTable({
                         {t("verify.action.revoke")}
                       </Button>
                     ) : (
-                      <p className="max-w-[12rem] text-[11px] text-ink-500">{t("verify.seniorOnly")}</p>
+                      <p className="max-w-[12rem] text-xs text-ink-500">{t("verify.seniorOnly")}</p>
                     )
                   ) : (
                     <span className="text-xs text-ink-500">—</span>

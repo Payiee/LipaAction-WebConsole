@@ -318,7 +318,7 @@ export function ReportChatSection({
   return (
     <section aria-labelledby="report-chat-title" className="flex min-h-0 flex-1 flex-col">
       <div className="border-b border-ink-100 px-4 py-2">
-        <p id="report-chat-title" className="text-[11px] font-semibold uppercase tracking-wide text-ink-500">
+        <p id="report-chat-title" className="text-xs font-semibold uppercase tracking-wide text-ink-500">
           {t(thread === "desk" ? "chat.v2.title.desk" : thread === "group" ? "chat.v2.title.group" : "chat.title")}
         </p>
         {thread && (
@@ -334,8 +334,8 @@ export function ReportChatSection({
         <p className="text-xs text-ink-500">{t(mediaOn ? "chat.media.closeWarning" : "chat.closeWarning")}</p>
         {thread && state === "ready" && (
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-            <span className="text-[11px] font-medium text-ink-500">{t("chat.v2.openedBy")}</span>
-            {openers.length === 0 && <span className="text-[11px] text-ink-500">{t("chat.v2.openedByNone")}</span>}
+            <span className="text-xs font-medium text-ink-500">{t("chat.v2.openedBy")}</span>
+            {openers.length === 0 && <span className="text-xs text-ink-500">{t("chat.v2.openedByNone")}</span>}
             {openers.map((o) => {
               const name = nameOf(o.agencyId);
               const label = t(o.caughtUp ? "chat.v2.openedSeen" : "chat.v2.openedNotSeen", {
@@ -346,7 +346,7 @@ export function ReportChatSection({
                 <span
                   key={o.agencyId}
                   title={label}
-                  className={`inline-flex items-center gap-1 rounded-full border border-ink-100 py-0.5 pl-0.5 pr-2 text-[11px] ${
+                  className={`inline-flex items-center gap-1 rounded-full border border-ink-100 py-0.5 pl-0.5 pr-2 text-xs ${
                     o.caughtUp ? "bg-white text-ink-900" : "bg-ink-50 text-ink-700"
                   }`}
                 >
@@ -380,7 +380,7 @@ export function ReportChatSection({
           {items.map((item) => {
             if (item.kind === "day") {
               return (
-                <li key={`day-${item.key}`} className="my-3 text-center text-[11px] font-medium text-ink-500">
+                <li key={`day-${item.key}`} className="my-3 text-center text-xs font-medium text-ink-500">
                   {formatDay(item.iso)}
                 </li>
               );
@@ -418,13 +418,13 @@ export function ReportChatSection({
                   </p>
                 )}
                 {showMeta && !thread && (
-                  <p className="mt-0.5 px-1 text-[11px] text-ink-500">
+                  <p className="mt-0.5 px-1 text-xs text-ink-500">
                     {t(fromDesk ? "chat.fromDesk" : "chat.fromReporter")} · {formatClock(m.createdAt)}
                     {fromDesk && m.readAt ? ` · ${t("chat.read")}` : ""}
                   </p>
                 )}
                 {showMeta && thread && (
-                  <p className="mt-0.5 flex items-center gap-1 px-1 text-[11px] text-ink-500">
+                  <p className="mt-0.5 flex items-center gap-1 px-1 text-xs text-ink-500">
                     {m.side === "agency" && <ChatAvatar side="agency" agencyId={m.agencyId} agencies={agencies} />}
                     <span>
                       {senderLabel(m)} · {formatClock(m.createdAt)}
@@ -487,7 +487,7 @@ export function ReportChatSection({
                         className="h-16 w-16 rounded-lg object-cover"
                       />
                     ) : (
-                      <span className="flex h-16 w-24 flex-col items-center justify-center gap-0.5 rounded-lg bg-ink-900 text-[11px] text-white">
+                      <span className="flex h-16 w-24 flex-col items-center justify-center gap-0.5 rounded-lg bg-ink-900 text-xs text-white">
                         <Icon name="play" className="h-4 w-4" />
                         {t("chat.media.video")} {formatDuration(p.durationS ?? null)}
                       </span>
@@ -560,7 +560,7 @@ export function ReportChatSection({
               </Button>
             </div>
             {mediaOn ? (
-              <p className="mt-1 flex justify-between gap-2 text-[11px] text-ink-500">
+              <p className="mt-1 flex justify-between gap-2 text-xs text-ink-500">
                 <span role="status">
                   {preparing
                     ? t("chat.media.preparing")
@@ -573,7 +573,7 @@ export function ReportChatSection({
                 </span>
               </p>
             ) : (
-              <p className="mt-1 text-right text-[11px] text-ink-500">
+              <p className="mt-1 text-right text-xs text-ink-500">
                 {draft.length}/{MAX_MESSAGE_LENGTH}
               </p>
             )}

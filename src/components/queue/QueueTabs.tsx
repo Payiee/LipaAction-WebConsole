@@ -99,7 +99,7 @@ export function QueueTabs({
             {t(`queue.tab.${tab.id}`)}
             <span
               className={cx(
-                "rounded-full px-1.5 py-0.5 text-[11px] font-semibold",
+                "rounded-full px-1.5 py-0.5 text-xs font-semibold",
                 active ? "bg-brand-100 text-brand-700" : "bg-ink-100 text-ink-700"
               )}
             >

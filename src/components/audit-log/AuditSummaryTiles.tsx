@@ -13,7 +13,7 @@ import type { AuditSummary } from "@/types";
 export function AuditSummaryTiles({ summary }: { summary: AuditSummary }) {
   const t = useT();
   return (
-    <div className="mb-3 flex flex-wrap gap-3">
+    <div className="mb-6 flex flex-wrap gap-4">
       <Tile label={t("audit.tile.total")} value={summary.totalEvents} />
       <Tile label={t("audit.tile.decisions")} value={summary.decisions} accent="brand" />
       <Tile label={t("audit.tile.routings")} value={summary.routings} />

@@ -124,7 +124,7 @@ function PhotoTile({
       }`}
     >
       {failed ? (
-        <span className="flex h-full w-full items-center justify-center p-2 text-center text-[11px] text-ink-500">
+        <span className="flex h-full w-full items-center justify-center p-2 text-center text-xs text-ink-500">
           {t("chat.media.photoFailed")}
         </span>
       ) : (

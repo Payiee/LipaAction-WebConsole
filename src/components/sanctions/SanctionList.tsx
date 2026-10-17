@@ -43,7 +43,7 @@ function HistoryLine({ entry }: { entry: SanctionHistoryEntry }) {
         <span className="font-medium text-ink-900">{label(CAUSE_LABELS, entry.cause, t)}</span>
         {entry.sanction && entry.cause !== "sanction_lifted" && <> · {label(APPLIED_LABELS, entry.sanction, t)}</>}
       </p>
-      <p className="mt-0.5 text-[11px] text-ink-500">
+      <p className="mt-0.5 text-xs text-ink-500">
         {t("sanctions.history.score", { before: score(entry.scoreBefore), after: score(entry.scoreAfter) })}
         {entry.inaccurateStrikes !== null && entry.maliciousStrikes !== null && (
           <>
@@ -53,7 +53,7 @@ function HistoryLine({ entry }: { entry: SanctionHistoryEntry }) {
         )}
       </p>
       {entry.liftReason && (
-        <p className="mt-0.5 text-[11px] text-ink-700">{t("sanctions.history.reason", { reason: entry.liftReason })}</p>
+        <p className="mt-0.5 text-xs text-ink-700">{t("sanctions.history.reason", { reason: entry.liftReason })}</p>
       )}
     </li>
   );
@@ -105,7 +105,7 @@ export function SanctionList({
               <div className="min-w-0">
                 <p className="text-sm font-medium text-ink-900">{row.name ?? t("verify.unnamed")}</p>
                 {row.phoneEnding && (
-                  <p className="text-[11px] text-ink-500">{t("verify.phoneEnding", { digits: row.phoneEnding })}</p>
+                  <p className="text-xs text-ink-500">{t("verify.phoneEnding", { digits: row.phoneEnding })}</p>
                 )}
                 <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
                   <Badge tone={row.track === "malicious" ? "danger" : "warning"}>
@@ -124,14 +124,14 @@ export function SanctionList({
                 {/* A suspended resident can also be inside a cooldown, on
                     either track; it decides who may lift, so it is said. */}
                 {row.kind === "suspension" && row.cooldownEndsOn && (
-                  <p className="mt-1 text-[11px] text-ink-700">
+                  <p className="mt-1 text-xs text-ink-700">
                     {t("sanctions.cooldownAlso", {
                       track: label(TRACK_LABELS, row.cooldownTrack ?? "", t),
                       date: row.cooldownEndsOn,
                     })}
                   </p>
                 )}
-                <p className="mt-1 text-[11px] text-ink-500">
+                <p className="mt-1 text-xs text-ink-500">
                   {t("sanctions.strikes", { inaccurate: row.inaccurateStrikes, malicious: row.maliciousStrikes })}
                   {" · "}
                   {t("sanctions.trustScore", { score: score(row.trustScore) })}
@@ -139,7 +139,7 @@ export function SanctionList({
               </div>
 
               {malicious && !canLiftMalicious ? (
-                <p className="max-w-[15rem] text-[11px] text-ink-500">{t("sanctions.seniorOnly")}</p>
+                <p className="max-w-[15rem] text-xs text-ink-500">{t("sanctions.seniorOnly")}</p>
               ) : (
                 <Button
                   variant="primary"
@@ -153,7 +153,7 @@ export function SanctionList({
             </div>
 
             {historyUnavailable ? (
-              <p role="status" className="mt-2 text-[11px] text-priority-medium">
+              <p role="status" className="mt-2 text-xs text-priority-medium">
                 {t("sanctions.history.unavailable")}
               </p>
             ) : (
@@ -164,7 +164,7 @@ export function SanctionList({
                   {t("sanctions.history.summary", { count: row.history.length })}
                 </summary>
                 {row.history.length === 0 ? (
-                  <p className="text-[11px] text-ink-500">{t("sanctions.history.empty")}</p>
+                  <p className="text-xs text-ink-500">{t("sanctions.history.empty")}</p>
                 ) : (
                   <ul className="divide-y divide-ink-100 border-t border-ink-100">
                     {row.history.map((entry) => (

@@ -108,7 +108,7 @@ export function ResolutionTimes({
           <table className="w-full min-w-[620px] text-left text-sm">
             <caption className="sr-only">{t("reports.resolution.caption", { month: monthLabel })}</caption>
             <thead>
-              <tr className="border-b border-ink-100 bg-ink-50 text-[11px] uppercase tracking-wide text-ink-500">
+              <tr className="border-b border-ink-100 bg-ink-50 text-xs uppercase tracking-wide text-ink-500">
                 <th scope="col" className="px-4 py-2.5 font-semibold">{t("city.response.col.agency")}</th>
                 <th scope="col" className="px-4 py-2.5 text-right font-semibold">{t("city.response.col.resolved")}</th>
                 <th scope="col" className="px-4 py-2.5 font-semibold">{t("reports.resolution.col.time")}</th>
@@ -152,7 +152,7 @@ function Duration({ summary }: { summary: DurationSummary }) {
         {t("city.response.median", { value: formatDuration(summary.median) })}
         {summary.p95 !== null && ` · ${t("city.response.p95", { value: formatDuration(summary.p95) })}`}
       </p>
-      <p className="text-[11px] text-ink-500">{t("city.response.samples", { count: summary.samples })}</p>
+      <p className="text-xs text-ink-500">{t("city.response.samples", { count: summary.samples })}</p>
     </div>
   );
 }

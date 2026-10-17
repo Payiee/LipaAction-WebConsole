@@ -94,7 +94,7 @@ export function ChatMediaViewer({
             </>
           )}
         </div>
-        <p className="border-t border-ink-100 px-4 py-2 text-[11px] text-ink-500">
+        <p className="border-t border-ink-100 px-4 py-2 text-xs text-ink-500">
           {caption}
           {current.kind === "video" && current.durationS !== null ? ` · ${formatDuration(current.durationS)}` : ""}
         </p>

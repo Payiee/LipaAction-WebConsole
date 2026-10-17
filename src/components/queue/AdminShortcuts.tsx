@@ -17,7 +17,7 @@ export function AdminShortcuts({ role }: { role: string }) {
   const t = useT();
   return (
     <nav aria-label={t("queue.shortcuts.title")} className="mt-6 flex flex-wrap items-center gap-2">
-      <span className="mr-1 text-[11px] font-semibold uppercase tracking-wide text-ink-500">
+      <span className="mr-1 text-xs font-semibold uppercase tracking-wide text-ink-500">
         {t("queue.shortcuts.title")}
       </span>
       <Link href="/verify-resident" className={buttonClassName("secondary", "sm")}>

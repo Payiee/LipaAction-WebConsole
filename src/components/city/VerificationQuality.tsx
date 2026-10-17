@@ -82,7 +82,7 @@ export function VerificationQuality({ data }: { data: CityVerificationData }) {
         </div>
       </div>
 
-      <div className="mb-3 flex flex-wrap gap-3">
+      <div className="mb-6 flex flex-wrap gap-4">
         <Tile label={t("city.verification.tile.promotions")} value={totals.promotions} accent="brand" />
         <Tile label={t("city.verification.tile.revoked")} value={share(totals.revoked, totals.promotions, t)} />
         <Tile label={t("city.verification.tile.false")} value={share(totals.falseReports, totals.closedReports, t)} />
@@ -105,7 +105,7 @@ export function VerificationQuality({ data }: { data: CityVerificationData }) {
           <table className="w-full min-w-[820px] text-left text-sm print:min-w-0">
             <caption className="sr-only">{t("city.verification.caption", { days: windowDays })}</caption>
             <thead>
-              <tr className="border-b border-ink-100 bg-ink-50 text-[11px] uppercase tracking-wide text-ink-500">
+              <tr className="border-b border-ink-100 bg-ink-50 text-xs uppercase tracking-wide text-ink-500">
                 <th scope="col" className="px-4 py-2.5 font-semibold">{t("city.col.barangay")}</th>
                 <th scope="col" className="px-4 py-2.5 text-right font-semibold">{t("city.verification.col.promotions")}</th>
                 <th scope="col" className="px-4 py-2.5 text-right font-semibold">{t("reports.verification.col.revoked")}</th>

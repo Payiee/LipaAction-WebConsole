@@ -96,7 +96,7 @@ export function AttestModal({
                 />
                 <span>
                   <span className="font-medium">{t(`verify.method.${option}`)}</span>
-                  <span className="block text-[11px] text-ink-500">{t(`verify.attest.hint.${option}`)}</span>
+                  <span className="block text-xs text-ink-500">{t(`verify.attest.hint.${option}`)}</span>
                 </span>
               </label>
             ))}
@@ -114,7 +114,7 @@ export function AttestModal({
           <span>{t("verify.attest.oath", { who, barangay: barangayName })}</span>
         </label>
 
-        <p role="note" className="mb-4 rounded-md bg-ink-50 px-3 py-2 text-[11px] text-ink-700">
+        <p role="note" className="mb-4 rounded-md bg-ink-50 px-3 py-2 text-xs text-ink-700">
           {t("verify.attest.minimization")}
         </p>
 

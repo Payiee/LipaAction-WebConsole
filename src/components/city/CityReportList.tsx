@@ -139,7 +139,7 @@ export function CityReportList({ data }: { data: CityReportsData }) {
           <Button variant="secondary" size="sm" disabled={busy || data.loadFailed} onClick={handleExport}>
             {busy ? t("common.working") : t("city.reports.export")}
           </Button>
-          <p className="text-[11px] text-ink-500">{t("export.recordedNote")}</p>
+          <p className="text-xs text-ink-500">{t("export.recordedNote")}</p>
         </div>
       </div>
 
@@ -162,7 +162,7 @@ export function CityReportList({ data }: { data: CityReportsData }) {
           <table className="w-full min-w-[860px] text-left text-sm">
             <caption className="sr-only">{t("city.reports.caption")}</caption>
             <thead>
-              <tr className="border-b border-ink-100 bg-ink-50 text-[11px] uppercase tracking-wide text-ink-500">
+              <tr className="border-b border-ink-100 bg-ink-50 text-xs uppercase tracking-wide text-ink-500">
                 <th scope="col" className="px-4 py-2.5 font-semibold">{t("city.reports.col.submitted")}</th>
                 <th scope="col" className="px-4 py-2.5 font-semibold">{t("city.col.barangay")}</th>
                 <th scope="col" className="px-4 py-2.5 font-semibold">{t("reports.col.category")}</th>
@@ -184,7 +184,7 @@ export function CityReportList({ data }: { data: CityReportsData }) {
                     {r.discreetReporting && (
                       <span
                         title={t("drawer.discreetBanner")}
-                        className="ml-2 rounded-full bg-priority-mediumBg px-2 py-0.5 text-[11px] font-semibold text-priority-medium"
+                        className="ml-2 rounded-full bg-priority-mediumBg px-2 py-0.5 text-xs font-semibold text-priority-medium"
                       >
                         {t("row.discreet")}
                       </span>

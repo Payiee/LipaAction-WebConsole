@@ -84,7 +84,7 @@ export function CityMap({ data }: { data: CityMapData }) {
       </div>
 
       {!loadFailed && (
-        <div className="mb-3 flex flex-wrap gap-3">
+        <div className="mb-6 flex flex-wrap gap-4">
           <Tile label="Critical" value={byPriority.Critical} accent="critical" />
           <Tile label="High" value={byPriority.High} />
           <Tile label="Medium" value={byPriority.Medium} />
@@ -273,7 +273,7 @@ function Legend() {
   const t = useT();
   return (
     <div className="rounded-card border border-ink-100 bg-white px-4 py-3 shadow-panel">
-      <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-500">{t("city.map.legend")}</h3>
+      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-500">{t("city.map.legend")}</h3>
       <ul className="flex flex-col gap-1.5 text-xs text-ink-700">
         {["Critical", "High", "Medium", "Low"].map((tier) => (
           <li key={tier} className="flex items-center gap-2">
@@ -294,11 +294,11 @@ function BarangayCounts({ barangays, totals }: { barangays: MapBarangayCount[]; 
   const t = useT();
   return (
     <div className="overflow-x-auto rounded-card border border-ink-100 bg-white shadow-panel">
-      <h3 className="px-4 pt-3 text-[11px] font-semibold uppercase tracking-wide text-ink-500">{t("city.map.byBarangay")}</h3>
+      <h3 className="px-4 pt-3 text-xs font-semibold uppercase tracking-wide text-ink-500">{t("city.map.byBarangay")}</h3>
       <table className="w-full text-left text-xs">
         <caption className="sr-only">{t("city.map.countsCaption")}</caption>
         <thead>
-          <tr className="border-b border-ink-100 text-[11px] text-ink-500">
+          <tr className="border-b border-ink-100 text-xs text-ink-500">
             <th scope="col" className="px-4 py-2 font-semibold">{t("city.col.barangay")}</th>
             <th scope="col" className="px-2 py-2 text-right font-semibold">{t("city.map.col.mapped")}</th>
             <th scope="col" className="px-2 py-2 text-right font-semibold">{t("city.map.col.withheld")}</th>
@@ -340,7 +340,7 @@ function PointList({ points }: { points: MapPoint[] }) {
         <table className="w-full min-w-[640px] text-left text-sm">
           <caption className="sr-only">{t("city.map.listCaption")}</caption>
           <thead>
-            <tr className="border-b border-ink-100 bg-ink-50 text-[11px] uppercase tracking-wide text-ink-500">
+            <tr className="border-b border-ink-100 bg-ink-50 text-xs uppercase tracking-wide text-ink-500">
               <th scope="col" className="px-4 py-2.5 font-semibold">{t("city.reports.col.submitted")}</th>
               <th scope="col" className="px-4 py-2.5 font-semibold">{t("city.col.barangay")}</th>
               <th scope="col" className="px-4 py-2.5 font-semibold">{t("reports.col.category")}</th>

@@ -30,7 +30,7 @@ export function CityOverview({ overview }: { overview: CityOverviewData }) {
         </div>
       </div>
 
-      <div className="mb-4 flex flex-wrap gap-3">
+      <div className="mb-6 flex flex-wrap gap-4">
         <Tile label={t("city.tile.today")} value={totals.today} />
         <Tile label={t("city.tile.average")} value={totals.dailyAverage.toFixed(1)} />
         <Tile label={t("city.tile.awaiting")} value={totals.awaitingReview} accent="critical" />
@@ -55,7 +55,7 @@ export function CityOverview({ overview }: { overview: CityOverviewData }) {
           <table className="w-full min-w-[760px] text-left text-sm print:min-w-0">
             <caption className="sr-only">{t("city.overview.caption")}</caption>
             <thead>
-              <tr className="border-b border-ink-100 bg-ink-50 text-[11px] uppercase tracking-wide text-ink-500">
+              <tr className="border-b border-ink-100 bg-ink-50 text-xs uppercase tracking-wide text-ink-500">
                 <th scope="col" className="px-4 py-2.5 font-semibold">{t("city.col.barangay")}</th>
                 <th scope="col" className="px-4 py-2.5 font-semibold">{t("city.col.daily")}</th>
                 <th scope="col" className="px-4 py-2.5 text-right font-semibold">{t("city.col.week")}</th>
