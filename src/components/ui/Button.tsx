@@ -3,7 +3,7 @@ import type { ButtonHTMLAttributes } from "react";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: "primary" | "secondary" | "ghost" | "danger";
-  size?: "sm" | "md";
+  size?: "sm" | "md" | "lg";
 }
 
 const variantStyles: Record<string, string> = {
@@ -19,6 +19,9 @@ const sizeStyles: Record<string, string> = {
   // smaller type and tighter sides; only the height is the same.
   sm: "min-h-11 text-xs px-3",
   md: "min-h-11 text-sm px-4",
+  // The report dialog's decision buttons: the action an official came to
+  // take, made easy to see.
+  lg: "min-h-12 text-base px-6 font-semibold",
 };
 
 /**

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { logReportView } from "@/app/actions/audit";
 import { callAction } from "@/lib/callAction";
 import { reportsAlreadyResolved } from "@/lib/utils";
+import { CopyIdButton } from "@/components/ui/CopyIdButton";
 import { useT, type Translate } from "@/lib/i18n";
 import { useToast } from "@/components/ui/Toast";
 import { PriorityBadge } from "@/components/ui/Badge";
@@ -237,70 +238,70 @@ export function ReportDetailPanel({
   const dispatchNext = viaDispatch && !isReviewable(d.status) ? dispatchPastReview(report, routeState) : null;
   const actions = isReviewable(d.status) && viaDispatch ? (
     <>
-      <Button variant="primary" size="sm" disabled={writing} onClick={emergency.openSend}>
-        {t("review.validate")}
-      </Button>
-      <Button variant="secondary" size="sm" disabled={writing} onClick={emergency.openReject}>
+      <Button variant="danger" size="lg" className="mr-auto" disabled={writing} onClick={emergency.openReject}>
         {t("review.reject")}
+      </Button>
+      <Button variant="primary" size="lg" disabled={writing} onClick={emergency.openSend}>
+        {t("review.validate")}
       </Button>
     </>
   ) : dispatchNext === "send" ? (
     // Validated the old way and never sent anywhere: validating routes it.
-    <Button variant="primary" size="sm" disabled={writing} onClick={emergency.openSend}>
+    <Button variant="primary" size="lg" disabled={writing} onClick={emergency.openSend}>
       {t("cdrrmo.validateConfirm")}
     </Button>
   ) : dispatchNext === "record" ? (
     // Already with its agencies, without this barangay's validation.
-    <Button variant="primary" size="sm" disabled={writing} onClick={emergency.openRecord}>
+    <Button variant="primary" size="lg" disabled={writing} onClick={emergency.openRecord}>
       {t("review.validate")}
     </Button>
   ) : dispatchNext === "partial" || dispatchNext === "handedBack" ? (
-    <p className="max-w-xs text-xs text-ink-500">
+    <p className="max-w-md text-sm text-ink-500">
       {t(dispatchNext === "partial" ? "cdrrmo.legacyPartial" : "cdrrmo.handedBack")}
     </p>
   ) : isReviewable(d.status) ? (
     <>
-      <Button variant="primary" size="sm" disabled={isPending} onClick={validate}>
-        {t("review.validate")}
-      </Button>
-      <Button variant="secondary" size="sm" disabled={isPending} onClick={openReject}>
+      <Button variant="danger" size="lg" className="mr-auto" disabled={isPending} onClick={openReject}>
         {t("review.reject")}
+      </Button>
+      <Button variant="primary" size="lg" disabled={isPending} onClick={validate}>
+        {t("review.validate")}
       </Button>
     </>
   ) : routeState.kind === "choose" && routeState.options && routeState.options.length > 0 ? (
     // The official ticks the agencies; the category's are marked Recommended.
     <>
-      <Button variant="primary" size="sm" disabled={writing} onClick={routing.openConfirm}>
+      <Button variant="primary" size="lg" disabled={writing} onClick={routing.openConfirm}>
         {t("routing.routeToAgency")}
       </Button>
       {mayResolve && (
-        <Button variant="secondary" size="sm" disabled={writing} onClick={barangayResolve.openPrompt}>
+        <Button variant="secondary" size="lg" disabled={writing} onClick={barangayResolve.openPrompt}>
           {t("resolve.button")}
         </Button>
       )}
     </>
   ) : routeState.kind === "incomplete" ? (
     <>
-      <Button variant="primary" size="sm" disabled={writing} onClick={routing.openConfirm}>
+      <Button variant="primary" size="lg" disabled={writing} onClick={routing.openConfirm}>
         {t("routing.finish")}
       </Button>
       {mayResolve && (
-        <Button variant="secondary" size="sm" disabled={writing} onClick={barangayResolve.openPrompt}>
+        <Button variant="secondary" size="lg" disabled={writing} onClick={barangayResolve.openPrompt}>
           {t("resolve.button")}
         </Button>
       )}
     </>
   ) : mayResolve ? (
     // The agency list didn't load: resolving is the one action left.
-    <Button variant="primary" size="sm" disabled={writing} onClick={barangayResolve.openPrompt}>
+    <Button variant="primary" size="lg" disabled={writing} onClick={barangayResolve.openPrompt}>
       {t("resolve.button")}
     </Button>
   ) : routeState.kind === "returned" && routeState.options && routeState.options.length > 0 ? (
-    <Button variant="primary" size="sm" disabled={routing.isPending} onClick={routing.openConfirm}>
+    <Button variant="primary" size="lg" disabled={routing.isPending} onClick={routing.openConfirm}>
       {t("routing.routeElsewhere")}
     </Button>
   ) : (
-    <p className="max-w-xs text-xs text-ink-500">{footerNote(routeState, t)}</p>
+    <p className="max-w-md text-sm text-ink-500">{footerNote(routeState, t)}</p>
   );
 
   const details = (
@@ -455,10 +456,13 @@ export function ReportDetailPanel({
       >
         <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-ink-100 bg-white px-4 py-3 md:px-5">
           <div className="min-w-0">
-            <p id="report-detail-title" className="text-sm font-semibold text-ink-900">
+            <p id="report-detail-title" className="text-base font-semibold text-ink-900">
               {report.category}
             </p>
-            <p className="truncate font-mono text-xs text-ink-500">{report.id}</p>
+            <div className="flex items-center gap-1">
+              <p className="truncate font-mono text-xs text-ink-500">{report.id}</p>
+              <CopyIdButton id={report.id} />
+            </div>
           </div>
           <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
             {recallOffer && (
@@ -472,7 +476,6 @@ export function ReportDetailPanel({
                 {t(recallOffer === "recall" ? "recall.button" : "recall.record")}
               </Button>
             )}
-            {actions}
             <Button variant="ghost" size="sm" className="min-w-11" onClick={closeUnlessWriting} aria-label={t("common.close")}>
               <Icon name="close" />
             </Button>
@@ -498,9 +501,20 @@ export function ReportDetailPanel({
           </div>
         )}
 
+        {/* Details on the left and wider, the chat beside them on the right:
+            the decision is made on the report, and the thread is read
+            alongside it (reviewer feedback, October 2026). */}
         <div className="flex min-h-0 flex-1">
+          {showDetails && (
+            <div className="min-w-0 flex-1 overflow-y-auto px-5 py-5 md:px-6">
+              {/* No thread exists for a discreet report (the backend refuses
+                  it), and none is offered while REPORT_CHAT_LIVE is off:
+                  details alone, kept to a readable width. */}
+              <div className={chatOffered ? "" : "mx-auto max-w-2xl"}>{details}</div>
+            </div>
+          )}
           {showChat && (
-            <div className="flex min-w-0 flex-1 flex-col">
+            <div className="flex min-w-0 flex-1 flex-col md:w-[400px] md:flex-none md:border-l md:border-ink-100">
               {REPORT_CHAT_V2 ? (
                 <ReportChatThreads
                   reportId={report.id}
@@ -513,21 +527,14 @@ export function ReportDetailPanel({
               )}
             </div>
           )}
-          {showDetails && (
-            <div
-              className={
-                chatOffered
-                  ? "min-w-0 flex-1 overflow-y-auto px-5 py-4 md:w-[380px] md:flex-none md:border-l md:border-ink-100"
-                  : "min-w-0 flex-1 overflow-y-auto px-5 py-4"
-              }
-            >
-              {/* No thread exists for a discreet report (the backend refuses
-                  it), and none is offered while REPORT_CHAT_LIVE is off:
-                  details alone, kept to a readable width. */}
-              <div className={chatOffered ? "" : "mx-auto max-w-2xl"}>{details}</div>
-            </div>
-          )}
         </div>
+
+        {/* The decision, in large buttons along the bottom of the dialog,
+            Reject on the far left and Validate on the right, so the two
+            can't be mistaken for each other. */}
+        <footer className="flex flex-wrap items-center justify-end gap-3 border-t border-ink-100 bg-white px-5 py-4 md:px-6">
+          {actions}
+        </footer>
       </aside>
 
       {isRejecting && (
