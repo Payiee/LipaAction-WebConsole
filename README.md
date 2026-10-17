@@ -268,6 +268,12 @@ In each case the console shows nothing rather than an approximation.
   function deliberately withholds who acted and whom the report concerned, so the page
   cannot name an official; its filters narrow the events already loaded rather than the
   whole trail, and the page says so.
+- **A page visited in the last three minutes is shown again at once, from the browser.**
+  That is what keeps moving between pages free of loading screens. The queue brings
+  itself up to date as soon as it is back on screen, and every decision clears the
+  stored pages, but on the other pages a change made meanwhile (an agency's progress
+  in Validation History, a new opening in the Audit Log) appears on the next visit
+  after those three minutes, or on a reload.
 - **Access-log coverage is incomplete.** See the Privacy section: list rows are not
   individually logged, live updates deliver full report rows to the
   browser because Supabase cannot filter that feed by column, and a read made outside

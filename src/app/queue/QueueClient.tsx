@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { DataUnavailableBanner } from "@/components/layout/DataUnavailableBanner";
 import { playChime, primeChime } from "@/lib/chime";
@@ -199,6 +198,8 @@ export function QueueClient({
   queueData,
   recentActivity = null,
   sanctionCounts,
+  loadedAt,
+  reload,
 }: {
   official: OfficialProfile;
   queueData: QueueData;
@@ -207,6 +208,10 @@ export function QueueClient({
   // The barangay admin's sanction cards: undefined for a barangay official,
   // null when the count couldn't be read.
   sanctionCounts?: SanctionCounts | null;
+  // When the server loaded queueData (ISO), and the refresh that loads it
+  // again; both from QueueRoot.
+  loadedAt: string;
+  reload: () => Promise<void>;
 }) {
   const [activeTab, setActiveTab] = useState<QueueTabId>("emergency");
   const [query, setQuery] = useState("");
@@ -275,7 +280,6 @@ export function QueueClient({
   const [seenNotifications, setSeenNotifications] = useState<ReadonlySet<string>>(new Set());
   const unreadAutoRouted = (queueData.unreadAutoRoutedIds ?? []).filter((id) => !seenNotifications.has(id));
 
-  const router = useRouter();
   const { prefs } = usePreferences(official.role);
   // Read inside long-lived callbacks (the Realtime handler, the SLA timer)
   // that must not be torn down and re-created every time a preference flips.
@@ -284,14 +288,17 @@ export function QueueClient({
     prefsRef.current = prefs;
   });
 
-  // The latest data and when it reached this component, for the catch-up
-  // check below — a long-lived callback that must not be rebuilt per refresh.
+  // The latest data and when the server loaded it, for the catch-up check
+  // below — a long-lived callback that must not be rebuilt per refresh. The
+  // server's time, not this component's: a page shown again from the
+  // browser's cache mounts with data loaded minutes earlier.
   const queueDataRef = useRef(queueData);
   const dataArrivedAt = useRef(0);
   useEffect(() => {
     queueDataRef.current = queueData;
-    dataArrivedAt.current = Date.now();
-  }, [queueData]);
+    const loaded = Date.parse(loadedAt);
+    dataArrivedAt.current = Number.isNaN(loaded) ? Date.now() : loaded;
+  }, [queueData, loadedAt]);
 
   // The chime needs one click or key press on this page before the browser
   // lets it play (see chime.ts). After a reload there hasn't been one, so the
@@ -355,8 +362,10 @@ export function QueueClient({
     }
     refreshPending.current = false;
     setUpdateWaiting(false);
-    router.refresh();
-  }, [router]);
+    // Through a Server Action, never router.refresh(): on Next 14 that empties
+    // the browser's cache of every other page (see reloadQueue).
+    void reload();
+  }, [reload]);
 
   const requestRefresh = useCallback(() => {
     refreshPending.current = true;
@@ -366,7 +375,8 @@ export function QueueClient({
   /**
    * Catches up after a gap the Realtime channel can't cover — a (re)subscribe,
    * the tab coming back, the network returning — without refreshing when
-   * nothing changed. router.refresh() on Next 14 empties the router's whole
+   * nothing changed. Each refresh is a full reload of the page's data, and a
+   * router.refresh() (what it used to be) on Next 14 emptied the router's whole
    * client cache, so refreshing on every subscribe made every other page load
    * again behind its skeleton after each visit here. Instead one small query
    * compares the reports this page shows as needing action (id and status)
@@ -634,8 +644,10 @@ export function QueueClient({
   // on data that didn't arrive.
   const [receivedAt, setReceivedAt] = useState<Date | null>(null);
   useEffect(() => {
-    if (!queueData.loadFailed) setReceivedAt(new Date());
-  }, [queueData]);
+    if (queueData.loadFailed) return;
+    const loaded = new Date(loadedAt);
+    setReceivedAt(Number.isNaN(loaded.getTime()) ? new Date() : loaded);
+  }, [queueData, loadedAt]);
 
   // What arrived on its own. The queue updates without being asked, so a
   // report can appear while the official is reading something else — the

@@ -27,6 +27,16 @@ const nextConfig = {
   reactStrictMode: true,
   // Stops advertising the framework in every response.
   poweredByHeader: false,
+  experimental: {
+    // How long the browser keeps a visited page to show again at once,
+    // instead of behind its loading skeleton. Next 14 keeps a dynamic page
+    // for 30 s; every page here is dynamic, so going back to one after half
+    // a minute always meant the skeleton. Three minutes covers moving
+    // between pages while working, and is short enough that a page shown
+    // from the cache is never far behind. The queue refreshes itself as soon
+    // as it is back on screen, and every decision clears the whole cache.
+    staleTimes: { dynamic: 180 },
+  },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
