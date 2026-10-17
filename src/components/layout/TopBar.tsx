@@ -100,10 +100,13 @@ export function TopBar({
         </nav>
       </div>
 
-      <div className="flex items-center gap-3">
+      {/* The search box takes the room the top bar has spare, up to a
+          comfortable reading width, so a long category or description fits
+          as it is typed. */}
+      <div className="flex min-w-0 flex-1 items-center justify-end gap-3">
         {search && (
-          <label className="hidden items-center gap-2 rounded-md border border-ink-100 bg-ink-50 px-3 text-xs text-ink-500 md:flex">
-            <Icon name="search" className="h-3.5 w-3.5" />
+          <label className="hidden min-w-0 max-w-xl flex-1 items-center gap-2 rounded-md border border-ink-100 bg-ink-50 px-3 text-sm text-ink-500 focus-within:border-brand-500 focus-within:bg-white md:flex">
+            <Icon name="search" className="h-4 w-4" />
             <span className="sr-only">{search.label}</span>
             <input
               type="search"
@@ -111,7 +114,7 @@ export function TopBar({
               placeholder={search.placeholder}
               value={search.value}
               onChange={(e) => search.onChange(e.target.value)}
-              className="min-h-11 w-56 bg-transparent text-sm text-ink-700 placeholder:text-ink-500 focus:outline-none"
+              className="min-h-11 w-full min-w-0 bg-transparent text-sm text-ink-700 placeholder:text-ink-500 focus:outline-none"
             />
           </label>
         )}
