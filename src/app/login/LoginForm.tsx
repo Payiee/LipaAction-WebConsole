@@ -197,7 +197,7 @@ export function LoginForm() {
           <LogoMark size={36} />
           <div className="leading-tight">
             <p className="text-sm font-semibold text-ink-900">LipaAction</p>
-            <p className="text-xs text-ink-500">Barangay console</p>
+            <p className="text-xs text-ink-500">Admin console</p>
           </div>
         </div>
 

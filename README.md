@@ -1,4 +1,4 @@
-# LipaAction — Barangay Web Console
+# LipaAction — Admin Web Console
 
 The officials-facing web console for the LipaAction incident-reporting system, as
 specified in **Chapter 3, Section 3.7.3** of the LipaAction thesis (Major Revision,

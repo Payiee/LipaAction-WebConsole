@@ -20,7 +20,7 @@ import { ToastProvider } from "@/components/ui/Toast";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "LipaAction — Barangay Web Console",
+  title: "LipaAction — Admin Web Console",
   // Said [Static UI mockup] until 2026-09 — false since the console went
   // live against the real database, and now public on the deployed URL.
   description:
